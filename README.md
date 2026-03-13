@@ -79,7 +79,7 @@
 ## Instalação
 
 ```bash
-git clone https://github.com/your-username/TTT-Tibia-TFS-Transpiler.git
+git clone https://github.com/zmovirzynski/TTT-Tibia-TFS-Transpiler.git
 cd TTT-Tibia-TFS-Transpiler
 ```
 
