@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<actions>
+    <action itemid="2274" script="healing_potion.lua" />
+    <action itemid="2275" script="teleport_scroll.lua" />
+</actions>

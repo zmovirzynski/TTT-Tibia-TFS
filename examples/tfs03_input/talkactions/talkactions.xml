@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<talkactions>
+    <talkaction words="/bc" script="broadcast.lua" access="3" />
+</talkactions>

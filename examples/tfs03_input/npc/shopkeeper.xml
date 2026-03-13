@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<npc name="Shopkeeper Tom" script="shopkeeper.lua" walkinterval="2000" floorchange="0">
+    <health now="100" max="100"/>
+    <look type="130" head="19" body="69" legs="124" feet="95"/>
+    <parameters>
+        <parameter key="message_greet" value="Welcome, |PLAYERNAME|! I buy and sell equipment."/>
+        <parameter key="shop_buyable" value="2400,sword,100;2383,spear,50"/>
+        <parameter key="shop_sellable" value="2400,sword,50;2383,spear,25"/>
+    </parameters>
+</npc>
