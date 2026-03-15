@@ -307,9 +307,10 @@ class ASTTransformVisitor(ast.ASTVisitor):
                 source=obj_node, func=Name(method_name), args=new_args
             )
 
-            # Replace the call node with method invoke
-            # We need to find the parent and replace this node
-            # For now, we'll modify the node in place to be a method invoke
+            # --- Node-class mutation: luaparser serializes by __class__.__name__, so we
+            # must change the class to produce "obj:method()" output.  We also set every
+            # attribute that Invoke.__init__ would set so the node is fully valid.
+            # isinstance() checks on this node will return True for Invoke after this.
             node.__class__ = Invoke
             node.source = obj_node
             node.func = Name(method_name)
@@ -643,11 +644,13 @@ class ASTTransformVisitor(ast.ASTVisitor):
                 # Create Position constructor call
                 position_call = Call(func=Name("Position"), args=[x_val, y_val, z_val])
 
-                # Replace the table node with the call
-                # We can't directly replace, but we can transform this node
+                # --- Node-class mutation: transform table literal into a constructor call.
+                # luaparser serializes Call nodes as "func(args)", which gives us Position(x,y,z).
                 node.__class__ = Call
                 node.func = Name("Position")
                 node.args = [x_val, y_val, z_val]
+                # Clear the 'fields' attribute so the serializer doesn't see stale Table data.
+                node.fields = []
 
                 self.stats["functions_converted"] += 1
 
