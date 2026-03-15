@@ -176,6 +176,39 @@ class TestASTTransformVisitor(unittest.TestCase):
         self.assertNotIn("doPlayerSendTextMessage", result)
 
 
+    def test_two_functions_independent_scopes(self):
+        """Two functions in the same file should each get correct param transformations."""
+        code = (
+            "function onLogin(cid)\n"
+            "    return true\nend\n"
+            "function onLogout(cid)\n"
+            "    return true\nend"
+        )
+        result = self._transform(code)
+        # Both should have 'player' param, neither should have 'cid' left
+        self.assertEqual(result.count("(player)"), 2)
+        self.assertNotIn("(cid)", result)
+
+    def test_method_call_result_is_invoke_syntax(self):
+        """Transformed function calls should produce obj:method() syntax."""
+        code = (
+            "function onLogin(cid)\n"
+            "    doPlayerSendTextMessage(cid, MESSAGE_STATUS_DEFAULT, 'hi')\n"
+            "    return true\nend"
+        )
+        result = self._transform(code)
+        # Method invocation syntax uses colon
+        self.assertIn(":", result)
+        self.assertIn("sendTextMessage", result)
+
+    def test_position_table_converted(self):
+        """{x=100, y=200, z=7} should become Position(100, 200, 7)."""
+        code = "local pos = {x=100, y=200, z=7}"
+        result = self._transform(code)
+        self.assertIn("Position(", result)
+        self.assertNotIn("{x=", result)
+
+
 if __name__ == "__main__":
     unittest.main()
 

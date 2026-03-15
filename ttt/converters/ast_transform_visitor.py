@@ -351,13 +351,21 @@ class ASTTransformVisitor(ast.ASTVisitor):
         """
         self.current_function_name = func_name
 
-        if self._function_scope_index < len(self.scope_info.function_scopes):
-            _, self.current_function_scope = self.scope_info.function_scopes[self._function_scope_index]
-            self._function_scope_index += 1
+        # Try to find the scope by name first (robust against traversal-order differences)
+        matched_scope = self._find_scope_for_function(func_name)
+        if matched_scope is not None:
+            self.current_function_scope = matched_scope
         else:
-            self.current_function_scope = Scope(
-                parent=self.scope_info.global_scope, level=1
-            )
+            # Fall back to sequential index (handles anonymous functions with no name)
+            if self._function_scope_index < len(self.scope_info.function_scopes):
+                _, self.current_function_scope = self.scope_info.function_scopes[
+                    self._function_scope_index
+                ]
+                self._function_scope_index += 1
+            else:
+                self.current_function_scope = Scope(
+                    parent=self.scope_info.global_scope, level=1
+                )
 
         self.scope_stack.append(self.current_function_scope)
 
@@ -387,6 +395,37 @@ class ASTTransformVisitor(ast.ASTVisitor):
             self.scope_stack.pop()
         self.current_function_scope = self.scope_stack[-1] if self.scope_stack else None
         self.param_renames = {}
+
+    def _find_scope_for_function(self, func_name: str) -> Optional[Scope]:
+        """Find the scope entry matching func_name, skipping already-consumed entries.
+
+        Uses a per-name counter so that two functions with the same name get
+        different scopes in the order they were visited during analysis.
+
+        Args:
+            func_name: The function name to look up.
+
+        Returns:
+            The matching Scope, or None if not found.
+        """
+        if func_name == "<anonymous>":
+            return None  # Can't disambiguate anonymous functions by name alone
+
+        if not hasattr(self, "_scope_name_counters"):
+            self._scope_name_counters: Dict[str, int] = {}
+
+        visit_count = self._scope_name_counters.get(func_name, 0)
+        matches = [
+            scope
+            for name, scope in self.scope_info.function_scopes
+            if name == func_name
+        ]
+
+        if visit_count < len(matches):
+            self._scope_name_counters[func_name] = visit_count + 1
+            return matches[visit_count]
+
+        return None
 
     def visit_Function(self, node: Function) -> None:
         func_name = "<anonymous>"
