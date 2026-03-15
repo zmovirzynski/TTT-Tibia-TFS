@@ -74,7 +74,7 @@ class ASTTransformVisitor(ast.ASTVisitor):
         self.current_function_scope: Optional[Scope] = None
         self.current_function_name: str = ""
         self.temp_var_counter = 0
-        self.defensive_checks: List[Statement] = []
+        self.defensive_checks: List = []
         self.warnings: List[str] = []
         self.param_renames: Dict[str, str] = {}
         self.scope_stack: List[Scope] = []
@@ -103,7 +103,7 @@ class ASTTransformVisitor(ast.ASTVisitor):
 
     def _create_defensive_wrapper(
         self, var_name: str, var_type: str, obj_arg: Node
-    ) -> Tuple[str, List[Statement]]:
+    ) -> Tuple[str, List]:
         """Create defensive wrapper for a variable.
 
         Creates statements that:
@@ -203,7 +203,7 @@ class ASTTransformVisitor(ast.ASTVisitor):
 
     def _transform_function_call(
         self, node: Call, func_name: str, mapping: Dict
-    ) -> Optional[List[Statement]]:
+    ) -> Optional[List]:
         """Transform a single function call.
 
         Transforms a function call from TFS 0.3/0.4 format to TFS 1.x format.
@@ -324,7 +324,7 @@ class ASTTransformVisitor(ast.ASTVisitor):
 
         return statements_to_insert if statements_to_insert else None
 
-    def _transform_call_recursive(self, node: Call) -> Optional[List[Statement]]:
+    def _transform_call_recursive(self, node: Call) -> Optional[List]:
         """Recursively transform nested calls.
 
         Args:

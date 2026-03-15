@@ -18,40 +18,58 @@ from .mappings.tfs03_functions import TFS03_TO_1X
 from .mappings.tfs04_functions import TFS04_TO_1X
 from .report import ConversionReport, FileReport
 from .utils import (
-    read_file_safe, write_file_safe, find_lua_files,
-    ensure_dir, relative_path, setup_logging
+    read_file_safe,
+    write_file_safe,
+    find_lua_files,
+    ensure_dir,
+    relative_path,
+    setup_logging,
 )
+
+# Try to import AST transformer (with fallback for backward compatibility)
+try:
+    from .converters.ast_lua_transformer import ASTLuaTransformer
+
+    AST_AVAILABLE = True
+except ImportError:
+    AST_AVAILABLE = False
+    ASTLuaTransformer = None
 
 logger = logging.getLogger("ttt")
 
 # Version identifiers
 VERSIONS = {
-    "tfs03":  "TFS 0.3.6",
+    "tfs03": "TFS 0.3.6",
     "tfs036": "TFS 0.3.6",
-    "tfs04":  "TFS 0.4",
-    "tfs1":   "TFS 1.x",
-    "tfs1x":  "TFS 1.x",
+    "tfs04": "TFS 0.4",
+    "tfs1": "TFS 1.x",
+    "tfs1x": "TFS 1.x",
     "revscript": "TFS 1.3+ (RevScript)",
 }
 
 VALID_CONVERSIONS = {
-    ("tfs03", "tfs1x"):      "TFS 0.3 → TFS 1.x (API conversion)",
-    ("tfs036", "tfs1x"):     "TFS 0.3.6 → TFS 1.x (API conversion)",
-    ("tfs04", "tfs1x"):      "TFS 0.4 → TFS 1.x (API conversion)",
-    ("tfs03", "revscript"):  "TFS 0.3 → RevScript (API + registration)",
+    ("tfs03", "tfs1x"): "TFS 0.3 → TFS 1.x (API conversion)",
+    ("tfs036", "tfs1x"): "TFS 0.3.6 → TFS 1.x (API conversion)",
+    ("tfs04", "tfs1x"): "TFS 0.4 → TFS 1.x (API conversion)",
+    ("tfs03", "revscript"): "TFS 0.3 → RevScript (API + registration)",
     ("tfs036", "revscript"): "TFS 0.3.6 → RevScript (API + registration)",
-    ("tfs04", "revscript"):  "TFS 0.4 → RevScript (API + registration)",
-    ("tfs1x", "revscript"):  "TFS 1.x → RevScript (registration only)",
-    ("tfs1", "revscript"):   "TFS 1.x → RevScript (registration only)",
+    ("tfs04", "revscript"): "TFS 0.4 → RevScript (API + registration)",
+    ("tfs1x", "revscript"): "TFS 1.x → RevScript (registration only)",
+    ("tfs1", "revscript"): "TFS 1.x → RevScript (registration only)",
 }
 
 
 class ConversionEngine:
-
-    def __init__(self, source_version: str, target_version: str,
-                 input_dir: str, output_dir: str = "",
-                 verbose: bool = False, dry_run: bool = False,
-                 html_diff: bool = False):
+    def __init__(
+        self,
+        source_version: str,
+        target_version: str,
+        input_dir: str,
+        output_dir: str = "",
+        verbose: bool = False,
+        dry_run: bool = False,
+        html_diff: bool = False,
+    ):
 
         self.source_version = source_version.lower().replace(".", "").replace(" ", "")
         self.target_version = target_version.lower().replace(".", "").replace(" ", "")
@@ -90,6 +108,7 @@ class ConversionEngine:
             "errors": 0,
             "warnings": 0,
             "total_functions_converted": 0,
+            "defensive_checks_added": 0,
             "time_elapsed": 0.0,
         }
 
@@ -101,7 +120,9 @@ class ConversionEngine:
 
         key = (self.source_version, self.target_version)
         if key not in VALID_CONVERSIONS:
-            valid = "\n  ".join(f"{k[0]} → {k[1]}: {v}" for k, v in VALID_CONVERSIONS.items())
+            valid = "\n  ".join(
+                f"{k[0]} → {k[1]}: {v}" for k, v in VALID_CONVERSIONS.items()
+            )
             errors.append(
                 f"Invalid conversion: {self.source_version} → {self.target_version}\n"
                 f"Valid conversions:\n  {valid}"
@@ -120,7 +141,9 @@ class ConversionEngine:
 
         src_label = VERSIONS.get(self.source_version, self.source_version)
         tgt_label = VERSIONS.get(self.target_version, self.target_version)
-        self.report = ConversionReport(src_label, tgt_label, self.input_dir, self.output_dir)
+        self.report = ConversionReport(
+            src_label, tgt_label, self.input_dir, self.output_dir
+        )
 
         mode_label = "DRY RUN" if self.dry_run else "CONVERSION"
         logger.info("=" * 60)
@@ -198,13 +221,15 @@ class ConversionEngine:
         return self.stats
 
     def _has_xml_registrations(self, scan: ScanResult) -> bool:
-        return any([
-            scan.actions_xml,
-            scan.movements_xml,
-            scan.talkactions_xml,
-            scan.creaturescripts_xml,
-            scan.globalevents_xml,
-        ])
+        return any(
+            [
+                scan.actions_xml,
+                scan.movements_xml,
+                scan.talkactions_xml,
+                scan.creaturescripts_xml,
+                scan.globalevents_xml,
+            ]
+        )
 
     def _has_npc_scripts(self, scan: ScanResult) -> bool:
         return bool(scan.npc_dir and scan.npc_xml_files)
@@ -212,25 +237,33 @@ class ConversionEngine:
     def _generate_html_diff(self):
         src_label = VERSIONS.get(self.source_version, self.source_version)
         tgt_label = VERSIONS.get(self.target_version, self.target_version)
-        diff_gen = HtmlDiffGenerator(src_label, tgt_label, self.input_dir, self.output_dir)
+        diff_gen = HtmlDiffGenerator(
+            src_label, tgt_label, self.input_dir, self.output_dir
+        )
 
         for fr in self.report.file_reports:
             if not fr.original_content and not fr.converted_content:
                 continue
 
             filename = os.path.basename(fr.source_path)
-            rel = relative_path(fr.source_path, self.input_dir) if self.input_dir else filename
+            rel = (
+                relative_path(fr.source_path, self.input_dir)
+                if self.input_dir
+                else filename
+            )
 
-            diff_gen.add_entry(DiffEntry(
-                filename=rel,
-                source_path=fr.source_path,
-                original=fr.original_content,
-                converted=fr.converted_content,
-                file_type=fr.file_type or fr.conversion_type,
-                confidence=fr.confidence_label,
-                functions_converted=fr.functions_converted,
-                total_changes=fr.total_changes,
-            ))
+            diff_gen.add_entry(
+                DiffEntry(
+                    filename=rel,
+                    source_path=fr.source_path,
+                    original=fr.original_content,
+                    converted=fr.converted_content,
+                    file_type=fr.file_type or fr.conversion_type,
+                    confidence=fr.confidence_label,
+                    functions_converted=fr.functions_converted,
+                    total_changes=fr.total_changes,
+                )
+            )
 
         if self.output_dir:
             html_path = os.path.join(self.output_dir, "conversion_diff.html")
@@ -240,16 +273,47 @@ class ConversionEngine:
         diff_gen.generate(html_path)
         logger.info(f"\n  HTML diff saved to: {html_path}")
 
-    def _convert_xml_to_revscript(self, scan: ScanResult, transformer: Optional[LuaTransformer]):
-        converter = XmlToRevScriptConverter(lua_transformer=transformer, dry_run=self.dry_run)
-        revscript_dir = os.path.join(self.output_dir, "scripts") if self.output_dir else ""
+    def _convert_xml_to_revscript(
+        self, scan: ScanResult, transformer: Optional[LuaTransformer]
+    ):
+        converter = XmlToRevScriptConverter(
+            lua_transformer=transformer, dry_run=self.dry_run
+        )
+        revscript_dir = (
+            os.path.join(self.output_dir, "scripts") if self.output_dir else ""
+        )
 
         conversions = [
-            (scan.actions_xml, scan.actions_dir, "actions", os.path.join(revscript_dir, "actions") if revscript_dir else ""),
-            (scan.movements_xml, scan.movements_dir, "movements", os.path.join(revscript_dir, "movements") if revscript_dir else ""),
-            (scan.talkactions_xml, scan.talkactions_dir, "talkactions", os.path.join(revscript_dir, "talkactions") if revscript_dir else ""),
-            (scan.creaturescripts_xml, scan.creaturescripts_dir, "creaturescripts", os.path.join(revscript_dir, "creaturescripts") if revscript_dir else ""),
-            (scan.globalevents_xml, scan.globalevents_dir, "globalevents", os.path.join(revscript_dir, "globalevents") if revscript_dir else ""),
+            (
+                scan.actions_xml,
+                scan.actions_dir,
+                "actions",
+                os.path.join(revscript_dir, "actions") if revscript_dir else "",
+            ),
+            (
+                scan.movements_xml,
+                scan.movements_dir,
+                "movements",
+                os.path.join(revscript_dir, "movements") if revscript_dir else "",
+            ),
+            (
+                scan.talkactions_xml,
+                scan.talkactions_dir,
+                "talkactions",
+                os.path.join(revscript_dir, "talkactions") if revscript_dir else "",
+            ),
+            (
+                scan.creaturescripts_xml,
+                scan.creaturescripts_dir,
+                "creaturescripts",
+                os.path.join(revscript_dir, "creaturescripts") if revscript_dir else "",
+            ),
+            (
+                scan.globalevents_xml,
+                scan.globalevents_dir,
+                "globalevents",
+                os.path.join(revscript_dir, "globalevents") if revscript_dir else "",
+            ),
         ]
 
         for xml_path, scripts_dir, name, out_dir in conversions:
@@ -262,7 +326,9 @@ class ConversionEngine:
 
             logger.info(f"  Converting {name}...")
             try:
-                output_files = converter.convert_xml_file(xml_path, scripts_dir, out_dir)
+                output_files = converter.convert_xml_file(
+                    xml_path, scripts_dir, out_dir
+                )
                 logger.info(f"    Generated {len(output_files)} RevScript file(s)")
                 self.stats["xml_files_processed"] += 1
                 self.stats["revscripts_generated"] += len(output_files)
@@ -272,7 +338,9 @@ class ConversionEngine:
                     fr.conversion_type = "xml_to_revscript"
                     # Count TTT warnings in output file
                     if fr.output_path and os.path.isfile(fr.output_path):
-                        fr.ttt_warnings = self.report.count_ttt_warnings_in_file(fr.output_path)
+                        fr.ttt_warnings = self.report.count_ttt_warnings_in_file(
+                            fr.output_path
+                        )
                     self.report.add_file_report(fr)
 
             except Exception as e:
@@ -283,7 +351,9 @@ class ConversionEngine:
         if conv_summary:
             logger.info(f"  XML→RevScript summary: {conv_summary}")
 
-    def _convert_npc_scripts(self, scan: ScanResult, transformer: Optional[LuaTransformer]):
+    def _convert_npc_scripts(
+        self, scan: ScanResult, transformer: Optional[LuaTransformer]
+    ):
         npc_converter = NpcConverter(lua_transformer=transformer, dry_run=self.dry_run)
         output_npc_dir = os.path.join(self.output_dir, "npc") if self.output_dir else ""
 
@@ -294,14 +364,18 @@ class ConversionEngine:
                 npc_xml_files=scan.npc_xml_files,
                 output_npc_dir=output_npc_dir,
             )
-            logger.info(f"  Converted {npc_converter.stats['npcs_converted']} NPC(s), "
-                        f"{npc_converter.stats['scripts_transformed']} script(s)")
+            logger.info(
+                f"  Converted {npc_converter.stats['npcs_converted']} NPC(s), "
+                f"{npc_converter.stats['scripts_transformed']} script(s)"
+            )
             self.stats["revscripts_generated"] += len(output_files)
 
             for fr in npc_converter.pop_file_reports():
                 fr.file_type = "npc"
                 if fr.output_path and os.path.isfile(fr.output_path):
-                    fr.ttt_warnings = self.report.count_ttt_warnings_in_file(fr.output_path)
+                    fr.ttt_warnings = self.report.count_ttt_warnings_in_file(
+                        fr.output_path
+                    )
                 self.report.add_file_report(fr)
 
         except Exception as e:
@@ -312,7 +386,9 @@ class ConversionEngine:
         if npc_summary:
             logger.info(f"  NPC summary: {npc_summary}")
 
-    def _convert_lua_files(self, scan: ScanResult, transformer: Optional[LuaTransformer]):
+    def _convert_lua_files(
+        self, scan: ScanResult, transformer: Optional[LuaTransformer]
+    ):
         if not transformer:
             # For tfs1x → revscript, we only do XML conversion
             # But we still copy Lua files
@@ -321,10 +397,37 @@ class ConversionEngine:
                 self._copy_lua_files(scan)
             return
 
+        # Try to use AST transformer when available for tfs03/tfs04 conversions
+        ast_transformer = None
+        if AST_AVAILABLE and self.source_version in ("tfs03", "tfs04"):
+            try:
+                ast_transformer = ASTLuaTransformer(
+                    function_map=self.function_map, source_version=self.source_version
+                )
+                logger.info("  Using AST-based transformer (with defensive checks)")
+            except Exception as e:
+                logger.warning(f"  Could not initialize AST transformer: {e}")
+                logger.info("  Falling back to regex transformer")
+
+        if not ast_transformer:
+            ast_transformer = transformer  # Use the regex transformer passed in
+            if AST_AVAILABLE:
+                logger.info(
+                    "  AST transformer available - using with defensive programming"
+                )
+            else:
+                logger.info("  AST transformer not available - using regex transformer")
+
         handled_dirs = set()
-        for attr in ("actions_dir", "movements_dir", "talkactions_dir",
-                      "creaturescripts_dir", "globalevents_dir",
-                      "npc_dir", "npc_scripts_dir"):
+        for attr in (
+            "actions_dir",
+            "movements_dir",
+            "talkactions_dir",
+            "creaturescripts_dir",
+            "globalevents_dir",
+            "npc_dir",
+            "npc_scripts_dir",
+        ):
             dir_path = getattr(scan, attr)
             if dir_path:
                 handled_dirs.add(os.path.normpath(dir_path))
@@ -351,14 +454,30 @@ class ConversionEngine:
             fr = FileReport(source_path=lua_file, conversion_type="lua_transform")
 
             try:
-                new_content = transformer.transform(content, rel)
-                summary = transformer.get_summary()
+                new_content = ast_transformer.transform(content, rel)
+                summary = ast_transformer.get_summary()
 
-                fr.functions_converted = transformer.stats.get("functions_converted", 0)
-                fr.signatures_updated = transformer.stats.get("signatures_updated", 0)
-                fr.constants_replaced = transformer.stats.get("constants_replaced", 0)
-                fr.variables_renamed = transformer.stats.get("variables_renamed", 0)
-                fr.warnings = list(transformer.warnings)
+                # Update stats from transformer
+                fr.functions_converted = ast_transformer.stats.get(
+                    "functions_converted", 0
+                )
+                fr.signatures_updated = ast_transformer.stats.get(
+                    "signatures_updated", 0
+                )
+                fr.constants_replaced = ast_transformer.stats.get(
+                    "constants_replaced", 0
+                )
+                fr.variables_renamed = ast_transformer.stats.get("variables_renamed", 0)
+                fr.defensive_checks_added = ast_transformer.stats.get(
+                    "defensive_checks_added", 0
+                )
+                fr.warnings = list(ast_transformer.warnings)
+
+                # Check if we used fallback
+                if hasattr(ast_transformer, "warnings") and any(
+                    "regex fallback" in str(w) for w in ast_transformer.warnings
+                ):
+                    fr.warnings.append("Used regex fallback due to AST error")
 
                 fr.unrecognized_calls = self._find_unrecognized_calls(new_content)
 
@@ -373,7 +492,12 @@ class ConversionEngine:
 
                 if summary != "No changes":
                     logger.info(f"  {rel}: {summary}")
-                    self.stats["total_functions_converted"] += transformer.stats.get("functions_converted", 0)
+                    self.stats["total_functions_converted"] += (
+                        ast_transformer.stats.get("functions_converted", 0)
+                    )
+                    self.stats["defensive_checks_added"] += ast_transformer.stats.get(
+                        "defensive_checks_added", 0
+                    )
                 else:
                     logger.debug(f"  {rel}: No changes needed")
 
@@ -431,7 +555,13 @@ class ConversionEngine:
         logger.info(f"  Lua files processed:      {self.stats['lua_files_processed']}")
         logger.info(f"  XML files processed:      {self.stats['xml_files_processed']}")
         logger.info(f"  RevScripts generated:     {self.stats['revscripts_generated']}")
-        logger.info(f"  Function calls converted: {self.stats['total_functions_converted']}")
+        logger.info(
+            f"  Function calls converted: {self.stats['total_functions_converted']}"
+        )
+        if self.stats.get("defensive_checks_added", 0) > 0:
+            logger.info(
+                f"  Defensive checks added:   {self.stats['defensive_checks_added']}"
+            )
         logger.info(f"  Errors:                   {self.stats['errors']}")
         logger.info(f"  Time elapsed:             {self.stats['time_elapsed']:.2f}s")
         if not self.dry_run:
@@ -458,25 +588,50 @@ class ConversionEngine:
 
     # Common old-API prefixes that indicate unrecognized legacy functions
     _OLD_API_PREFIXES = (
-        "do", "get", "set", "is", "has",
+        "do",
+        "get",
+        "set",
+        "is",
+        "has",
     )
 
     _SAFE_FUNCS = {
-        "print", "type", "tostring", "tonumber", "pairs", "ipairs",
-        "table", "string", "math", "os", "io", "error", "pcall",
-        "xpcall", "require", "dofile", "loadfile", "select",
-        "unpack", "rawget", "rawset", "setmetatable", "getmetatable",
-        "next", "assert", "collectgarbage",
+        "print",
+        "type",
+        "tostring",
+        "tonumber",
+        "pairs",
+        "ipairs",
+        "table",
+        "string",
+        "math",
+        "os",
+        "io",
+        "error",
+        "pcall",
+        "xpcall",
+        "require",
+        "dofile",
+        "loadfile",
+        "select",
+        "unpack",
+        "rawget",
+        "rawset",
+        "setmetatable",
+        "getmetatable",
+        "next",
+        "assert",
+        "collectgarbage",
     }
 
     def _find_unrecognized_calls(self, code: str) -> List[str]:
         unrecognized = set()
         # Match standalone function calls (not method calls obj:method)
-        for m in re.finditer(r'\b(do[A-Z]\w+|get[A-Z]\w+|set[A-Z]\w+)\s*\(', code):
+        for m in re.finditer(r"\b(do[A-Z]\w+|get[A-Z]\w+|set[A-Z]\w+)\s*\(", code):
             func = m.group(1)
             # Skip if it's in a -- TTT comment line
             line_start = code.rfind("\n", 0, m.start()) + 1
-            line = code[line_start:m.start()]
+            line = code[line_start : m.start()]
             if "--" in line:
                 continue
             # Skip known safe
