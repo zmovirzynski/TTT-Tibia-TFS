@@ -138,6 +138,44 @@ class TestScopeAnalyzer(unittest.TestCase):
         self.assertEqual(var.var_type, "player")
 
 
+@unittest.skipUnless(LUAPARSER_AVAILABLE, "luaparser not installed")
+class TestASTTransformVisitor(unittest.TestCase):
+
+    def _transform(self, code: str) -> str:
+        from ttt.converters.ast_lua_transformer import ASTLuaTransformer
+        from ttt.mappings.tfs03_functions import TFS03_TO_1X
+        t = ASTLuaTransformer(TFS03_TO_1X, "tfs03")
+        return t.transform(code, "test.lua")
+
+    def test_signature_named_function(self):
+        code = "function onLogin(cid)\n    return true\nend"
+        result = self._transform(code)
+        self.assertIn("onLogin(player)", result)
+        self.assertNotIn("onLogin(cid)", result)
+
+    def test_signature_anonymous_function_assignment(self):
+        code = "onLogin = function(cid)\n    return true\nend"
+        result = self._transform(code)
+        self.assertIn("player", result)
+        self.assertNotIn("(cid)", result)
+
+    def test_signature_local_function(self):
+        code = "local function onLogin(cid)\n    return true\nend"
+        result = self._transform(code)
+        self.assertIn("player", result)
+        self.assertNotIn("(cid)", result)
+
+    def test_method_call_converted(self):
+        code = (
+            "function onLogin(cid)\n"
+            "    doPlayerSendTextMessage(cid, MESSAGE_STATUS_DEFAULT, 'hi')\n"
+            "    return true\nend"
+        )
+        result = self._transform(code)
+        self.assertIn("sendTextMessage", result)
+        self.assertNotIn("doPlayerSendTextMessage", result)
+
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -342,16 +342,53 @@ class ASTTransformVisitor(ast.ASTVisitor):
 
         return None
 
-    def visit_Function(self, node: Function) -> None:
-        """Transform function signature and track scope.
-
-        Updates parameter names based on SIGNATURE_MAP and tracks the
-        current function scope for variable lookups.
+    def _enter_function_scope(self, func_name: str, params) -> None:
+        """Set up scope tracking and apply signature transformation for a function.
 
         Args:
-            node: The Function AST node
+            func_name: The function name (or '<anonymous>').
+            params: The mutable parameter node list from the function AST node.
         """
-        # Get function name if available
+        self.current_function_name = func_name
+
+        if self._function_scope_index < len(self.scope_info.function_scopes):
+            _, self.current_function_scope = self.scope_info.function_scopes[self._function_scope_index]
+            self._function_scope_index += 1
+        else:
+            self.current_function_scope = Scope(
+                parent=self.scope_info.global_scope, level=1
+            )
+
+        self.scope_stack.append(self.current_function_scope)
+
+        if func_name in SIGNATURE_MAP and params is not None:
+            old_sig, new_sig = SIGNATURE_MAP[func_name]
+            old_params = old_sig.get("params", [])
+            new_params = new_sig.get("params", [])
+
+            for i, param in enumerate(params):
+                if isinstance(param, Name) and i < len(old_params):
+                    old_name = old_params[i]
+                    if i < len(new_params):
+                        new_name = new_params[i]
+                        if old_name != new_name:
+                            self.param_renames[old_name] = new_name
+                            param.id = new_name
+                            self.stats["signatures_updated"] += 1
+
+            current_count = len(params)
+            for i in range(current_count, len(new_params)):
+                params.append(Name(new_params[i]))
+                self.stats["signatures_updated"] += 1
+
+    def _exit_function_scope(self) -> None:
+        """Tear down scope tracking after visiting a function's body."""
+        if self.scope_stack:
+            self.scope_stack.pop()
+        self.current_function_scope = self.scope_stack[-1] if self.scope_stack else None
+        self.param_renames = {}
+
+    def visit_Function(self, node: Function) -> None:
         func_name = "<anonymous>"
         if hasattr(node, "name") and node.name:
             if isinstance(node.name, Name):
@@ -361,62 +398,12 @@ class ASTTransformVisitor(ast.ASTVisitor):
         elif hasattr(self, "_current_function_name") and self._current_function_name:
             func_name = self._current_function_name
             self._current_function_name = None
-
-        self.current_function_name = func_name
-
-        # Find the scope for this function by index (handles multiple anonymous functions)
-        if self._function_scope_index < len(self.scope_info.function_scopes):
-            _, self.current_function_scope = self.scope_info.function_scopes[self._function_scope_index]
-            self._function_scope_index += 1
-        else:
-            # Create a new scope if not found
-            self.current_function_scope = Scope(
-                parent=self.scope_info.global_scope, level=1
-            )
-
-        self.scope_stack.append(self.current_function_scope)
-
-        # Update parameter names based on SIGNATURE_MAP
-        if func_name in SIGNATURE_MAP:
-            old_sig, new_sig = SIGNATURE_MAP[func_name]
-            old_params = old_sig.get("params", [])
-            new_params = new_sig.get("params", [])
-
-            if hasattr(node, "args") and node.args is not None:
-                for i, param in enumerate(node.args):
-                    if isinstance(param, Name) and i < len(old_params):
-                        old_name = old_params[i]
-                        if i < len(new_params):
-                            new_name = new_params[i]
-                            if old_name != new_name:
-                                self.param_renames[old_name] = new_name
-                                param.id = new_name
-                                self.stats["signatures_updated"] += 1
-
-                # Append any extra params the new signature adds
-                current_count = len(node.args) if node.args else 0
-                for i in range(current_count, len(new_params)):
-                    node.args.append(Name(new_params[i]))
-                    self.stats["signatures_updated"] += 1
-
-        # Continue visiting children
+        params = node.args if hasattr(node, "args") and node.args is not None else []
+        self._enter_function_scope(func_name, params)
         self.generic_visit(node)
-
-        # Reset scope
-        if self.scope_stack:
-            self.scope_stack.pop()
-        self.current_function_scope = self.scope_stack[-1] if self.scope_stack else None
-        self.param_renames = {}
+        self._exit_function_scope()
 
     def visit_LocalFunction(self, node) -> None:
-        """Transform local function signature and track scope.
-
-        Similar to visit_Function but for local function declarations.
-
-        Args:
-            node: The LocalFunction AST node
-        """
-        # Get function name
         func_name = "<anonymous>"
         if hasattr(node, "name") and node.name:
             if isinstance(node.name, Name):
@@ -426,110 +413,20 @@ class ASTTransformVisitor(ast.ASTVisitor):
         elif hasattr(self, "_current_function_name") and self._current_function_name:
             func_name = self._current_function_name
             self._current_function_name = None
-
-        self.current_function_name = func_name
-
-        # Find the scope for this function by index (handles multiple anonymous functions)
-        if self._function_scope_index < len(self.scope_info.function_scopes):
-            _, self.current_function_scope = self.scope_info.function_scopes[self._function_scope_index]
-            self._function_scope_index += 1
-        else:
-            self.current_function_scope = Scope(
-                parent=self.scope_info.global_scope, level=1
-            )
-
-        self.scope_stack.append(self.current_function_scope)
-
-        # Update parameter names
-        if func_name in SIGNATURE_MAP:
-            old_sig, new_sig = SIGNATURE_MAP[func_name]
-            old_params = old_sig.get("params", [])
-            new_params = new_sig.get("params", [])
-
-            if hasattr(node, "args") and node.args is not None:
-                for i, param in enumerate(node.args):
-                    if isinstance(param, Name) and i < len(old_params):
-                        old_name = old_params[i]
-                        if i < len(new_params):
-                            new_name = new_params[i]
-                            if old_name != new_name:
-                                self.param_renames[old_name] = new_name
-                                param.id = new_name
-                                self.stats["signatures_updated"] += 1
-
-                # Append any extra params the new signature adds
-                current_count = len(node.args) if node.args else 0
-                for i in range(current_count, len(new_params)):
-                    node.args.append(Name(new_params[i]))
-                    self.stats["signatures_updated"] += 1
-
-        # Continue visiting children
+        params = node.args if hasattr(node, "args") and node.args is not None else []
+        self._enter_function_scope(func_name, params)
         self.generic_visit(node)
-
-        # Reset scope
-        if self.scope_stack:
-            self.scope_stack.pop()
-        self.current_function_scope = self.scope_stack[-1] if self.scope_stack else None
-        self.param_renames = {}
+        self._exit_function_scope()
 
     def visit_AnonymousFunction(self, node: AnonymousFunction) -> None:
-        """Transform anonymous function expression signature and track scope.
-
-        Handles ``onUse = function(cid, ...) end`` patterns where the function
-        name is set by the enclosing visit_Assign/visit_LocalAssign handler.
-
-        Args:
-            node: The AnonymousFunction AST node
-        """
         func_name = "<anonymous>"
         if hasattr(self, "_current_function_name") and self._current_function_name:
             func_name = self._current_function_name
             self._current_function_name = None
-
-        self.current_function_name = func_name
-
-        # Find the scope for this function by index
-        if self._function_scope_index < len(self.scope_info.function_scopes):
-            _, self.current_function_scope = self.scope_info.function_scopes[self._function_scope_index]
-            self._function_scope_index += 1
-        else:
-            self.current_function_scope = Scope(
-                parent=self.scope_info.global_scope, level=1
-            )
-
-        self.scope_stack.append(self.current_function_scope)
-
-        # Update parameter names based on SIGNATURE_MAP
-        if func_name in SIGNATURE_MAP:
-            old_sig, new_sig = SIGNATURE_MAP[func_name]
-            old_params = old_sig.get("params", [])
-            new_params = new_sig.get("params", [])
-
-            if hasattr(node, "args") and node.args is not None:
-                for i, param in enumerate(node.args):
-                    if isinstance(param, Name) and i < len(old_params):
-                        old_name = old_params[i]
-                        if i < len(new_params):
-                            new_name = new_params[i]
-                            if old_name != new_name:
-                                self.param_renames[old_name] = new_name
-                                param.id = new_name
-                                self.stats["signatures_updated"] += 1
-
-                # Append any extra params the new signature adds
-                current_count = len(node.args) if node.args else 0
-                for i in range(current_count, len(new_params)):
-                    node.args.append(Name(new_params[i]))
-                    self.stats["signatures_updated"] += 1
-
-        # Continue visiting children
+        params = node.args if hasattr(node, "args") and node.args is not None else []
+        self._enter_function_scope(func_name, params)
         self.generic_visit(node)
-
-        # Reset scope
-        if self.scope_stack:
-            self.scope_stack.pop()
-        self.current_function_scope = self.scope_stack[-1] if self.scope_stack else None
-        self.param_renames = {}
+        self._exit_function_scope()
 
     def visit_Call(self, node: Call) -> None:
         """Transform function calls with defensive checks.
