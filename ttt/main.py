@@ -7,6 +7,8 @@ import logging
 
 from .engine import ConversionEngine, VERSIONS, VALID_CONVERSIONS
 from .utils import setup_logging
+from .analyzers.oop_analyzer import OopAnalyzer
+from .analyzers.guidelines_generator import GuidelinesGenerator
 
 
 def clear_screen():
@@ -31,11 +33,51 @@ def print_banner():
     print(banner)
 
 
+def _run_guidelines_wizard():
+    ttt_root = os.path.dirname(os.path.abspath(__file__))
+    print("\n  Analyzing TTT source files...")
+    analyzer = OopAnalyzer()
+    analyses = analyzer.analyze_project(ttt_root)
+
+    generator = GuidelinesGenerator()
+    content = generator.generate(analyses, ttt_root)
+
+    output_path = os.path.join(os.getcwd(), "oop_guidelines.md")
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    total_issues = sum(len(a.issues) for a in analyses)
+    files_with_issues = sum(1 for a in analyses if a.issues)
+    print(f"\n  ✓ Guidelines written to: {output_path}")
+    print(f"  ✓ {files_with_issues} files with issues, {total_issues} total issues found.")
+    print("\n  Press Enter to exit...")
+    input()
+
+
 def interactive_mode():
     clear_screen()
     print_banner()
 
-    print("  Welcome! This tool converts TFS scripts between versions.")
+    print("  Welcome! This tool converts TFS scripts between versions.\n")
+
+    print("  ┌───────────────────────────────────────────────────────┐")
+    print("  │  What would you like to do?                          │")
+    print("  │                                                       │")
+    print("  │   [1] Convert TFS scripts                            │")
+    print("  │   [2] Generate LLM refactoring guidelines            │")
+    print("  │                                                       │")
+    print("  └───────────────────────────────────────────────────────┘")
+
+    while True:
+        mode_choice = input("\n  Your choice [1/2]: ").strip()
+        if mode_choice == "1":
+            break
+        if mode_choice == "2":
+            _run_guidelines_wizard()
+            return
+        print("  Please type 1 or 2.")
+
+    print()
     print("  Just answer a few questions and the conversion will start.\n")
 
     # Versão de origem
