@@ -512,19 +512,42 @@ class ScopeAnalyzer(ast.ASTVisitor):
 
     # Visitor methods
 
-    def visit_Function(self, node: Function) -> None:
-        """Visit a function definition and create a new scope.
-
-        Creates a new scope for the function and analyzes its parameters
-        to determine their types.
+    def _enter_function_scope(self, func_name: str, params) -> "Scope":
+        """Push a new scope for a function and register its parameters.
 
         Args:
-            node: The Function AST node
+            func_name: The function name (or '<anonymous>').
+            params: The parameter nodes list (luaparser Name nodes).
+
+        Returns:
+            The newly created Scope.
         """
-        # Push new scope
         new_scope = self._push_scope()
 
-        # Try to determine function name from the node itself
+        if self.scope_info:
+            self.scope_info.function_scopes.append((func_name, new_scope))
+
+        if params:
+            for idx, param in enumerate(params):
+                if isinstance(param, Name):
+                    param_name = param.id
+                    var_type = self._infer_param_type(func_name, idx, param_name)
+                    if var_type is None:
+                        var_type = "creature"
+                    renamed = self._get_renamed_name(param_name, var_type)
+                    info = VariableInfo(
+                        name=param_name,
+                        var_type=var_type,
+                        is_param=True,
+                        renamed_name=renamed,
+                        scope_level=new_scope.level,
+                    )
+                    new_scope.define(param_name, info)
+                    self._record_variable(info)
+
+        return new_scope
+
+    def visit_Function(self, node: Function) -> None:
         func_name = "<anonymous>"
         if hasattr(node, "name") and node.name:
             if isinstance(node.name, Name):
@@ -534,52 +557,9 @@ class ScopeAnalyzer(ast.ASTVisitor):
         elif self._current_function_name:
             func_name = self._current_function_name
             self._current_function_name = None
-
-        # Record this function scope
-        if self.scope_info:
-            self.scope_info.function_scopes.append((func_name, new_scope))
-
-        # Analyze parameters
-        if hasattr(node, "args") and node.args:
-            for idx, param in enumerate(node.args):
-                if isinstance(param, Name):
-                    param_name = param.id
-
-                    # Infer parameter type
-                    var_type = self._infer_param_type(func_name, idx, param_name)
-                    if var_type is None:
-                        var_type = "creature"  # Default fallback
-
-                    # Get renamed name
-                    renamed = self._get_renamed_name(param_name, var_type)
-
-                    # Create variable info
-                    info = VariableInfo(
-                        name=param_name,
-                        var_type=var_type,
-                        is_param=True,
-                        renamed_name=renamed,
-                        scope_level=new_scope.level,
-                    )
-
-                    # Define in current scope and record
-                    new_scope.define(param_name, info)
-                    self._record_variable(info)
-
-        # Note: The custom visit() method handles traversal automatically
+        self._enter_function_scope(func_name, getattr(node, "args", None) or [])
 
     def visit_LocalFunction(self, node) -> None:
-        """Visit a local function definition and create a new scope.
-
-        Similar to visit_Function but for local function declarations.
-
-        Args:
-            node: The LocalFunction AST node
-        """
-        # Push new scope
-        new_scope = self._push_scope()
-
-        # Get function name
         func_name = "<anonymous>"
         if hasattr(node, "name") and node.name:
             if isinstance(node.name, Name):
@@ -589,86 +569,14 @@ class ScopeAnalyzer(ast.ASTVisitor):
         elif self._current_function_name:
             func_name = self._current_function_name
             self._current_function_name = None
-
-        # Record this function scope
-        if self.scope_info:
-            self.scope_info.function_scopes.append((func_name, new_scope))
-
-        # Analyze parameters
-        if hasattr(node, "args") and node.args:
-            for idx, param in enumerate(node.args):
-                if isinstance(param, Name):
-                    param_name = param.id
-
-                    # Infer parameter type
-                    var_type = self._infer_param_type(func_name, idx, param_name)
-                    if var_type is None:
-                        var_type = "creature"  # Default fallback
-
-                    # Get renamed name
-                    renamed = self._get_renamed_name(param_name, var_type)
-
-                    # Create variable info
-                    info = VariableInfo(
-                        name=param_name,
-                        var_type=var_type,
-                        is_param=True,
-                        renamed_name=renamed,
-                        scope_level=new_scope.level,
-                    )
-
-                    # Define in current scope and record
-                    new_scope.define(param_name, info)
-                    self._record_variable(info)
-
-        # Note: The custom visit() method handles traversal automatically
+        self._enter_function_scope(func_name, getattr(node, "args", None) or [])
 
     def visit_AnonymousFunction(self, node: AnonymousFunction) -> None:
-        """Visit an anonymous function expression and create a new scope.
-
-        Handles ``onUse = function(cid, ...) end`` assignments where the
-        function name is inferred from the enclosing assignment target.
-
-        Args:
-            node: The AnonymousFunction AST node
-        """
-        # Push new scope
-        new_scope = self._push_scope()
-
-        # Get function name from previously set context (visit_Assign/_preprocess)
         func_name = "<anonymous>"
         if self._current_function_name:
             func_name = self._current_function_name
             self._current_function_name = None
-
-        # Record this function scope
-        if self.scope_info:
-            self.scope_info.function_scopes.append((func_name, new_scope))
-
-        # Analyze parameters
-        if hasattr(node, "args") and node.args:
-            for idx, param in enumerate(node.args):
-                if isinstance(param, Name):
-                    param_name = param.id
-
-                    var_type = self._infer_param_type(func_name, idx, param_name)
-                    if var_type is None:
-                        var_type = "creature"
-
-                    renamed = self._get_renamed_name(param_name, var_type)
-
-                    info = VariableInfo(
-                        name=param_name,
-                        var_type=var_type,
-                        is_param=True,
-                        renamed_name=renamed,
-                        scope_level=new_scope.level,
-                    )
-
-                    new_scope.define(param_name, info)
-                    self._record_variable(info)
-
-        # Note: The custom visit() method handles traversal automatically
+        self._enter_function_scope(func_name, getattr(node, "args", None) or [])
 
     def visit_LocalAssign(self, node: LocalAssign) -> None:
         """Visit a local variable assignment.
@@ -809,7 +717,7 @@ class ScopeAnalyzer(ast.ASTVisitor):
         if isinstance(node, LocalAssign):
             if hasattr(node, "targets") and hasattr(node, "values"):
                 for target, value in zip(node.targets, node.values or []):
-                    if isinstance(target, Name) and isinstance(value, Function):
+                    if isinstance(target, Name) and isinstance(value, (Function, AnonymousFunction)):
                         # Store function name for later use
                         self._current_function_name = target.id
 
@@ -817,7 +725,7 @@ class ScopeAnalyzer(ast.ASTVisitor):
         elif isinstance(node, Assign):
             if hasattr(node, "targets") and hasattr(node, "values"):
                 for target, value in zip(node.targets, node.values or []):
-                    if isinstance(target, Name) and isinstance(value, Function):
+                    if isinstance(target, Name) and isinstance(value, (Function, AnonymousFunction)):
                         self._current_function_name = target.id
 
     def generic_visit(self, node: Node) -> None:

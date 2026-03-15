@@ -111,5 +111,33 @@ class TestScopeAnalyzer(unittest.TestCase):
         self.assertFalse(var.is_param)
 
 
+    def test_anonymous_function_param_typed(self):
+        """onUse = function(cid, item, ...) end — anonymous function via assignment."""
+        code = (
+            "onUse = function(cid, item, frompos, item2, topos)\n"
+            "    return true\nend"
+        )
+        info = self._analyze(code)
+        # The anonymous function should be associated with 'onUse'
+        names = [name for name, _ in info.function_scopes]
+        self.assertIn("onUse", names)
+        scope = dict(info.function_scopes)["onUse"]
+        var = scope.lookup("cid")
+        self.assertIsNotNone(var)
+        self.assertEqual(var.var_type, "player")
+
+    def test_local_function_param_typed(self):
+        """local function handler(cid) end — local function declaration."""
+        code = "local function onLogin(cid)\n    return true\nend"
+        info = self._analyze(code)
+        names = [name for name, _ in info.function_scopes]
+        self.assertIn("onLogin", names)
+        scope = dict(info.function_scopes)["onLogin"]
+        var = scope.lookup("cid")
+        self.assertIsNotNone(var)
+        self.assertEqual(var.var_type, "player")
+
+
 if __name__ == "__main__":
     unittest.main()
+
