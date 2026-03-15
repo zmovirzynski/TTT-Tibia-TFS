@@ -58,5 +58,58 @@ class TestAstUtils(unittest.TestCase):
         self.assertEqual(get_wrapper_class(None), "Creature")
 
 
+@unittest.skipUnless(LUAPARSER_AVAILABLE, "luaparser not installed")
+class TestScopeAnalyzer(unittest.TestCase):
+
+    def _analyze(self, code: str):
+        from luaparser import ast as luaast
+        from ttt.converters.scope_analyzer import ScopeAnalyzer
+        from ttt.mappings.signatures import SIGNATURE_MAP
+        tree = luaast.parse(code)
+        analyzer = ScopeAnalyzer(SIGNATURE_MAP)
+        return analyzer.analyze(tree)
+
+    def test_param_type_player_from_signature(self):
+        code = "function onLogin(cid)\n    return true\nend"
+        info = self._analyze(code)
+        # cid in onLogin should be typed as 'player'
+        scopes = dict(info.function_scopes)
+        self.assertIn("onLogin", scopes)
+        var = scopes["onLogin"].lookup("cid")
+        self.assertIsNotNone(var)
+        self.assertEqual(var.var_type, "player")
+
+    def test_local_var_type_from_function_call(self):
+        code = (
+            "function onLogin(cid)\n"
+            "    local target = getCreatureByName('Foo')\n"
+            "    return true\nend"
+        )
+        info = self._analyze(code)
+        scopes = dict(info.function_scopes)
+        var = scopes["onLogin"].lookup("target")
+        self.assertIsNotNone(var)
+        self.assertEqual(var.var_type, "creature")
+
+    def test_is_param_flag(self):
+        code = "function onLogin(cid)\n    return true\nend"
+        info = self._analyze(code)
+        scopes = dict(info.function_scopes)
+        var = scopes["onLogin"].lookup("cid")
+        self.assertTrue(var.is_param)
+
+    def test_local_var_is_not_param(self):
+        code = (
+            "function onLogin(cid)\n"
+            "    local x = 1\n"
+            "    return true\nend"
+        )
+        info = self._analyze(code)
+        scopes = dict(info.function_scopes)
+        var = scopes["onLogin"].lookup("x")
+        self.assertIsNotNone(var)
+        self.assertFalse(var.is_param)
+
+
 if __name__ == "__main__":
     unittest.main()
