@@ -22,6 +22,7 @@ Example:
 """
 
 import logging
+import sys
 from typing import Dict, List, Optional
 
 try:
@@ -185,22 +186,28 @@ class ASTLuaTransformer:
             f"Scope analysis complete: {len(scope_info.function_scopes)} scope(s) found"
         )
 
-        # 3. Transform AST using visitor pattern
+        # 3–4. Transform AST and generate code — both operations recurse into the AST
+        # so we raise the recursion limit for the duration of both calls.
         visitor = ASTTransformVisitor(
             scope_info=scope_info, function_map=self.function_map, stats=self.stats
         )
-        visitor.transform(tree)
+        _old_limit = sys.getrecursionlimit()
+        try:
+            sys.setrecursionlimit(max(_old_limit, 5000))
+            visitor.transform(tree)
 
-        # Transfer visitor warnings and notes to transformer
-        self.warnings.extend(visitor.warnings)
-        self._notes = getattr(visitor, "notes", [])
+            # Transfer visitor warnings and notes to transformer
+            self.warnings.extend(visitor.warnings)
+            self._notes = getattr(visitor, "notes", [])
 
-        logger.debug(
-            f"AST transformation complete: {self.stats['functions_converted']} function(s) converted"
-        )
+            logger.debug(
+                f"AST transformation complete: {self.stats['functions_converted']} function(s) converted"
+            )
 
-        # 4. Generate code from transformed AST
-        result = ast.to_lua_source(tree)
+            # 4. Generate code from transformed AST
+            result = ast.to_lua_source(tree)
+        finally:
+            sys.setrecursionlimit(_old_limit)
 
         # 5. Post-process (cleanup formatting)
         result = self._post_process(result)
