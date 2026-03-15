@@ -210,15 +210,54 @@ class ConversionEngine:
             report_text = self.report.generate_dry_run()
             logger.info("")
             print(report_text)
+            self._guidelines_content = self._generate_oop_guidelines()
         else:
             report_path = os.path.join(self.output_dir, "conversion_report.txt")
             report_text = self.report.generate(report_path)
             logger.info(f"\n  Report saved to: {report_path}")
+            self._guidelines_content = ""
 
         if self.html_diff:
             self._generate_html_diff()
 
         return self.stats
+
+    def _generate_oop_guidelines(self) -> str:
+        try:
+            from .analyzers.lua_oop_analyzer import LuaOopAnalyzer
+            from .analyzers.guidelines_generator import GuidelinesGenerator
+        except ImportError:
+            return ""
+
+        analyzer = LuaOopAnalyzer()
+        analyses = []
+        for fr in self.report.file_reports:
+            if not fr.original_content:
+                continue
+            rel = (
+                os.path.relpath(fr.source_path, self.input_dir)
+                if self.input_dir and fr.source_path
+                else os.path.basename(fr.source_path)
+            )
+            if rel.endswith(".lua"):
+                analyses.append(analyzer.analyze_content(fr.original_content, rel))
+
+        content = GuidelinesGenerator().generate(analyses, self.report)
+
+        guidelines_path = os.path.join(self.input_dir or os.getcwd(), "oop_guidelines.md")
+        try:
+            with open(guidelines_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            files_with = sum(1 for a in analyses if a.issues)
+            total_issues = sum(len(a.issues) for a in analyses)
+            logger.info(
+                f"\n  OOP guidelines saved to: {guidelines_path} "
+                f"({files_with} files, {total_issues} issues)"
+            )
+        except Exception as e:
+            logger.warning(f"  Could not write OOP guidelines: {e}")
+
+        return content
 
     def _has_xml_registrations(self, scan: ScanResult) -> bool:
         return any(
@@ -240,6 +279,8 @@ class ConversionEngine:
         diff_gen = HtmlDiffGenerator(
             src_label, tgt_label, self.input_dir, self.output_dir
         )
+        if getattr(self, "_guidelines_content", ""):
+            diff_gen.set_guidelines(self._guidelines_content)
 
         for fr in self.report.file_reports:
             if not fr.original_content and not fr.converted_content:
