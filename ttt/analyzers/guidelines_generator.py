@@ -119,6 +119,9 @@ class GuidelinesGenerator:
                 lines.append(f"- Guideline: {issue.guideline}")
                 lines.append("")
 
+        if getattr(lua, "ast_metrics", None):
+            lines.extend(self._format_ast_section(lua.ast_metrics))
+
         if fr:
             if fr.unrecognized_calls:
                 lines.append("### Conversion Warnings")
@@ -141,14 +144,56 @@ class GuidelinesGenerator:
         if fr and fr.unrecognized_calls:
             topics.append("unrecognized call mapping")
         topics_str = "; ".join(topics) if topics else "review for OOP conversion"
+        if getattr(lua, "ast_metrics", None) and lua.ast_metrics.high_complexity_functions:
+            fn = lua.ast_metrics.high_complexity_functions[0]
+            complexity_hint = (
+                f" Focus on `{fn.name}` (cyclomatic={fn.cyclomatic}, nesting={fn.nesting_depth}) first."
+            )
+        else:
+            complexity_hint = ""
         lines.append(
             f"> Refactor `{lua.file_path}` for TFS 1.x/RevScript OOP style: "
             f"{topics_str}. Cache entity objects as locals, use method calls "
-            f"instead of global functions, and handle nil player guards."
+            f"instead of global functions, and handle nil player guards.{complexity_hint}"
         )
         lines.append("")
         lines.append("---")
         lines.append("")
+        return lines
+
+    def _format_ast_section(self, ast_metrics) -> List[str]:
+        """Emit AST metrics block for the LLM prompt."""
+        lines = []
+        if ast_metrics.function_metrics:
+            lines.append("### AST Complexity")
+            lines.append("")
+            # Show high-complexity functions first, then others up to a total of 5
+            high = ast_metrics.high_complexity_functions
+            shown = set()
+            for fn in high[:5]:
+                lines.append(
+                    f"- `{fn.name}`: cyclomatic={fn.cyclomatic} ({fn.rating}), "
+                    f"nesting={fn.nesting_depth}"
+                )
+                shown.add(fn.name)
+            # Fill remaining slots with other functions
+            remaining = 5 - len(shown)
+            if remaining > 0:
+                for fn in ast_metrics.function_metrics:
+                    if fn.name not in shown and remaining > 0:
+                        lines.append(
+                            f"- `{fn.name}`: cyclomatic={fn.cyclomatic} ({fn.rating}), "
+                            f"nesting={fn.nesting_depth}"
+                        )
+                        shown.add(fn.name)
+                        remaining -= 1
+            lines.append("")
+        if ast_metrics.unused_locals:
+            names = ", ".join(f"`{u.name}`" for u in ast_metrics.unused_locals[:6])
+            if len(ast_metrics.unused_locals) > 6:
+                names += f" (+{len(ast_metrics.unused_locals) - 6} more)"
+            lines.append(f"**Unused locals:** {names}")
+            lines.append("")
         return lines
 
     @staticmethod

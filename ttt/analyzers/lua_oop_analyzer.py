@@ -2,7 +2,10 @@
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ttt.analyzers.ast_enricher import ASTMetrics
 
 
 MIN_OLD_CALLS = 3           # min old-style API calls to flag
@@ -25,6 +28,7 @@ class LuaFileAnalysis:
     file_path: str
     issues: List[LuaOopIssue] = field(default_factory=list)
     total_lines: int = 0
+    ast_metrics: Optional["ASTMetrics"] = field(default=None, repr=False)
 
 
 # ── Compiled regexes ────────────────────────────────────────────────────────
