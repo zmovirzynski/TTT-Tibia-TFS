@@ -8,4 +8,5 @@ build/
 .vscode/
 *.swp
 *.swo
+.worktrees/
 ROADMAP.md

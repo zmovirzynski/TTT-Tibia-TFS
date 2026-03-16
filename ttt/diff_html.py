@@ -42,6 +42,10 @@ class HtmlDiffGenerator:
         self.input_dir = input_dir
         self.output_dir = output_dir
         self.entries: List[DiffEntry] = []
+        self._guidelines_md: str = ""
+
+    def set_guidelines(self, content: str):
+        self._guidelines_md = content
 
     def add_entry(self, entry: DiffEntry):
         if entry.original or entry.converted:
@@ -173,6 +177,19 @@ class HtmlDiffGenerator:
 
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+        if self._guidelines_md:
+            guidelines_nav = (
+                '<div class="sidebar-nav-title" style="margin-top:12px">Analysis</div>'
+                '<a href="#oop-guidelines" class="nav-item" data-target="oop-guidelines">'
+                '<span class="nav-type" style="background:#1a2a3a;color:#58a6ff">OOP</span>'
+                '<span class="nav-name">Refactoring Guidelines</span>'
+                '</a>'
+            )
+            guidelines_section = _render_guidelines_html(self._guidelines_md)
+        else:
+            guidelines_nav = ""
+            guidelines_section = ""
+
         return _HTML_TEMPLATE.format(
             source_version=_esc(self.source_version),
             target_version=_esc(self.target_version),
@@ -185,6 +202,8 @@ class HtmlDiffGenerator:
             total_changes=total_changes,
             nav_items="\n".join(nav_items_html),
             file_cards="\n".join(file_cards_html),
+            guidelines_nav=guidelines_nav,
+            guidelines_section=guidelines_section,
         )
 
     def _render_diff_table(self, diff_lines: List[dict]) -> str:
@@ -242,6 +261,71 @@ class HtmlDiffGenerator:
                 right_parts.append(f'<span class="word-add">{_esc("".join(right_tokens[j1:j2]))}</span>')
 
         return "".join(left_parts), "".join(right_parts)
+
+
+def _render_guidelines_html(md: str) -> str:
+    """Wrap rendered markdown in a guidelines section div."""
+    parts = [
+        '<div class="guidelines-section" id="oop-guidelines">',
+        '<div class="guidelines-header">',
+        '<h2>OOP Refactoring Guidelines</h2>',
+        '<p>Structural analysis of TTT source files for LLM-assisted refactoring</p>',
+        '</div>',
+        '<div class="guidelines-body">',
+    ]
+    in_ul = False
+    for line in md.split("\n"):
+        if line.startswith("# "):
+            if in_ul:
+                parts.append("</ul>")
+                in_ul = False
+            parts.append(f"<h1>{_md_inline(line[2:])}</h1>")
+        elif line.startswith("## "):
+            if in_ul:
+                parts.append("</ul>")
+                in_ul = False
+            parts.append(f"<h2>{_md_inline(line[3:])}</h2>")
+        elif line.startswith("### "):
+            if in_ul:
+                parts.append("</ul>")
+                in_ul = False
+            parts.append(f"<h3>{_md_inline(line[4:])}</h3>")
+        elif line.startswith("> "):
+            if in_ul:
+                parts.append("</ul>")
+                in_ul = False
+            parts.append(f"<blockquote>{_md_inline(line[2:])}</blockquote>")
+        elif line.startswith("- "):
+            if not in_ul:
+                parts.append("<ul>")
+                in_ul = True
+            parts.append(f"<li>{_md_inline(line[2:])}</li>")
+        elif line == "---":
+            if in_ul:
+                parts.append("</ul>")
+                in_ul = False
+            parts.append("<hr>")
+        elif line == "":
+            if in_ul:
+                parts.append("</ul>")
+                in_ul = False
+        else:
+            if in_ul:
+                parts.append("</ul>")
+                in_ul = False
+            parts.append(f"<p>{_md_inline(line)}</p>")
+    if in_ul:
+        parts.append("</ul>")
+    parts.append("</div></div>")
+    return "\n".join(parts)
+
+
+def _md_inline(text: str) -> str:
+    import re as _re
+    text = html.escape(text)
+    text = _re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+    text = _re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
+    return text
 
 
 def _esc(text: str) -> str:
@@ -701,6 +785,96 @@ body {{
     .sidebar {{ display: none; }}
     .main {{ padding: 12px; }}
 }}
+
+/* ── OOP Guidelines ──────────────────────── */
+.guidelines-section {{
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}}
+.guidelines-header {{
+    padding: 16px 20px;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border);
+}}
+.guidelines-header h2 {{
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 4px;
+}}
+.guidelines-header p {{
+    font-size: 12px;
+    color: var(--text-muted);
+}}
+.guidelines-body {{
+    padding: 20px 24px;
+    font-size: 13px;
+    line-height: 1.7;
+}}
+.guidelines-body h1 {{
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 24px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}}
+.guidelines-body h2 {{
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 20px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+}}
+.guidelines-body h3 {{
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 16px 0 6px;
+}}
+.guidelines-body p {{
+    margin: 0 0 8px;
+    color: var(--text);
+}}
+.guidelines-body ul {{
+    margin: 4px 0 12px 20px;
+    color: var(--text);
+}}
+.guidelines-body li {{
+    margin-bottom: 4px;
+}}
+.guidelines-body blockquote {{
+    border-left: 3px solid var(--accent);
+    padding: 8px 16px;
+    margin: 8px 0;
+    color: var(--text-muted);
+    background: var(--accent-dim);
+    border-radius: 0 4px 4px 0;
+    font-style: italic;
+}}
+.guidelines-body hr {{
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+}}
+.guidelines-body code {{
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    background: #30363d;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #e6edf3;
+}}
+.guidelines-body strong {{
+    font-weight: 600;
+    color: var(--text);
+}}
 </style>
 </head>
 <body>
@@ -734,6 +908,7 @@ body {{
         <div class="sidebar-nav">
             <div class="sidebar-nav-title">Files</div>
             {nav_items}
+            {guidelines_nav}
         </div>
     </aside>
 
@@ -770,6 +945,8 @@ body {{
         </div>
 
         {file_cards}
+
+        {guidelines_section}
 
         <div class="footer">
             Generated by TTT — TFS Script Converter v2.0 · {date}

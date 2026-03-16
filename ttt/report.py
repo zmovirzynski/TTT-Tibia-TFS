@@ -18,29 +18,38 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 
+_SEPARATOR_WIDTH = 72
+_MAJOR_SEP = "=" * _SEPARATOR_WIDTH
+_MINOR_SEP = "-" * _SEPARATOR_WIDTH
+
 
 @dataclass
 class FileReport:
     source_path: str
     output_path: str = ""
-    file_type: str = ""              
-    conversion_type: str = ""        
+    file_type: str = ""
+    conversion_type: str = ""
     functions_converted: int = 0
     signatures_updated: int = 0
     constants_replaced: int = 0
     variables_renamed: int = 0
-    ttt_warnings: int = 0            
+    defensive_checks_added: int = 0
+    ttt_warnings: int = 0
     unrecognized_calls: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     error: str = ""
     success: bool = True
-    original_content: str = ""       
-    converted_content: str = ""      
+    original_content: str = ""
+    converted_content: str = ""
 
     @property
     def total_changes(self) -> int:
-        return (self.functions_converted + self.signatures_updated +
-                self.constants_replaced + self.variables_renamed)
+        return (
+            self.functions_converted
+            + self.signatures_updated
+            + self.constants_replaced
+            + self.variables_renamed
+        )
 
     @property
     def confidence_score(self) -> float:
@@ -74,9 +83,9 @@ class FileReport:
 
 
 class ConversionReport:
-
-    def __init__(self, source_version: str, target_version: str,
-                 input_dir: str, output_dir: str):
+    def __init__(
+        self, source_version: str, target_version: str, input_dir: str, output_dir: str
+    ):
         self.source_version = source_version
         self.target_version = target_version
         self.input_dir = input_dir
@@ -135,6 +144,10 @@ class ConversionReport:
         return sum(r.variables_renamed for r in self.file_reports)
 
     @property
+    def total_defensive_checks_added(self) -> int:
+        return sum(r.defensive_checks_added for r in self.file_reports)
+
+    @property
     def total_ttt_warnings(self) -> int:
         return sum(r.ttt_warnings for r in self.file_reports)
 
@@ -181,9 +194,9 @@ class ConversionReport:
         lines = []
         w = lines.append
 
-        w("=" * 72)
+        w(_MAJOR_SEP)
         w("  TTT — TFS Script Converter  ·  Conversion Report")
-        w("=" * 72)
+        w(_MAJOR_SEP)
         w(f"  Date:       {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         w(f"  Source:     {self.source_version}")
         w(f"  Target:     {self.target_version}")
@@ -193,9 +206,9 @@ class ConversionReport:
         w("")
 
         # Overview
-        w("-" * 72)
+        w(_MINOR_SEP)
         w("  OVERVIEW")
-        w("-" * 72)
+        w(_MINOR_SEP)
         w(f"  Files processed:                {self.total_files}")
         w(f"  Successful conversions:         {self.successful_files}")
         w(f"  Failed conversions:             {self.failed_files}")
@@ -205,19 +218,27 @@ class ConversionReport:
         w(f"  Callback signatures updated:    {self.total_signatures_updated}")
         w(f"  Constants replaced:             {self.total_constants_replaced}")
         w(f"  Variables renamed:              {self.total_variables_renamed}")
+        if self.total_defensive_checks_added > 0:
+            w(f"  Defensive checks added:         {self.total_defensive_checks_added}")
         w(f"  Total automatic changes:        {self.total_changes}")
         w("")
         w(f"  Points needing review (-- TTT): {self.total_ttt_warnings}")
-        w(f"  Estimated confidence:           {self.overall_confidence:.0%} ({self.overall_confidence_label})")
+        w(
+            f"  Estimated confidence:           {self.overall_confidence:.0%} ({self.overall_confidence_label})"
+        )
         w("")
 
         # Per-file
-        w("-" * 72)
+        w(_MINOR_SEP)
         w("  PER-FILE BREAKDOWN")
-        w("-" * 72)
+        w(_MINOR_SEP)
 
         for r in self.file_reports:
-            src = os.path.relpath(r.source_path, self.input_dir) if self.input_dir else r.source_path
+            src = (
+                os.path.relpath(r.source_path, self.input_dir)
+                if self.input_dir
+                else r.source_path
+            )
             status = "OK" if r.success else "FAIL"
             conf = r.confidence_label
             w(f"  [{status}] {src}")
@@ -230,6 +251,8 @@ class ConversionReport:
                 parts.append(f"{r.constants_replaced} const")
             if r.variables_renamed:
                 parts.append(f"{r.variables_renamed} vars")
+            if r.defensive_checks_added:
+                parts.append(f"{r.defensive_checks_added} checks")
             if r.ttt_warnings:
                 parts.append(f"{r.ttt_warnings} warnings")
 
@@ -240,45 +263,58 @@ class ConversionReport:
                 w(f"         ✗ Error: {r.error}")
             if r.unrecognized_calls:
                 funcs = ", ".join(r.unrecognized_calls[:5])
-                extra = f" (+{len(r.unrecognized_calls)-5} more)" if len(r.unrecognized_calls) > 5 else ""
+                extra = (
+                    f" (+{len(r.unrecognized_calls) - 5} more)"
+                    if len(r.unrecognized_calls) > 5
+                    else ""
+                )
                 w(f"         ? Unrecognized: {funcs}{extra}")
             w("")
 
-
         if self._unrecognized_global:
-            w("-" * 72)
+            w(_MINOR_SEP)
             w("  UNRECOGNIZED FUNCTIONS (may need manual conversion)")
-            w("-" * 72)
-            sorted_funcs = sorted(self._unrecognized_global.items(), key=lambda x: -x[1])
+            w(_MINOR_SEP)
+            sorted_funcs = sorted(
+                self._unrecognized_global.items(), key=lambda x: -x[1]
+            )
             for func, count in sorted_funcs:
                 w(f"    {func:<45s}  ({count}x)")
             w("")
 
         ttt_files = [r for r in self.file_reports if r.ttt_warnings > 0]
         if ttt_files:
-            w("-" * 72)
+            w(_MINOR_SEP)
             w("  FILES WITH -- TTT: REVIEW MARKERS")
-            w("-" * 72)
+            w(_MINOR_SEP)
             for r in ttt_files:
-                src = os.path.relpath(r.source_path, self.input_dir) if self.input_dir else r.source_path
+                src = (
+                    os.path.relpath(r.source_path, self.input_dir)
+                    if self.input_dir
+                    else r.source_path
+                )
                 w(f"    {src:<45s}  {r.ttt_warnings} marker(s)")
             w("")
 
         error_files = [r for r in self.file_reports if r.error]
         if error_files:
-            w("-" * 72)
+            w(_MINOR_SEP)
             w("  ERRORS")
-            w("-" * 72)
+            w(_MINOR_SEP)
             for r in error_files:
-                src = os.path.relpath(r.source_path, self.input_dir) if self.input_dir else r.source_path
+                src = (
+                    os.path.relpath(r.source_path, self.input_dir)
+                    if self.input_dir
+                    else r.source_path
+                )
                 w(f"    {src}")
                 w(f"      → {r.error}")
             w("")
 
-        w("=" * 72)
+        w(_MAJOR_SEP)
         w("  Generated by TTT — TFS Script Converter v2.0")
         w("  Review files marked with '-- TTT:' comments before use in production.")
-        w("=" * 72)
+        w(_MAJOR_SEP)
 
         return "\n".join(lines) + "\n"
 
@@ -286,31 +322,38 @@ class ConversionReport:
         lines = []
         w = lines.append
 
-        w("=" * 72)
+        w(_MAJOR_SEP)
         w("  TTT — DRY RUN ANALYSIS (no files written)")
-        w("=" * 72)
+        w(_MAJOR_SEP)
         w(f"  Source:     {self.source_version}")
         w(f"  Target:     {self.target_version}")
         w(f"  Input:      {self.input_dir}")
         w("")
 
         if self.scan_summary:
-            w("-" * 72)
+            w(_MINOR_SEP)
             w("  DETECTED STRUCTURE")
-            w("-" * 72)
+            w(_MINOR_SEP)
             for line in self.scan_summary.split("\n"):
                 w(f"  {line}")
             w("")
 
-
-        convertible = [r for r in self.file_reports if r.success and r.total_changes > 0]
-        copy_only = [r for r in self.file_reports if r.success and r.total_changes == 0 and not r.error]
+        convertible = [
+            r for r in self.file_reports if r.success and r.total_changes > 0
+        ]
+        copy_only = [
+            r
+            for r in self.file_reports
+            if r.success and r.total_changes == 0 and not r.error
+        ]
         will_fail = [r for r in self.file_reports if not r.success or r.error]
-        needs_review = [r for r in self.file_reports if r.ttt_warnings > 0 or r.unrecognized_calls]
+        needs_review = [
+            r for r in self.file_reports if r.ttt_warnings > 0 or r.unrecognized_calls
+        ]
 
-        w("-" * 72)
+        w(_MINOR_SEP)
         w("  CONVERSION PREVIEW")
-        w("-" * 72)
+        w(_MINOR_SEP)
         w(f"  Files that CAN be converted:    {len(convertible)}")
         w(f"  Files copied as-is:             {len(copy_only)}")
         w(f"  Files that will need review:    {len(needs_review)}")
@@ -321,16 +364,19 @@ class ConversionReport:
         w(f"    Callback signatures:          {self.total_signatures_updated}")
         w(f"    Constants:                    {self.total_constants_replaced}")
         w(f"    Variables:                    {self.total_variables_renamed}")
+        if self.total_defensive_checks_added > 0:
+            w(f"    Defensive checks:             {self.total_defensive_checks_added}")
         w(f"    Total automatic changes:      {self.total_changes}")
         w("")
-        w(f"  Estimated confidence:           {self.overall_confidence:.0%} ({self.overall_confidence_label})")
+        w(
+            f"  Estimated confidence:           {self.overall_confidence:.0%} ({self.overall_confidence_label})"
+        )
         w("")
 
-
         if convertible:
-            w("-" * 72)
+            w(_MINOR_SEP)
             w("  FILES THAT WILL BE CONVERTED")
-            w("-" * 72)
+            w(_MINOR_SEP)
             for r in convertible:
                 src = os.path.relpath(r.source_path, self.input_dir)
                 conf = r.confidence_label
@@ -338,9 +384,9 @@ class ConversionReport:
             w("")
 
         if needs_review:
-            w("-" * 72)
+            w(_MINOR_SEP)
             w("  FILES THAT WILL NEED MANUAL REVIEW")
-            w("-" * 72)
+            w(_MINOR_SEP)
             for r in needs_review:
                 src = os.path.relpath(r.source_path, self.input_dir)
                 reasons = []
@@ -353,18 +399,20 @@ class ConversionReport:
             w("")
 
         if self._unrecognized_global:
-            w("-" * 72)
+            w(_MINOR_SEP)
             w("  UNRECOGNIZED FUNCTIONS FOUND")
-            w("-" * 72)
-            sorted_funcs = sorted(self._unrecognized_global.items(), key=lambda x: -x[1])
+            w(_MINOR_SEP)
+            sorted_funcs = sorted(
+                self._unrecognized_global.items(), key=lambda x: -x[1]
+            )
             for func, count in sorted_funcs[:20]:
                 w(f"    {func:<45s}  ({count}x)")
             if len(self._unrecognized_global) > 20:
                 w(f"    ... and {len(self._unrecognized_global) - 20} more")
             w("")
 
-        w("=" * 72)
+        w(_MAJOR_SEP)
         w("  Run without --dry-run to perform the conversion.")
-        w("=" * 72)
+        w(_MAJOR_SEP)
 
         return "\n".join(lines) + "\n"
