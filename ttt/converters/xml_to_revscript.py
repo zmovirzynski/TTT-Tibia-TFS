@@ -17,7 +17,6 @@ import re
 import logging
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional, Tuple
-from pathlib import Path
 
 from ..utils import read_file_safe, write_file_safe
 from ..report import FileReport
@@ -25,11 +24,8 @@ from ..mappings.xml_events import (
     ACTION_REGISTRATION,
     MOVEMENT_TYPES,
     MOVEMENT_REGISTRATION,
-    TALKACTION_REGISTRATION,
     CREATUREEVENT_TYPES,
-    CREATUREEVENT_REGISTRATION,
     GLOBALEVENT_TYPES,
-    GLOBALEVENT_REGISTRATION,
 )
 
 logger = logging.getLogger("ttt")
@@ -50,6 +46,17 @@ class XmlToRevScriptConverter:
         reports = self._file_reports[:]
         self._file_reports.clear()
         return reports
+
+    def _apply_lua_transform(self, lua_code: str, script_name: str, fr: "FileReport") -> str:
+        """Apply lua_transformer (if present) and copy stats/warnings into fr."""
+        if self.lua_transformer:
+            lua_code = self.lua_transformer.transform(lua_code, script_name)
+            fr.functions_converted = self.lua_transformer.stats.get("functions_converted", 0)
+            fr.signatures_updated = self.lua_transformer.stats.get("signatures_updated", 0)
+            fr.constants_replaced = self.lua_transformer.stats.get("constants_replaced", 0)
+            fr.variables_renamed = self.lua_transformer.stats.get("variables_renamed", 0)
+            fr.warnings = list(self.lua_transformer.warnings)
+        return lua_code
 
     def convert_xml_file(self, xml_path: str, scripts_dir: str,
                          output_dir: str) -> List[str]:
@@ -107,13 +114,7 @@ class XmlToRevScriptConverter:
             fr = FileReport(source_path=lua_path)
 
             # Transforma o Lua
-            if self.lua_transformer:
-                lua_code = self.lua_transformer.transform(lua_code, script_name)
-                fr.functions_converted = self.lua_transformer.stats.get("functions_converted", 0)
-                fr.signatures_updated = self.lua_transformer.stats.get("signatures_updated", 0)
-                fr.constants_replaced = self.lua_transformer.stats.get("constants_replaced", 0)
-                fr.variables_renamed = self.lua_transformer.stats.get("variables_renamed", 0)
-                fr.warnings = list(self.lua_transformer.warnings)
+            lua_code = self._apply_lua_transform(lua_code, script_name, fr)
 
             func_body = self._extract_function_body(lua_code, "onUse")
             if func_body is None:
@@ -196,13 +197,7 @@ class XmlToRevScriptConverter:
             original_code = lua_code
             fr = FileReport(source_path=lua_path)
 
-            if self.lua_transformer:
-                lua_code = self.lua_transformer.transform(lua_code, script_name)
-                fr.functions_converted = self.lua_transformer.stats.get("functions_converted", 0)
-                fr.signatures_updated = self.lua_transformer.stats.get("signatures_updated", 0)
-                fr.constants_replaced = self.lua_transformer.stats.get("constants_replaced", 0)
-                fr.variables_renamed = self.lua_transformer.stats.get("variables_renamed", 0)
-                fr.warnings = list(self.lua_transformer.warnings)
+            lua_code = self._apply_lua_transform(lua_code, script_name, fr)
 
             event_method = MOVEMENT_TYPES.get(event_type, f"on{event_type}")
 
@@ -306,13 +301,7 @@ class XmlToRevScriptConverter:
             original_code = lua_code
             fr = FileReport(source_path=lua_path)
 
-            if self.lua_transformer:
-                lua_code = self.lua_transformer.transform(lua_code, script_name)
-                fr.functions_converted = self.lua_transformer.stats.get("functions_converted", 0)
-                fr.signatures_updated = self.lua_transformer.stats.get("signatures_updated", 0)
-                fr.constants_replaced = self.lua_transformer.stats.get("constants_replaced", 0)
-                fr.variables_renamed = self.lua_transformer.stats.get("variables_renamed", 0)
-                fr.warnings = list(self.lua_transformer.warnings)
+            lua_code = self._apply_lua_transform(lua_code, script_name, fr)
 
             func_body = self._extract_function_body(lua_code, "onSay")
             if func_body is None:
@@ -405,13 +394,7 @@ class XmlToRevScriptConverter:
             original_code = lua_code
             fr = FileReport(source_path=lua_path)
 
-            if self.lua_transformer:
-                lua_code = self.lua_transformer.transform(lua_code, script_name)
-                fr.functions_converted = self.lua_transformer.stats.get("functions_converted", 0)
-                fr.signatures_updated = self.lua_transformer.stats.get("signatures_updated", 0)
-                fr.constants_replaced = self.lua_transformer.stats.get("constants_replaced", 0)
-                fr.variables_renamed = self.lua_transformer.stats.get("variables_renamed", 0)
-                fr.warnings = list(self.lua_transformer.warnings)
+            lua_code = self._apply_lua_transform(lua_code, script_name, fr)
 
             event_method = CREATUREEVENT_TYPES.get(event_type, f"on{event_type.capitalize()}")
 
@@ -516,13 +499,7 @@ class XmlToRevScriptConverter:
             original_code = lua_code
             fr = FileReport(source_path=lua_path)
 
-            if self.lua_transformer:
-                lua_code = self.lua_transformer.transform(lua_code, script_name)
-                fr.functions_converted = self.lua_transformer.stats.get("functions_converted", 0)
-                fr.signatures_updated = self.lua_transformer.stats.get("signatures_updated", 0)
-                fr.constants_replaced = self.lua_transformer.stats.get("constants_replaced", 0)
-                fr.variables_renamed = self.lua_transformer.stats.get("variables_renamed", 0)
-                fr.warnings = list(self.lua_transformer.warnings)
+            lua_code = self._apply_lua_transform(lua_code, script_name, fr)
 
             if event_type in GLOBALEVENT_TYPES:
                 event_method = GLOBALEVENT_TYPES[event_type]

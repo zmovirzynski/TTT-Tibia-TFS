@@ -20,7 +20,6 @@ from .report import ConversionReport, FileReport
 from .utils import (
     read_file_safe,
     write_file_safe,
-    find_lua_files,
     ensure_dir,
     relative_path,
     setup_logging,
@@ -59,6 +58,20 @@ VALID_CONVERSIONS = {
 }
 
 
+def _normalize_version(version: str) -> str:
+    """Normalize a version string to a canonical key."""
+    v = version.lower().replace(".", "").replace(" ", "")
+    if v in ("tfs036", "tfs03", "03", "036"):
+        return "tfs03"
+    if v in ("tfs04", "04"):
+        return "tfs04"
+    if v in ("tfs1", "tfs1x", "1", "1x", "10", "12", "13"):
+        return "tfs1x"
+    if v in ("revscript", "rev", "rs"):
+        return "revscript"
+    return v
+
+
 class ConversionEngine:
     def __init__(
         self,
@@ -71,26 +84,13 @@ class ConversionEngine:
         html_diff: bool = False,
     ):
 
-        self.source_version = source_version.lower().replace(".", "").replace(" ", "")
-        self.target_version = target_version.lower().replace(".", "").replace(" ", "")
+        self.source_version = _normalize_version(source_version)
+        self.target_version = _normalize_version(target_version)
         self.input_dir = os.path.abspath(input_dir)
         self.output_dir = os.path.abspath(output_dir) if output_dir else ""
         self.verbose = verbose
         self.dry_run = dry_run
         self.html_diff = html_diff
-
-        # Normalize version keys
-        if self.source_version in ("tfs036", "tfs03", "03", "036"):
-            self.source_version = "tfs03"
-        elif self.source_version in ("tfs04", "04"):
-            self.source_version = "tfs04"
-        elif self.source_version in ("tfs1", "tfs1x", "1", "1x", "10", "12", "13"):
-            self.source_version = "tfs1x"
-
-        if self.target_version in ("tfs1", "tfs1x", "1", "1x"):
-            self.target_version = "tfs1x"
-        elif self.target_version in ("revscript", "rev", "rs"):
-            self.target_version = "revscript"
 
         # Select function mapping
         if self.source_version == "tfs03":
@@ -427,64 +427,100 @@ class ConversionEngine:
         if npc_summary:
             logger.info(f"  NPC summary: {npc_summary}")
 
+    def _select_transformer(self, transformer: Optional[LuaTransformer]):
+        """Return the best available transformer (AST-based preferred, regex fallback)."""
+        if AST_AVAILABLE and self.source_version in ("tfs03", "tfs04"):
+            try:
+                ast_t = ASTLuaTransformer(
+                    function_map=self.function_map, source_version=self.source_version
+                )
+                logger.info("  Using AST-based transformer (with defensive checks)")
+                return ast_t
+            except Exception as e:
+                logger.warning(f"  Could not initialize AST transformer: {e}")
+                logger.info("  Falling back to regex transformer")
+
+        if AST_AVAILABLE:
+            logger.info("  AST transformer available - using with defensive programming")
+        else:
+            logger.info("  AST transformer not available - using regex transformer")
+        return transformer
+
+    def _collect_handled_dirs(self, scan: ScanResult) -> set:
+        """Return set of normalized directory paths already handled by XML conversion."""
+        handled = set()
+        for attr in (
+            "actions_dir", "movements_dir", "talkactions_dir",
+            "creaturescripts_dir", "globalevents_dir", "npc_dir", "npc_scripts_dir",
+        ):
+            dir_path = getattr(scan, attr)
+            if dir_path:
+                handled.add(os.path.normpath(dir_path))
+        return handled
+
+    def _process_lua_file(self, lua_file: str, ast_transformer, rel: str, content: str):
+        """Transform one Lua file, populate a FileReport, and update global stats."""
+        fr = FileReport(source_path=lua_file, conversion_type="lua_transform")
+        try:
+            new_content = ast_transformer.transform(content, rel)
+            summary = ast_transformer.get_summary()
+
+            fr.functions_converted = ast_transformer.stats.get("functions_converted", 0)
+            fr.signatures_updated = ast_transformer.stats.get("signatures_updated", 0)
+            fr.constants_replaced = ast_transformer.stats.get("constants_replaced", 0)
+            fr.variables_renamed = ast_transformer.stats.get("variables_renamed", 0)
+            fr.defensive_checks_added = ast_transformer.stats.get("defensive_checks_added", 0)
+            fr.warnings = list(ast_transformer.warnings)
+
+            if hasattr(ast_transformer, "warnings") and any(
+                "regex fallback" in str(w) for w in ast_transformer.warnings
+            ):
+                fr.warnings.append("Used regex fallback due to AST error")
+
+            fr.unrecognized_calls = self._find_unrecognized_calls(new_content)
+            fr.original_content = content
+            fr.converted_content = new_content
+
+            if not self.dry_run:
+                out_path = os.path.join(self.output_dir, rel)
+                write_file_safe(out_path, new_content)
+                fr.output_path = out_path
+                fr.ttt_warnings = self.report.count_ttt_warnings_in_file(out_path)
+
+            if summary != "No changes":
+                logger.info(f"  {rel}: {summary}")
+                self.stats["total_functions_converted"] += ast_transformer.stats.get("functions_converted", 0)
+                self.stats["defensive_checks_added"] += ast_transformer.stats.get("defensive_checks_added", 0)
+            else:
+                logger.debug(f"  {rel}: No changes needed")
+
+            self.stats["lua_files_processed"] += 1
+
+        except Exception as e:
+            logger.error(f"  Error converting {rel}: {e}")
+            fr.error = str(e)
+            fr.success = False
+            self.stats["errors"] += 1
+
+        return fr
+
     def _convert_lua_files(
         self, scan: ScanResult, transformer: Optional[LuaTransformer]
     ):
         if not transformer:
-            # For tfs1x → revscript, we only do XML conversion
-            # But we still copy Lua files
             logger.info("  No API transformation needed (source is already 1.x)")
             if not self.dry_run:
                 self._copy_lua_files(scan)
             return
 
-        # Try to use AST transformer when available for tfs03/tfs04 conversions
-        ast_transformer = None
-        if AST_AVAILABLE and self.source_version in ("tfs03", "tfs04"):
-            try:
-                ast_transformer = ASTLuaTransformer(
-                    function_map=self.function_map, source_version=self.source_version
-                )
-                logger.info("  Using AST-based transformer (with defensive checks)")
-            except Exception as e:
-                logger.warning(f"  Could not initialize AST transformer: {e}")
-                logger.info("  Falling back to regex transformer")
-
-        if not ast_transformer:
-            ast_transformer = transformer  # Use the regex transformer passed in
-            if AST_AVAILABLE:
-                logger.info(
-                    "  AST transformer available - using with defensive programming"
-                )
-            else:
-                logger.info("  AST transformer not available - using regex transformer")
-
-        handled_dirs = set()
-        for attr in (
-            "actions_dir",
-            "movements_dir",
-            "talkactions_dir",
-            "creaturescripts_dir",
-            "globalevents_dir",
-            "npc_dir",
-            "npc_scripts_dir",
-        ):
-            dir_path = getattr(scan, attr)
-            if dir_path:
-                handled_dirs.add(os.path.normpath(dir_path))
+        ast_transformer = self._select_transformer(transformer)
+        handled_dirs = self._collect_handled_dirs(scan)
 
         converted = 0
         for lua_file in scan.lua_files:
-            # Skip files in directories handled by XML conversion
             file_dir = os.path.normpath(os.path.dirname(lua_file))
-            skip = False
-            for hd in handled_dirs:
-                if file_dir.startswith(hd):
-                    skip = True
-                    break
-
-            if skip and self.target_version == "revscript":
-                continue  # Already handled as RevScript
+            if any(file_dir.startswith(hd) for hd in handled_dirs) and self.target_version == "revscript":
+                continue
 
             content = read_file_safe(lua_file)
             if content is None:
@@ -492,66 +528,9 @@ class ConversionEngine:
                 continue
 
             rel = relative_path(lua_file, self.input_dir)
-            fr = FileReport(source_path=lua_file, conversion_type="lua_transform")
-
-            try:
-                new_content = ast_transformer.transform(content, rel)
-                summary = ast_transformer.get_summary()
-
-                # Update stats from transformer
-                fr.functions_converted = ast_transformer.stats.get(
-                    "functions_converted", 0
-                )
-                fr.signatures_updated = ast_transformer.stats.get(
-                    "signatures_updated", 0
-                )
-                fr.constants_replaced = ast_transformer.stats.get(
-                    "constants_replaced", 0
-                )
-                fr.variables_renamed = ast_transformer.stats.get("variables_renamed", 0)
-                fr.defensive_checks_added = ast_transformer.stats.get(
-                    "defensive_checks_added", 0
-                )
-                fr.warnings = list(ast_transformer.warnings)
-
-                # Check if we used fallback
-                if hasattr(ast_transformer, "warnings") and any(
-                    "regex fallback" in str(w) for w in ast_transformer.warnings
-                ):
-                    fr.warnings.append("Used regex fallback due to AST error")
-
-                fr.unrecognized_calls = self._find_unrecognized_calls(new_content)
-
-                fr.original_content = content
-                fr.converted_content = new_content
-
-                if not self.dry_run:
-                    out_path = os.path.join(self.output_dir, rel)
-                    write_file_safe(out_path, new_content)
-                    fr.output_path = out_path
-                    fr.ttt_warnings = self.report.count_ttt_warnings_in_file(out_path)
-
-                if summary != "No changes":
-                    logger.info(f"  {rel}: {summary}")
-                    self.stats["total_functions_converted"] += (
-                        ast_transformer.stats.get("functions_converted", 0)
-                    )
-                    self.stats["defensive_checks_added"] += ast_transformer.stats.get(
-                        "defensive_checks_added", 0
-                    )
-                else:
-                    logger.debug(f"  {rel}: No changes needed")
-
-                converted += 1
-                self.stats["lua_files_processed"] += 1
-
-            except Exception as e:
-                logger.error(f"  Error converting {rel}: {e}")
-                fr.error = str(e)
-                fr.success = False
-                self.stats["errors"] += 1
-
+            fr = self._process_lua_file(lua_file, ast_transformer, rel, content)
             self.report.add_file_report(fr)
+            converted += 1
 
         logger.info(f"  Processed {converted} Lua file(s)")
 

@@ -4,13 +4,12 @@ This module provides the ASTTransformVisitor class that transforms Lua AST
 from TFS 0.3/0.4 format to TFS 1.x format using defensive programming techniques.
 """
 
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple
 from luaparser import ast
 from luaparser.astnodes import (
     Node,
     Function,
     AnonymousFunction,
-    LocalFunction,
     Call,
     Invoke,
     Name,
@@ -19,19 +18,12 @@ from luaparser.astnodes import (
     Assign,
     Block,
     If,
-    ElseIf,
     Return,
     String,
     Number,
     Table,
     TrueExpr,
-    FalseExpr,
-    Nil,
     Chunk,
-    While,
-    Repeat,
-    Fornum,
-    Forin,
     ULNotOp,
 )
 

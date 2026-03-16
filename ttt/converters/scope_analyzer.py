@@ -7,7 +7,7 @@ TFS 1.x format.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 from luaparser import ast
 from luaparser.astnodes import (
     Node,
@@ -22,15 +22,9 @@ from luaparser.astnodes import (
     String,
     Number,
     TrueExpr,
-    FalseExpr,
-    Nil,
     Block,
     Return,
     If,
-    While,
-    Repeat,
-    Fornum,
-    Forin,
     Chunk,
 )
 
