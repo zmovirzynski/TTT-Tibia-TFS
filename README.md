@@ -895,7 +895,6 @@ TTT-Tibia-TFS-Transpiler/
 ```
 
 ---
-
 ## Testes
 
 ```bash
@@ -910,6 +909,23 @@ python -m pytest tests/test_linter.py -v
 
 # Apenas testes do fixer
 python -m pytest tests/test_fixer.py -v
+---
+## Features
+
+- [x] Script conversion (TFS 0.3/0.4/1.x/RevScript)
+- [x] Linter (static analysis)
+- [x] Auto fixer
+- [x] Analyzer & Doctor
+- [x] Docs generator (HTML/MD/JSON)
+- [x] Script generator (scaffolding)
+- [ ] Formatter (Lua Prettier)
+- [ ] Server migrator
+- [x] NPC conversation analyzer
+- [ ] Test framework (experimental)
+    - [ ] **Shell (casca) criada:** mocks de API, runner e asserts custom já implementados em `ttt/testing/`.
+    - [ ] **Próxima etapa:** expandir integração do runner, CLI `ttt test`, exemplos reais e cobertura de testes OTServ.
+
+## Usage
 
 # Apenas testes do analyzer
 python -m pytest tests/test_analyzer.py -v
