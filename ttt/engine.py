@@ -18,7 +18,7 @@ from .mappings.tfs03_functions import TFS03_TO_1X
 from .mappings.tfs04_functions import TFS04_TO_1X
 from .report import ConversionReport, FileReport
 from .utils import (
-    read_file_safe, write_file_safe, find_lua_files,
+    read_file_safe, write_file_safe,
     ensure_dir, relative_path, setup_logging
 )
 
@@ -46,6 +46,20 @@ VALID_CONVERSIONS = {
 }
 
 
+def _normalize_version(version: str) -> str:
+    """Normalize a version string to a canonical key."""
+    v = version.lower().replace(".", "").replace(" ", "")
+    if v in ("tfs036", "tfs03", "03", "036"):
+        return "tfs03"
+    if v in ("tfs04", "04"):
+        return "tfs04"
+    if v in ("tfs1", "tfs1x", "1", "1x", "10", "12", "13"):
+        return "tfs1x"
+    if v in ("revscript", "rev", "rs"):
+        return "revscript"
+    return v
+
+
 class ConversionEngine:
 
     def __init__(self, source_version: str, target_version: str,
@@ -53,26 +67,13 @@ class ConversionEngine:
                  verbose: bool = False, dry_run: bool = False,
                  html_diff: bool = False):
 
-        self.source_version = source_version.lower().replace(".", "").replace(" ", "")
-        self.target_version = target_version.lower().replace(".", "").replace(" ", "")
+        self.source_version = _normalize_version(source_version)
+        self.target_version = _normalize_version(target_version)
         self.input_dir = os.path.abspath(input_dir)
         self.output_dir = os.path.abspath(output_dir) if output_dir else ""
         self.verbose = verbose
         self.dry_run = dry_run
         self.html_diff = html_diff
-
-        # Normalize version keys
-        if self.source_version in ("tfs036", "tfs03", "03", "036"):
-            self.source_version = "tfs03"
-        elif self.source_version in ("tfs04", "04"):
-            self.source_version = "tfs04"
-        elif self.source_version in ("tfs1", "tfs1x", "1", "1x", "10", "12", "13"):
-            self.source_version = "tfs1x"
-
-        if self.target_version in ("tfs1", "tfs1x", "1", "1x"):
-            self.target_version = "tfs1x"
-        elif self.target_version in ("revscript", "rev", "rs"):
-            self.target_version = "revscript"
 
         # Select function mapping
         if self.source_version == "tfs03":
