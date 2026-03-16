@@ -302,3 +302,49 @@ def detect_duplicates(directory: str) -> DuplicateReport:
             ))
 
     return report
+
+
+# ── Semantic duplicate detection (AST-backed) ─────────────────────────────
+
+@dataclass
+class SemanticDuplicate:
+    """Two files that are structurally identical despite different variable names."""
+    file_a: str
+    file_b: str
+    similarity: float
+
+
+def detect_semantic_duplicates(
+    lua_files: List[str],
+    threshold: float = 0.90,
+) -> List["SemanticDuplicate"]:
+    """Compare all pairs of Lua files for structural similarity via AST normalization.
+
+    Returns pairs above threshold similarity, sorted by similarity descending.
+    Falls back to empty list if luaparser is unavailable.
+    """
+    try:
+        from ttt.converters.ast_normalizer import structural_similarity
+    except ImportError:
+        return []
+
+    codes = {}
+    for path in lua_files:
+        try:
+            with open(path, encoding="utf-8", errors="replace") as f:
+                codes[path] = f.read()
+        except OSError:
+            continue
+
+    paths = list(codes.keys())
+    results = []
+    for i in range(len(paths)):
+        for j in range(i + 1, len(paths)):
+            score = structural_similarity(codes[paths[i]], codes[paths[j]])
+            if score >= threshold:
+                results.append(SemanticDuplicate(
+                    file_a=paths[i],
+                    file_b=paths[j],
+                    similarity=score,
+                ))
+    return sorted(results, key=lambda x: -x.similarity)
