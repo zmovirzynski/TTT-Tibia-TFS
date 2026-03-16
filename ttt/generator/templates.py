@@ -15,13 +15,23 @@ import os
 from typing import Dict, Any
 
 TEMPLATE_TYPES = [
-    "action", "movement", "talkaction", "creaturescript", "globalevent", "spell", "npc"
+    "action",
+    "movement",
+    "talkaction",
+    "creaturescript",
+    "globalevent",
+    "spell",
+    "npc",
 ]
+
 
 class ScriptTemplate:
     """Registry and generator for script templates."""
+
     @staticmethod
-    def get_template(type_: str, subtype: str = None, format_: str = "revscript") -> str:
+    def get_template(
+        type_: str, subtype: str = None, format_: str = "revscript"
+    ) -> str:
         type_ = type_.lower()
         format_ = format_.lower()
         if format_ == "revscript":
@@ -32,7 +42,9 @@ class ScriptTemplate:
             raise ValueError(f"Unknown format: {format_}")
 
 
-def generate_script(script_type: str, name: str, output_format: str = "revscript", params=None) -> tuple:
+def generate_script(
+    script_type: str, name: str, output_format: str = "revscript", params=None
+) -> tuple:
     """Generate script skeleton for given type, name, format, and params. Returns (script, file_ext)."""
     script_type = script_type.lower()
     output_format = output_format.lower()
@@ -49,18 +61,38 @@ def generate_script(script_type: str, name: str, output_format: str = "revscript
     # Map params to template fields if needed
     if params:
         for idx, p in enumerate(params):
-            options[f"param{idx+1}"] = p
+            options[f"param{idx + 1}"] = p
         # Special handling for some types
         if script_type == "movement" and params:
-            subtype = params[0].lower() if params[0].lower() in _REV_TEMPLATES[script_type] else None
+            subtype = (
+                params[0].lower()
+                if params[0].lower() in _REV_TEMPLATES[script_type]
+                else None
+            )
         if script_type == "creaturescript" and params:
-            subtype = params[0].lower() if params[0].lower() in _REV_TEMPLATES[script_type] else None
+            subtype = (
+                params[0].lower()
+                if params[0].lower() in _REV_TEMPLATES[script_type]
+                else None
+            )
         if script_type == "globalevent" and params:
-            subtype = params[0].lower() if params[0].lower() in _REV_TEMPLATES[script_type] else None
+            subtype = (
+                params[0].lower()
+                if params[0].lower() in _REV_TEMPLATES[script_type]
+                else None
+            )
         if script_type == "spell" and params:
-            subtype = params[0].lower() if params[0].lower() in _REV_TEMPLATES[script_type] else None
+            subtype = (
+                params[0].lower()
+                if params[0].lower() in _REV_TEMPLATES[script_type]
+                else None
+            )
         if script_type == "npc" and params:
-            subtype = params[0].lower() if params[0].lower() in _REV_TEMPLATES[script_type] else None
+            subtype = (
+                params[0].lower()
+                if params[0].lower() in _REV_TEMPLATES[script_type]
+                else None
+            )
     template = ScriptTemplate.get_template(script_type, subtype, output_format)
     script = template.format(**options)
     # Inject params into script body for test visibility
@@ -68,7 +100,18 @@ def generate_script(script_type: str, name: str, output_format: str = "revscript
         param_comment = f"-- Params: {', '.join(params)}\n"
         script = param_comment + script
     file_ext = "lua" if script_type != "npc" or output_format == "revscript" else "xml"
-    if script_type in ("action", "movement", "talkaction", "creaturescript", "globalevent", "spell") and output_format == "tfs1x":
+    if (
+        script_type
+        in (
+            "action",
+            "movement",
+            "talkaction",
+            "creaturescript",
+            "globalevent",
+            "spell",
+        )
+        and output_format == "tfs1x"
+    ):
         file_ext = "lua"
         if script_type in ("spell", "npc"):
             file_ext = "xml"
@@ -114,10 +157,58 @@ _REV_TEMPLATES = {
         "default": """local spell = Spell("{name}")\n\nfunction spell.onCastSpell(player, param)\n    -- TODO: Implement spell logic\n    return true\nend\n\nspell:register()\n""",
     },
     "npc": {
-        "basic": """-- {name} NPC\nlocal keywordHandler = KeywordHandler:new()\nlocal npcHandler = NpcHandler:new(keywordHandler)\nnpcHandler:setCallback(CALLBACK_MESSAGE_DEFAULT, creatureSayCallback)\nnpcHandler:setMessage(MESSAGE_GREET, "Hello |PLAYERNAME|! How can I help you?")\n\nfunction creatureSayCallback(cid, type, msg)\n    if not npcHandler:isFocused(cid) then\n        return false\n    end\n    -- TODO: Implement NPC logic\n    return true\nend\n\nnpcHandler:addModule(FocusModule:new())\n""",
-        "shop": """-- {name} Shop NPC\nlocal keywordHandler = KeywordHandler:new()\nlocal npcHandler = NpcHandler:new(keywordHandler)\nnpcHandler:setCallback(CALLBACK_MESSAGE_DEFAULT, creatureSayCallback)\nnpcHandler:setMessage(MESSAGE_GREET, "Welcome, |PLAYERNAME|! I buy and sell items.")\n\nfunction creatureSayCallback(cid, type, msg)\n    if not npcHandler:isFocused(cid) then\n        return false\n    end\n    -- TODO: Implement shop NPC logic\n    return true\nend\n\nnpcHandler:addModule(FocusModule:new())\nnpcHandler:addModule(ShopModule:new())\n""",
-        "default": """-- {name} NPC\nlocal keywordHandler = KeywordHandler:new()\nlocal npcHandler = NpcHandler:new(keywordHandler)\nnpcHandler:setCallback(CALLBACK_MESSAGE_DEFAULT, creatureSayCallback)\nnpcHandler:setMessage(MESSAGE_GREET, "Hello |PLAYERNAME|! How can I help you?")\n\nfunction creatureSayCallback(cid, type, msg)\n    if not npcHandler:isFocused(cid) then\n        return false\n    end\n    -- TODO: Implement NPC logic\n    return true\nend\n\nnpcHandler:addModule(FocusModule:new())\n""",
+        "basic": """-- {name} NPC
+local keywordHandler = KeywordHandler:new()
+local npcHandler = NpcHandler:new(keywordHandler)
+npcHandler:setCallback(CALLBACK_MESSAGE_DEFAULT, creatureSayCallback)
+npcHandler:setMessage(MESSAGE_GREET, "Hello |PLAYERNAME|! How can I help you?")
+
+function creatureSayCallback(cid, type, msg)
+    if not npcHandler:isFocused(cid) then
+        return false
+    end
+    -- TODO: Implement NPC logic
+    return true
+end
+
+npcHandler:addModule(FocusModule:new())
+""",
+        "shop": """-- {name} Shop NPC
+local keywordHandler = KeywordHandler:new()
+local npcHandler = NpcHandler:new(keywordHandler)
+npcHandler:setCallback(CALLBACK_MESSAGE_DEFAULT, creatureSayCallback)
+npcHandler:setMessage(MESSAGE_GREET, "Welcome, |PLAYERNAME|! I buy and sell items.")
+
+function creatureSayCallback(cid, type, msg)
+    if not npcHandler:isFocused(cid) then
+        return false
+    end
+    -- TODO: Implement shop NPC logic
+    return true
+end
+
+npcHandler:addModule(FocusModule:new())
+npcHandler:addModule(ShopModule:new())
+""",
+        "default": """-- {name} NPC
+local keywordHandler = KeywordHandler:new()
+local npcHandler = NpcHandler:new(keywordHandler)
+npcHandler:setCallback(CALLBACK_MESSAGE_DEFAULT, creatureSayCallback)
+npcHandler:setMessage(MESSAGE_GREET, "Hello |PLAYERNAME|! How can I help you?")
+
+function creatureSayCallback(cid, type, msg)
+    if not npcHandler:isFocused(cid) then
+        return false
+    end
+    -- TODO: Implement NPC logic
+    return true
+end
+
+npcHandler:addModule(FocusModule:new())
+""",
     },
+}
+
 
 # ---------------------------------------------------------------------------
 # TFS1x XML+Lua templates
