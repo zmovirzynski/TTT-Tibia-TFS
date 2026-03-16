@@ -295,9 +295,6 @@ class ASTTransformVisitor(ast.ASTVisitor):
             )
 
             # Create the method invoke node
-            method_invoke = Invoke(
-                source=obj_node, func=Name(method_name), args=new_args
-            )
 
             # --- Node-class mutation: luaparser serializes by __class__.__name__, so we
             # must change the class to produce "obj:method()" output.  We also set every
