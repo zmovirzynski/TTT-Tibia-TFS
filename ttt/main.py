@@ -7,6 +7,22 @@ import logging
 
 from .engine import ConversionEngine, VERSIONS, VALID_CONVERSIONS
 from .utils import setup_logging
+from .linter.engine import LintEngine, LintConfig
+from .analyzer.engine import (
+    AnalyzeEngine, ANALYZER_MODULES,
+    format_analysis_text, format_analysis_json, format_analysis_html,
+)
+from .linter.reporter import format_text, format_json, format_html
+from .fixer.auto_fix import FixEngine, FixReport, format_fix_text, format_fix_json, FIXABLE_RULES
+from .doctor.engine import (
+    DoctorEngine, DOCTOR_MODULES,
+    format_doctor_text, format_doctor_json, format_doctor_html,
+)
+from .doctor.health_check import HEALTH_CHECKS
+from .docs import (
+    DocsGenerator, DocsReport,
+    export_markdown, export_html, export_json, format_docs_text,
+)
 
 
 def clear_screen():
@@ -205,6 +221,271 @@ def interactive_mode():
     input()
 
 
+def lint_cli():
+    """CLI entry point for 'ttt lint'."""
+    parser = argparse.ArgumentParser(
+        prog="ttt lint",
+        description="TTT Linter — Static analyzer for TFS/OTServ Lua scripts",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  ttt lint ./data/scripts
+  ttt lint ./data/scripts --format json
+  ttt lint ./data/scripts --format html --output report.html
+  ttt lint ./data/scripts --disable deprecated-api --disable hardcoded-id
+  ttt lint script.lua
+        """
+    )
+
+    parser.add_argument(
+        "path",
+        help="File or directory to lint"
+    )
+    parser.add_argument(
+        "--format",
+        choices=["text", "json", "html"],
+        default="text",
+        help="Output format (default: text)"
+    )
+    parser.add_argument(
+        "--output", "-o",
+        help="Write report to file instead of stdout"
+    )
+    parser.add_argument(
+        "--disable",
+        action="append",
+        default=[],
+        help="Disable specific rules (can be used multiple times)"
+    )
+    parser.add_argument(
+        "--enable",
+        action="append",
+        default=[],
+        help="Enable only specific rules (can be used multiple times)"
+    )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable colored output"
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Show all files including clean ones"
+    )
+    parser.add_argument(
+        "--list-rules",
+        action="store_true",
+        help="List all available lint rules and exit"
+    )
+
+    args = parser.parse_args(sys.argv[2:])
+
+    # List rules mode
+    if args.list_rules:
+        from .linter.rules import ALL_RULES
+        print("\nAvailable lint rules:\n")
+        for rule_id, rule_cls in ALL_RULES.items():
+            r = rule_cls()
+            print(f"  {rule_id:<30s} {r.severity.value:<8s}  {r.description}")
+        print()
+        return
+
+    target_path = os.path.abspath(args.path)
+
+    if not os.path.exists(target_path):
+        print(f"ERROR: Path not found: {target_path}")
+        sys.exit(1)
+
+    setup_logging(verbose=args.verbose)
+
+    # Load config
+    config_path = LintConfig.find_config(
+        target_path if os.path.isdir(target_path)
+        else os.path.dirname(target_path)
+    )
+    if config_path:
+        config = LintConfig.load(config_path)
+    else:
+        config = LintConfig()
+
+    # Apply CLI overrides
+    if args.enable:
+        config.enabled_rules = args.enable
+    if args.disable:
+        config.disabled_rules.extend(args.disable)
+
+    # Run linter
+    engine = LintEngine(config=config)
+
+    if os.path.isfile(target_path):
+        result = engine.lint_file(target_path)
+        from .linter.engine import LintReport
+        report = LintReport(
+            files=[result],
+            rules_used=engine.rule_ids,
+            target_path=os.path.dirname(target_path),
+        )
+    else:
+        report = engine.lint_directory(target_path)
+
+    # Format output
+    base_dir = os.path.dirname(target_path) if os.path.isfile(target_path) else target_path
+    use_colors = not args.no_color and args.format == "text" and not args.output
+
+    if args.format == "json":
+        output = format_json(report, base_dir)
+    elif args.format == "html":
+        output = format_html(report, base_dir)
+    else:
+        output = format_text(report, base_dir, use_colors=use_colors, verbose=args.verbose)
+
+    # Write output
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(output)
+        print(f"Report written to: {args.output}")
+    else:
+        print(output)
+
+    # Exit code: 1 if there are errors/warnings, 0 if clean
+    sys.exit(1 if report.total_errors > 0 or report.total_warnings > 0 else 0)
+
+
+def fix_cli():
+    """CLI entry point for 'ttt fix'."""
+    parser = argparse.ArgumentParser(
+        prog="ttt fix",
+        description="TTT Auto-Fixer — Automatically fix issues in TFS/OTServ Lua scripts",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Fixable rules:
+  deprecated-api              Replace old procedural calls with OOP equivalents
+  missing-return              Add 'return true' to callbacks without return
+  global-variable-leak        Add 'local' before undeclared variable assignments
+  deprecated-constant         Replace obsolete constant names
+  invalid-callback-signature  Update callback parameter lists
+
+Examples:
+  ttt fix ./data/scripts
+  ttt fix ./data/scripts --dry-run
+  ttt fix ./data/scripts --diff
+  ttt fix ./data/scripts --no-backup
+  ttt fix script.lua --only deprecated-api deprecated-constant
+        """
+    )
+
+    parser.add_argument(
+        "path",
+        help="File or directory to fix"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview fixes without writing changes to disk"
+    )
+    parser.add_argument(
+        "--diff",
+        action="store_true",
+        help="Show unified diff of changes (before/after)"
+    )
+    parser.add_argument(
+        "--no-backup",
+        action="store_true",
+        help="Do not create .bak backup files before modifying"
+    )
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        metavar="RULE",
+        help="Only apply specific fix rules (e.g. --only deprecated-api deprecated-constant)"
+    )
+    parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)"
+    )
+    parser.add_argument(
+        "--output", "-o",
+        help="Write report to file instead of stdout"
+    )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable colored output"
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Show verbose output including unchanged files"
+    )
+
+    args = parser.parse_args(sys.argv[2:])
+
+    target_path = os.path.abspath(args.path)
+
+    if not os.path.exists(target_path):
+        print(f"ERROR: Path not found: {target_path}")
+        sys.exit(1)
+
+    setup_logging(verbose=args.verbose)
+
+    # Validate --only rule IDs
+    enabled_fixes = None
+    if args.only:
+        invalid = [r for r in args.only if r not in FIXABLE_RULES]
+        if invalid:
+            print(f"ERROR: Unknown fix rule(s): {', '.join(invalid)}")
+            print(f"Available: {', '.join(sorted(FIXABLE_RULES))}")
+            sys.exit(1)
+        enabled_fixes = args.only
+
+    # Create fix engine
+    engine = FixEngine(
+        dry_run=args.dry_run,
+        create_backup=not args.no_backup,
+        enabled_fixes=enabled_fixes,
+    )
+
+    # Run fixer
+    if os.path.isfile(target_path):
+        result = engine.fix_file(target_path)
+        report = FixReport(
+            files=[result],
+            target_path=os.path.dirname(target_path),
+        )
+    else:
+        report = engine.fix_directory(target_path)
+
+    # Format output
+    base_dir = os.path.dirname(target_path) if os.path.isfile(target_path) else target_path
+    use_colors = not args.no_color and args.format == "text" and not args.output
+
+    if args.format == "json":
+        output = format_fix_json(report, base_dir)
+    else:
+        output = format_fix_text(report, base_dir, use_colors=use_colors, show_diff=args.diff)
+
+    # Write output
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(output)
+        print(f"Report written to: {args.output}")
+    else:
+        # Handle Windows console encoding issues
+        try:
+            print(output)
+        except UnicodeEncodeError:
+            sys.stdout.buffer.write(output.encode("utf-8", errors="replace"))
+            sys.stdout.buffer.write(b"\n")
+
+    if args.dry_run:
+        print("\n  (dry-run mode -- no files were modified)")
+
+    sys.exit(0)
+
+
 def cli_mode():
     parser = argparse.ArgumentParser(
         description="TTT — TFS Script Converter: Legacy to RevScript Migration Tool",
@@ -293,11 +574,531 @@ Valid conversions:
     sys.exit(0 if stats["errors"] == 0 else 1)
 
 
+# ---------------------------------------------------------------------------
+# ttt analyze
+# ---------------------------------------------------------------------------
+
+def analyze_cli():
+    """CLI entry point for 'ttt analyze'."""
+    parser = argparse.ArgumentParser(
+        prog="ttt analyze",
+        description="TTT Server Analyzer — Full server analysis and statistics",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Analysis modules:
+  stats              General statistics (scripts, lines, functions, API style)
+  dead_code          Detect unreferenced scripts, broken XML refs, unused functions
+  duplicates         Find identical scripts, duplicate registrations
+  storage            Scan storage IDs, find conflicts and free ranges
+  item_usage         Analyze item ID usage across scripts and XML
+  complexity         Cyclomatic complexity scoring and refactoring suggestions
+
+Examples:
+  ttt analyze ./data
+  ttt analyze ./data --format json --output report.json
+  ttt analyze ./data --format html --output analysis.html
+  ttt analyze ./data --only stats complexity
+  ttt analyze ./data --list-modules
+        """
+    )
+
+    parser.add_argument(
+        "path",
+        nargs="?",
+        help="Server data directory to analyze"
+    )
+    parser.add_argument(
+        "--format",
+        choices=["text", "json", "html"],
+        default="text",
+        help="Output format (default: text)"
+    )
+    parser.add_argument(
+        "--output", "-o",
+        help="Write report to file instead of stdout"
+    )
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        metavar="MODULE",
+        help="Only run specific modules (e.g. --only stats complexity)"
+    )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable colored output"
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Show verbose output (all details, no truncation)"
+    )
+    parser.add_argument(
+        "--list-modules",
+        action="store_true",
+        help="List all available analysis modules and exit"
+    )
+
+    args = parser.parse_args(sys.argv[2:])
+
+    if args.list_modules:
+        print("\nAvailable analysis modules:")
+        print("  stats          General statistics (scripts, lines, API style)")
+        print("  dead_code      Dead code detector (orphan scripts, broken refs)")
+        print("  duplicates     Duplicate detector (identical scripts, dup registrations)")
+        print("  storage        Storage ID scanner (conflicts, free ranges)")
+        print("  item_usage     Item ID usage analysis")
+        print("  complexity     Cyclomatic complexity scoring")
+        print()
+        return
+
+    if not args.path:
+        parser.print_help()
+        sys.exit(1)
+
+    target_path = os.path.abspath(args.path)
+    if not os.path.isdir(target_path):
+        print(f"ERROR: Directory not found: {target_path}")
+        sys.exit(1)
+
+    setup_logging(verbose=args.verbose)
+
+    enabled = args.only if args.only else None
+    engine = AnalyzeEngine(enabled_modules=enabled)
+    report = engine.analyze(target_path)
+
+    if args.format == "json":
+        output = format_analysis_json(report)
+    elif args.format == "html":
+        output = format_analysis_html(report)
+    else:
+        output = format_analysis_text(report, no_color=args.no_color,
+                                       verbose=args.verbose)
+
+    if args.output:
+        out_path = os.path.abspath(args.output)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(output)
+        print(f"Report written to: {out_path}")
+    else:
+        try:
+            print(output)
+        except UnicodeEncodeError:
+            sys.stdout.buffer.write(output.encode("utf-8", errors="replace"))
+            sys.stdout.buffer.write(b"\n")
+
+
+def doctor_cli():
+    """CLI entry point for 'ttt doctor'."""
+    parser = argparse.ArgumentParser(
+        prog="ttt doctor",
+        description="TTT Server Doctor \u2014 Health check for OTServ servers",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Health checks:
+  syntax-error          Lua syntax errors (block/bracket mismatch)
+  broken-xml-ref        XML references to non-existent scripts
+  conflicting-id        Duplicate item IDs in actions/movements
+  duplicate-event       Duplicate event registrations (talkactions, creature events)
+  npc-duplicate-keyword NPC keyword duplicates
+  invalid-callback      Invalid callback signatures (wrong param count)
+
+XML validation:
+  xml-malformed         XML parse errors
+  xml-missing-attr      Missing required attributes
+  xml-missing-script    Script paths that don't exist
+
+Health score:
+  90-100  HEALTHY   Server is in good shape
+  60-89   WARNING   Some issues need attention
+  0-59    CRITICAL  Serious problems detected
+
+Examples:
+  ttt doctor ./data
+  ttt doctor ./data --format json --output health.json
+  ttt doctor ./data --format html --output health.html
+  ttt doctor --list-checks
+        """
+    )
+
+    parser.add_argument(
+        "path",
+        nargs="?",
+        help="Server data directory to diagnose"
+    )
+    parser.add_argument(
+        "--format",
+        choices=["text", "json", "html"],
+        default="text",
+        help="Output format (default: text)"
+    )
+    parser.add_argument(
+        "--output", "-o",
+        help="Write report to file instead of stdout"
+    )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable colored output"
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Show verbose output"
+    )
+    parser.add_argument(
+        "--list-checks",
+        action="store_true",
+        help="List all available health checks and exit"
+    )
+
+    args = parser.parse_args(sys.argv[2:])
+
+    if args.list_checks:
+        print("\nAvailable health checks:")
+        for name, desc, _ in HEALTH_CHECKS:
+            print(f"  {name:<28s} {desc}")
+        print("\nXML validation checks:")
+        print(f"  {'xml-malformed':<28s} XML parse errors")
+        print(f"  {'xml-missing-attr':<28s} Missing required attributes")
+        print(f"  {'xml-missing-script':<28s} Script paths that don't exist")
+        print()
+        return
+
+    if not args.path:
+        parser.print_help()
+        sys.exit(1)
+
+    target_path = os.path.abspath(args.path)
+    if not os.path.isdir(target_path):
+        print(f"ERROR: Directory not found: {target_path}")
+        sys.exit(1)
+
+    setup_logging(verbose=args.verbose)
+
+    engine = DoctorEngine()
+    report = engine.diagnose(target_path)
+
+    if args.format == "json":
+        output = format_doctor_json(report)
+    elif args.format == "html":
+        output = format_doctor_html(report)
+    else:
+        output = format_doctor_text(report, no_color=args.no_color,
+                                     verbose=args.verbose,
+                                     base_dir=target_path)
+
+    if args.output:
+        out_path = os.path.abspath(args.output)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(output)
+        print(f"Report written to: {out_path}")
+    else:
+        try:
+            print(output)
+        except UnicodeEncodeError:
+            sys.stdout.buffer.write(output.encode("utf-8", errors="replace"))
+            sys.stdout.buffer.write(b"\n")
+
+
+# ---------------------------------------------------------------------------
+# ttt docs
+# ---------------------------------------------------------------------------
+
+def docs_cli():
+    """CLI entry point for 'ttt docs'."""
+    parser = argparse.ArgumentParser(
+        prog="ttt docs",
+        description="TTT Docs Generator — Generate server documentation automatically",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Categories documented:
+  actions            Actions (item ID, script, description)
+  movements          Movements (item/tile, type, script)
+  talkactions        TalkActions (keyword, script)
+  creaturescripts    CreatureScripts (event, script)
+  globalevents       GlobalEvents (type, interval, script)
+  npcs               NPCs (name, keywords, shop items)
+  spells             Spells (name, mana, level, formula)
+
+Output formats:
+  text               Summary to terminal (default)
+  markdown / md      Markdown files (index.md + per-category .md)
+  html               Static HTML site with navigation and code view
+  json               Single JSON file (API consumable)
+
+Examples:
+  ttt docs ./data
+  ttt docs ./data --format html --output ./server-docs
+  ttt docs ./data --format markdown --output ./docs
+  ttt docs ./data --format json --output docs.json
+  ttt docs ./data --format html --output ./server-docs --serve
+        """
+    )
+
+    parser.add_argument(
+        "path",
+        nargs="?",
+        help="Server data directory to document"
+    )
+    parser.add_argument(
+        "--format",
+        choices=["text", "markdown", "md", "html", "json"],
+        default="text",
+        help="Output format (default: text)"
+    )
+    parser.add_argument(
+        "--output", "-o",
+        help="Output directory (for md/html) or file (for json)"
+    )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable colored output"
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Show verbose output"
+    )
+    parser.add_argument(
+        "--serve",
+        action="store_true",
+        help="Start a local HTTP server to view HTML docs"
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="Port for local HTTP server (default: 8080)"
+    )
+
+    args = parser.parse_args(sys.argv[2:])
+
+    if not args.path:
+        parser.print_help()
+        sys.exit(1)
+
+    target_path = os.path.abspath(args.path)
+    if not os.path.isdir(target_path):
+        print(f"ERROR: Directory not found: {target_path}")
+        sys.exit(1)
+
+    setup_logging(verbose=args.verbose)
+
+    # Generate documentation data
+    gen = DocsGenerator()
+    report = gen.generate(target_path)
+
+    fmt = args.format
+    if fmt == "md":
+        fmt = "markdown"
+
+    if fmt == "text":
+        output = format_docs_text(report, no_color=args.no_color)
+        try:
+            print(output)
+        except UnicodeEncodeError:
+            sys.stdout.buffer.write(output.encode("utf-8", errors="replace"))
+            sys.stdout.buffer.write(b"\n")
+        return
+
+    if fmt == "markdown":
+        out_dir = os.path.abspath(args.output) if args.output else os.path.join(os.getcwd(), "docs")
+        written = export_markdown(report, out_dir)
+        print(f"\nGenerated Markdown documentation:")
+        for p in written:
+            print(f"  {os.path.relpath(p)}")
+        print(f"\n  {len(written)} files written to {out_dir}")
+        return
+
+    if fmt == "html":
+        out_dir = os.path.abspath(args.output) if args.output else os.path.join(os.getcwd(), "docs")
+        written = export_html(report, out_dir)
+        print(f"\nGenerated HTML documentation:")
+        for p in written:
+            print(f"  {os.path.relpath(p)}")
+        print(f"\n  {len(written)} files written to {out_dir}")
+
+        if args.serve:
+            _serve_docs(out_dir, args.port)
+        return
+
+    if fmt == "json":
+        out_path = os.path.abspath(args.output) if args.output else None
+        json_str = export_json(report, out_path)
+        if out_path:
+            print(f"JSON documentation written to: {out_path}")
+        else:
+            print(json_str)
+        return
+
+
+def _serve_docs(directory: str, port: int):
+    """Start a simple HTTP server to serve the generated HTML docs."""
+    import http.server
+    import functools
+
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=directory)
+    print(f"\n  Serving docs at http://localhost:{port}")
+    print(f"  Press Ctrl+C to stop.\n")
+
+    try:
+        with http.server.HTTPServer(("", port), handler) as httpd:
+            httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\n  Server stopped.")
+
+
 def main():
+    # Check for subcommands first
     if len(sys.argv) > 1:
-        cli_mode()
+        subcommand = sys.argv[1].lower()
+        if subcommand == "lint":
+            lint_cli()
+            return
+        elif subcommand == "fix":
+            fix_cli()
+            return
+        elif subcommand == "analyze":
+            analyze_cli()
+            return
+        elif subcommand == "doctor":
+            doctor_cli()
+            return
+        elif subcommand == "docs":
+            docs_cli()
+            return
+        elif subcommand == "convert":
+            # Remove the 'convert' subcommand so argparse sees the rest
+            sys.argv = [sys.argv[0]] + sys.argv[2:]
+            cli_mode()
+            return
+        elif subcommand == "create":
+            create_cli()
+            return
+        elif subcommand in ("-h", "--help") and len(sys.argv) == 2:
+            _print_global_help()
+            return
+        elif subcommand == "--version":
+            from . import __version__
+            print(f"TTT v{__version__}")
+            return
+        else:
+            # Legacy mode: treat as convert arguments
+            cli_mode()
+            return
     else:
         interactive_mode()
+
+
+def _print_global_help():
+    """Print help for the global TTT command."""
+    print("""
+    TTT — OTServer Developer Toolkit
+
+    Usage:
+        ttt                         Interactive conversion wizard
+        ttt convert [args]          Convert scripts between TFS versions
+        ttt lint <path> [options]   Analyze scripts for errors and bad practices
+        ttt fix <path> [options]    Auto-fix common issues in scripts
+        ttt analyze <path> [opts]   Full server analysis and statistics
+        ttt doctor <path> [opts]   Health check \u2014 detect broken/conflicting scripts
+        ttt docs <path> [opts]     Generate server documentation
+        ttt create [opts]          Generate script skeletons (scaffolding)
+
+    Create Options:
+        ttt create --type <script_type>    Script type (action, movement, creaturescript, globalevent, talkaction, spell, npc)
+        ttt create --name <name>           Script name (e.g. healing_potion)
+        ttt create --output <path>         Output file or directory
+        ttt create --format <format>       Output format (revscript, tfs1x)
+        ttt create --params <params>       Extra parameters (comma-separated)
+
+    Convert Options:
+        -i, --input DIR             Input directory containing TFS scripts
+        -o, --output DIR            Output directory for converted scripts
+        -f, --from VERSION          Source TFS version (tfs03, tfs04, tfs1x)
+        -t, --to VERSION            Target TFS version (tfs1x, revscript)
+        -v, --verbose               Enable verbose logging
+        --dry-run                   Preview mode (no file writes)
+        --html-diff                 Generate HTML visual diff
+
+    Lint Options:
+        ttt lint <path>             Lint a file or directory
+        ttt lint <path> --format json|html|text
+        ttt lint --list-rules       Show all available rules
+        ttt lint <path> --disable <rule>
+        ttt lint <path> --output report.html
+
+    Fix Options:
+        ttt fix <path>              Fix all fixable issues
+        ttt fix <path> --dry-run    Preview fixes without modifying files
+        ttt fix <path> --diff       Show before/after diff
+        ttt fix <path> --no-backup  Skip creating .bak backup files
+        ttt fix <path> --only <rules>  Only apply specific fixes
+
+    Analyze Options:
+        ttt analyze <path>          Full server analysis
+        ttt analyze <path> --format json|html|text
+        ttt analyze --list-modules  Show available analysis modules
+        ttt analyze <path> --only stats complexity
+        ttt analyze <path> --output report.html
+
+    Doctor Options:
+        ttt doctor <path>           Run health checks on server
+        ttt doctor <path> --format json|html|text
+        ttt doctor --list-checks    Show available health checks
+        ttt doctor <path> --output health.html
+
+    Docs Options:
+        ttt docs <path>                    Generate server documentation
+        ttt docs <path> --format md|html|json
+        ttt docs <path> --output ./docs    Output directory or file
+        ttt docs <path> --serve            Serve HTML docs locally
+
+    Examples:
+        ttt create --type action --name healing_potion --output ./scripts --format revscript
+        ttt create --type npc --name shopkeeper --output ./npc --format tfs1x --params items,gold
+        ttt convert -i ./data -o ./output -f tfs03 -t revscript
+        ttt lint ./data/scripts
+        ttt fix ./data/scripts --dry-run --diff
+        ttt analyze ./data --format html
+        ttt fix ./data/scripts --only deprecated-api deprecated-constant
+""")
+def create_cli():
+    """CLI handler for 'ttt create' (script scaffolding)."""
+    import argparse
+    from .generator import generate_script, TEMPLATE_TYPES
+
+    parser = argparse.ArgumentParser(
+        prog="ttt create",
+        description="Generate script skeletons (scaffolding)",
+        add_help=True
+    )
+    parser.add_argument("--type", required=True, choices=TEMPLATE_TYPES, help="Script type")
+    parser.add_argument("--name", required=True, help="Script name")
+    parser.add_argument("--output", required=True, help="Output file or directory")
+    parser.add_argument("--format", default="revscript", choices=["revscript", "tfs1x"], help="Output format")
+    parser.add_argument("--params", default="", help="Extra parameters (comma-separated)")
+
+    args = parser.parse_args(sys.argv[2:])
+
+    params = [p.strip() for p in args.params.split(",") if p.strip()] if args.params else []
+    script_content, file_ext = generate_script(
+        script_type=args.type,
+        name=args.name,
+        output_format=args.format,
+        params=params
+    )
+
+    # Determine output path
+    out_path = args.output
+    if os.path.isdir(out_path):
+        out_path = os.path.join(out_path, f"{args.name}.{file_ext}")
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(script_content)
+    print(f"Script generated: {out_path}")
 
 
 if __name__ == "__main__":

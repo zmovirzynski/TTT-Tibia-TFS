@@ -1,0 +1,10 @@
+{
+    "rules": null,
+    "disable": [],
+    "severity": {},
+    "ignore": [
+        "__pycache__/*",
+        "*.bak"
+    ],
+    "maxIssuesPerFile": 50
+}

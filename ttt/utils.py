@@ -54,6 +54,9 @@ def read_file_safe(filepath: str) -> Optional[str]:
                 return f.read()
         except (UnicodeDecodeError, UnicodeError):
             continue
+        except FileNotFoundError:
+            logger.error(f"File not found: {filepath}")
+            return None
     logger.error(f"Could not read file: {filepath}")
     return None
 
