@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Set
 
 from .stats import collect_stats, ServerStats
 from .dead_code import detect_dead_code, DeadCodeReport
-from .duplicates import detect_duplicates, DuplicateReport
+from .duplicates import detect_duplicates, DuplicateReport, SemanticDuplicate
 from .storage_scanner import scan_storage, StorageReport
 from .item_usage import scan_item_usage, ItemUsageReport
 from .complexity import analyze_complexity, ComplexityReport
@@ -39,6 +39,7 @@ ANALYZER_MODULES = [
 @dataclass
 class AnalysisReport:
     """Complete analysis report combining all modules."""
+
     directory: str = ""
     stats: Optional[ServerStats] = None
     dead_code: Optional[DeadCodeReport] = None
@@ -46,6 +47,7 @@ class AnalysisReport:
     storage: Optional[StorageReport] = None
     item_usage: Optional[ItemUsageReport] = None
     complexity: Optional[ComplexityReport] = None
+    semantic_duplicates: List[SemanticDuplicate] = field(default_factory=list)
 
     @property
     def total_issues(self) -> int:
@@ -79,14 +81,18 @@ class AnalysisReport:
 # Engine
 # ---------------------------------------------------------------------------
 
+
 class AnalyzeEngine:
     """Runs all (or selected) analysis modules on a server directory."""
 
-    def __init__(self, enabled_modules: Optional[List[str]] = None):
+    def __init__(
+        self, enabled_modules: Optional[List[str]] = None, use_ast: bool = False
+    ):
         if enabled_modules is None:
             self.enabled = set(ANALYZER_MODULES)
         else:
             self.enabled = set(enabled_modules) & set(ANALYZER_MODULES)
+        self.use_ast = use_ast
 
     def analyze(self, directory: str) -> AnalysisReport:
         """Run the full analysis."""
@@ -116,12 +122,27 @@ class AnalyzeEngine:
             logger.info("Running complexity analyzer...")
             report.complexity = analyze_complexity(directory)
 
+        # AST backend additions
+        if self.use_ast:
+            report.semantic_duplicates = self._run_semantic_duplicates(directory)
+
         return report
+
+    def _run_semantic_duplicates(self, directory: str) -> List[SemanticDuplicate]:
+        """Run AST-backed semantic duplicate detection."""
+        from .duplicates import detect_semantic_duplicates
+        import glob as _glob
+
+        lua_files = _glob.glob(os.path.join(directory, "**", "*.lua"), recursive=True)
+        if not lua_files:
+            return []
+        return detect_semantic_duplicates(lua_files, threshold=0.85)
 
 
 # ---------------------------------------------------------------------------
 # Text formatter
 # ---------------------------------------------------------------------------
+
 
 class _Colors:
     RESET = "\033[0m"
@@ -136,8 +157,9 @@ class _Colors:
     WHITE = "\033[37m"
 
 
-def format_analysis_text(report: AnalysisReport, no_color: bool = False,
-                          verbose: bool = False) -> str:
+def format_analysis_text(
+    report: AnalysisReport, no_color: bool = False, verbose: bool = False
+) -> str:
     """Format analysis report as colored text for terminal."""
     C = _Colors
     if no_color:
@@ -161,18 +183,30 @@ def format_analysis_text(report: AnalysisReport, no_color: bool = False,
         sc = s.script_counts
         lines.append(f"  {C.BOLD}STATISTICS{C.RESET}")
         lines.append(f"  {'-' * 40}")
-        lines.append(f"    Total Lua files:       {C.WHITE}{s.total_lua_files}{C.RESET}")
-        lines.append(f"    Total XML files:       {C.WHITE}{s.total_xml_files}{C.RESET}")
+        lines.append(
+            f"    Total Lua files:       {C.WHITE}{s.total_lua_files}{C.RESET}"
+        )
+        lines.append(
+            f"    Total XML files:       {C.WHITE}{s.total_xml_files}{C.RESET}"
+        )
         lines.append(f"    Total lines:           {C.WHITE}{s.total_lines}{C.RESET}")
-        lines.append(f"    Code lines:            {C.WHITE}{s.total_code_lines}{C.RESET}")
-        lines.append(f"    Functions defined:      {C.WHITE}{s.total_functions_defined}{C.RESET}")
+        lines.append(
+            f"    Code lines:            {C.WHITE}{s.total_code_lines}{C.RESET}"
+        )
+        lines.append(
+            f"    Functions defined:      {C.WHITE}{s.total_functions_defined}{C.RESET}"
+        )
         lines.append("")
         lines.append(f"    {C.BOLD}Scripts by type:{C.RESET}")
         for label, val in [
-            ("Actions", sc.actions), ("Movements", sc.movements),
-            ("TalkActions", sc.talkactions), ("CreatureScripts", sc.creaturescripts),
-            ("GlobalEvents", sc.globalevents), ("Spells", sc.spells),
-            ("NPCs", sc.npcs), ("Other", sc.other),
+            ("Actions", sc.actions),
+            ("Movements", sc.movements),
+            ("TalkActions", sc.talkactions),
+            ("CreatureScripts", sc.creaturescripts),
+            ("GlobalEvents", sc.globalevents),
+            ("Spells", sc.spells),
+            ("NPCs", sc.npcs),
+            ("Other", sc.other),
         ]:
             if val > 0 or verbose:
                 lines.append(f"      {label + ':':<22} {val}")
@@ -182,7 +216,13 @@ def format_analysis_text(report: AnalysisReport, no_color: bool = False,
         lines.append(f"    {C.BOLD}API style distribution:{C.RESET}")
         for style, count in s.api_style.items():
             if count > 0 or verbose:
-                color = C.RED if style == "procedural" else C.GREEN if style == "oop" else C.YELLOW
+                color = (
+                    C.RED
+                    if style == "procedural"
+                    else C.GREEN
+                    if style == "oop"
+                    else C.YELLOW
+                )
                 lines.append(f"      {style + ':':<22} {color}{count}{C.RESET}")
         lines.append("")
 
@@ -195,7 +235,9 @@ def format_analysis_text(report: AnalysisReport, no_color: bool = False,
             lines.append("")
 
         if s.version_hints:
-            lines.append(f"    {C.BOLD}Version hints:{C.RESET} {', '.join(s.version_hints)}")
+            lines.append(
+                f"    {C.BOLD}Version hints:{C.RESET} {', '.join(s.version_hints)}"
+            )
             lines.append("")
 
     # --- Dead Code ---
@@ -205,14 +247,20 @@ def format_analysis_text(report: AnalysisReport, no_color: bool = False,
         lines.append(f"  {'-' * 40}")
 
         if dc.broken_xml_refs:
-            lines.append(f"    {C.RED}Broken XML references ({len(dc.broken_xml_refs)}):{C.RESET}")
+            lines.append(
+                f"    {C.RED}Broken XML references ({len(dc.broken_xml_refs)}):{C.RESET}"
+            )
             for b in dc.broken_xml_refs:
                 rel_xml = os.path.basename(b.xml_file)
-                lines.append(f"      {rel_xml}:{b.line}  script='{b.script_ref}' -> NOT FOUND")
+                lines.append(
+                    f"      {rel_xml}:{b.line}  script='{b.script_ref}' -> NOT FOUND"
+                )
             lines.append("")
 
         if dc.orphan_scripts:
-            lines.append(f"    {C.YELLOW}Orphan scripts ({len(dc.orphan_scripts)}):{C.RESET}")
+            lines.append(
+                f"    {C.YELLOW}Orphan scripts ({len(dc.orphan_scripts)}):{C.RESET}"
+            )
             for o in dc.orphan_scripts:
                 rel = os.path.relpath(o.filepath, report.directory)
                 lines.append(f"      {rel}  ({o.category})")
@@ -220,12 +268,16 @@ def format_analysis_text(report: AnalysisReport, no_color: bool = False,
 
         if dc.unused_functions:
             shown = dc.unused_functions[:20] if not verbose else dc.unused_functions
-            lines.append(f"    {C.DIM}Unused functions ({len(dc.unused_functions)}):{C.RESET}")
+            lines.append(
+                f"    {C.DIM}Unused functions ({len(dc.unused_functions)}):{C.RESET}"
+            )
             for u in shown:
                 rel = os.path.relpath(u.filepath, report.directory)
                 lines.append(f"      {rel}:{u.line}  {u.function_name}()")
             if len(dc.unused_functions) > 20 and not verbose:
-                lines.append(f"      ... and {len(dc.unused_functions) - 20} more (use --verbose)")
+                lines.append(
+                    f"      ... and {len(dc.unused_functions) - 20} more (use --verbose)"
+                )
             lines.append("")
 
         if not dc.broken_xml_refs and not dc.orphan_scripts and not dc.unused_functions:
@@ -239,8 +291,10 @@ def format_analysis_text(report: AnalysisReport, no_color: bool = False,
         lines.append(f"  {'-' * 40}")
 
         if dup.duplicate_scripts:
-            lines.append(f"    {C.YELLOW}Identical scripts ({len(dup.duplicate_scripts)} groups, "
-                          f"{dup.total_duplicate_files} extra files):{C.RESET}")
+            lines.append(
+                f"    {C.YELLOW}Identical scripts ({len(dup.duplicate_scripts)} groups, "
+                f"{dup.total_duplicate_files} extra files):{C.RESET}"
+            )
             for d in dup.duplicate_scripts:
                 names = [os.path.relpath(f, report.directory) for f in d.filepaths]
                 lines.append(f"      Group ({d.count} files):")
@@ -249,12 +303,16 @@ def format_analysis_text(report: AnalysisReport, no_color: bool = False,
             lines.append("")
 
         if dup.duplicate_registrations:
-            lines.append(f"    {C.RED}Duplicate registrations ({len(dup.duplicate_registrations)}):{C.RESET}")
+            lines.append(
+                f"    {C.RED}Duplicate registrations ({len(dup.duplicate_registrations)}):{C.RESET}"
+            )
             for dr in dup.duplicate_registrations:
                 lines.append(f"      [{dr.reg_type}] key={dr.key}")
                 for entry in dr.entries:
                     xml_name = os.path.basename(entry.get("xml_file", ""))
-                    lines.append(f"        {xml_name}:{entry.get('line', '?')} -> {entry.get('script', '?')}")
+                    lines.append(
+                        f"        {xml_name}:{entry.get('line', '?')} -> {entry.get('script', '?')}"
+                    )
             lines.append("")
 
         if not dup.duplicate_scripts and not dup.duplicate_registrations:
@@ -274,15 +332,20 @@ def format_analysis_text(report: AnalysisReport, no_color: bool = False,
             lines.append(f"    {C.RED}Conflicts ({len(st.conflicts)}):{C.RESET}")
             shown = st.conflicts[:10] if not verbose else st.conflicts
             for c in shown:
-                files = sorted(set(os.path.relpath(u.filepath, report.directory)
-                                    for u in c.usages))
-                lines.append(f"      ID {c.storage_id} -> used in {c.file_count} files: "
-                              f"{', '.join(files[:3])}")
+                files = sorted(
+                    set(os.path.relpath(u.filepath, report.directory) for u in c.usages)
+                )
+                lines.append(
+                    f"      ID {c.storage_id} -> used in {c.file_count} files: "
+                    f"{', '.join(files[:3])}"
+                )
             if len(st.conflicts) > 10 and not verbose:
                 lines.append(f"      ... and {len(st.conflicts) - 10} more")
 
         if st.free_ranges:
-            lines.append(f"    {C.GREEN}Available ranges (top {len(st.free_ranges)}):{C.RESET}")
+            lines.append(
+                f"    {C.GREEN}Available ranges (top {len(st.free_ranges)}):{C.RESET}"
+            )
             for r in st.free_ranges[:5]:
                 lines.append(f"      {r.start} - {r.end}  ({r.size} IDs)")
 
@@ -295,8 +358,12 @@ def format_analysis_text(report: AnalysisReport, no_color: bool = False,
         lines.append(f"  {'-' * 40}")
         lines.append(f"    Unique item IDs:       {iu.total_unique_ids}")
         lines.append(f"    In both Lua & XML:     {C.GREEN}{len(iu.both_ids)}{C.RESET}")
-        lines.append(f"    Lua only (no XML):     {C.YELLOW}{len(iu.lua_only_ids)}{C.RESET}")
-        lines.append(f"    XML only (no Lua):     {C.YELLOW}{len(iu.xml_only_ids)}{C.RESET}")
+        lines.append(
+            f"    Lua only (no XML):     {C.YELLOW}{len(iu.lua_only_ids)}{C.RESET}"
+        )
+        lines.append(
+            f"    XML only (no Lua):     {C.YELLOW}{len(iu.xml_only_ids)}{C.RESET}"
+        )
 
         if iu.xml_only_ids and verbose:
             lines.append(f"    XML-only IDs: {sorted(iu.xml_only_ids)}")
@@ -310,9 +377,12 @@ def format_analysis_text(report: AnalysisReport, no_color: bool = False,
         lines.append(f"    Functions analyzed:     {cx.total_functions}")
         avg = cx.avg_complexity
         rating = cx.overall_rating
-        rating_color = (C.GREEN if rating == "LOW" else
-                        C.YELLOW if rating == "MEDIUM" else C.RED)
-        lines.append(f"    Average complexity:     {avg:.1f} ({rating_color}{rating}{C.RESET})")
+        rating_color = (
+            C.GREEN if rating == "LOW" else C.YELLOW if rating == "MEDIUM" else C.RED
+        )
+        lines.append(
+            f"    Average complexity:     {avg:.1f} ({rating_color}{rating}{C.RESET})"
+        )
 
         dist = cx.distribution
         lines.append(f"    Distribution:")
@@ -326,14 +396,35 @@ def format_analysis_text(report: AnalysisReport, no_color: bool = False,
             lines.append(f"    {C.RED}Complex functions (>= 10):{C.RESET}")
             for f in complex_funcs[:10]:
                 rel = os.path.relpath(f.filepath, report.directory)
-                lines.append(f"      {rel}:{f.start_line} {f.name}() "
-                              f"CC={f.cyclomatic} nesting={f.max_nesting} "
-                              f"lines={f.lines_of_code}")
+                lines.append(
+                    f"      {rel}:{f.start_line} {f.name}() "
+                    f"CC={f.cyclomatic} nesting={f.max_nesting} "
+                    f"lines={f.lines_of_code}"
+                )
                 if f.suggestion:
                     lines.append(f"        -> {f.suggestion}")
             if len(complex_funcs) > 10 and not verbose:
                 lines.append(f"      ... and {len(complex_funcs) - 10} more")
 
+        lines.append("")
+
+    # --- Semantic Duplicates (AST-backed) ---
+    if report.semantic_duplicates:
+        lines.append(f"  {C.BOLD}SEMANTIC DUPLICATES (AST-backed){C.RESET}")
+        lines.append(f"  {'-' * 40}")
+        lines.append(
+            f"    {C.YELLOW}{len(report.semantic_duplicates)} structurally identical file pair(s) found:{C.RESET}"
+        )
+        for sd in report.semantic_duplicates[:10]:
+            a = os.path.basename(sd.file_a)
+            b = os.path.basename(sd.file_b)
+            lines.append(
+                f"    {C.DIM}· {a} ↔ {b}  ({sd.similarity:.0%} similar){C.RESET}"
+            )
+        if len(report.semantic_duplicates) > 10 and not verbose:
+            lines.append(
+                f"    ... and {len(report.semantic_duplicates) - 10} more (use --verbose)"
+            )
         lines.append("")
 
     # --- Summary ---
@@ -452,16 +543,16 @@ def format_analysis_html(report: AnalysisReport) -> str:
                     <table>
                         <tr><td>Functions</td><td>{cx.total_functions}</td></tr>
                         <tr><td>Avg Complexity</td><td>{cx.avg_complexity:.1f}</td></tr>
-                        <tr><td>Rating</td><td class="{cx.overall_rating.lower().replace(' ', '-')}">{cx.overall_rating}</td></tr>
+                        <tr><td>Rating</td><td class="{cx.overall_rating.lower().replace(" ", "-")}">{cx.overall_rating}</td></tr>
                     </table>
                 </div>
                 <div class="card">
                     <h3>Distribution</h3>
                     <table>
-                        <tr><td class="ok">LOW (1-5)</td><td>{dist['LOW']}</td></tr>
-                        <tr><td class="warning">MEDIUM (6-10)</td><td>{dist['MEDIUM']}</td></tr>
-                        <tr><td class="error">HIGH (11-20)</td><td>{dist['HIGH']}</td></tr>
-                        <tr><td class="error">VERY HIGH (>20)</td><td>{dist['VERY HIGH']}</td></tr>
+                        <tr><td class="ok">LOW (1-5)</td><td>{dist["LOW"]}</td></tr>
+                        <tr><td class="warning">MEDIUM (6-10)</td><td>{dist["MEDIUM"]}</td></tr>
+                        <tr><td class="error">HIGH (11-20)</td><td>{dist["HIGH"]}</td></tr>
+                        <tr><td class="error">VERY HIGH (>20)</td><td>{dist["VERY HIGH"]}</td></tr>
                     </table>
                 </div>
             </div>

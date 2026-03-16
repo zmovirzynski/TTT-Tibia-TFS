@@ -1,4 +1,5 @@
 """AST structural normalization for semantic duplicate detection."""
+
 from __future__ import annotations
 import sys
 from typing import List
@@ -6,13 +7,32 @@ from typing import List
 try:
     from luaparser import ast as _lua_ast
     from luaparser.astnodes import (
-        Node, Name, String, Number, TrueExpr, FalseExpr, Nil,
-        Function, AnonymousFunction, LocalFunction,
-        If, ElseIf, While, Repeat, Fornum, Forin,
-        Return, Break, Assign, LocalAssign,
-        Call, Invoke,
-        BinaryOp, UnaryOp,
+        Node,
+        Name,
+        String,
+        Number,
+        TrueExpr,
+        FalseExpr,
+        Nil,
+        Function,
+        AnonymousFunction,
+        LocalFunction,
+        If,
+        ElseIf,
+        While,
+        Repeat,
+        Fornum,
+        Forin,
+        Return,
+        Break,
+        Assign,
+        LocalAssign,
+        Call,
+        Invoke,
+        BinaryOp,
+        UnaryOp,
     )
+
     _LUAPARSER_AVAILABLE = True
 except ImportError:
     _LUAPARSER_AVAILABLE = False
@@ -57,7 +77,6 @@ def structural_similarity(code_a: str, code_b: str) -> float:
 def _flatten(node, parts: List[str]) -> None:
     if node is None:
         return
-    node_type = node.__class__.__name__
 
     # Leaf nodes — emit placeholder and stop
     if isinstance(node, Name):
@@ -77,7 +96,9 @@ def _flatten(node, parts: List[str]) -> None:
         return
 
     # Structural tokens
-    if _LUAPARSER_AVAILABLE and isinstance(node, (Function, AnonymousFunction, LocalFunction)):
+    if _LUAPARSER_AVAILABLE and isinstance(
+        node, (Function, AnonymousFunction, LocalFunction)
+    ):
         parts.append(_F)
     elif _LUAPARSER_AVAILABLE and isinstance(node, (If, ElseIf)):
         parts.append("IF")

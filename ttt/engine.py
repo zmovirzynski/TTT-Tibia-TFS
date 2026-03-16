@@ -240,11 +240,21 @@ class ConversionEngine:
                 else os.path.basename(fr.source_path)
             )
             if rel.endswith(".lua"):
-                analyses.append(analyzer.analyze_content(fr.original_content, rel))
+                analysis = analyzer.analyze_content(fr.original_content, rel)
+                # Enrich with AST metrics for more accurate LLM guidelines
+                try:
+                    from .analyzers.ast_enricher import enrich_analysis
+
+                    enrich_analysis(analysis, fr.original_content)
+                except Exception:
+                    pass  # AST enrichment is optional; continue without it
+                analyses.append(analysis)
 
         content = GuidelinesGenerator().generate(analyses, self.report)
 
-        guidelines_path = os.path.join(self.input_dir or os.getcwd(), "oop_guidelines.md")
+        guidelines_path = os.path.join(
+            self.input_dir or os.getcwd(), "oop_guidelines.md"
+        )
         try:
             with open(guidelines_path, "w", encoding="utf-8") as f:
                 f.write(content)
@@ -441,7 +451,9 @@ class ConversionEngine:
                 logger.info("  Falling back to regex transformer")
 
         if AST_AVAILABLE:
-            logger.info("  AST transformer available - using with defensive programming")
+            logger.info(
+                "  AST transformer available - using with defensive programming"
+            )
         else:
             logger.info("  AST transformer not available - using regex transformer")
         return transformer
@@ -450,8 +462,13 @@ class ConversionEngine:
         """Return set of normalized directory paths already handled by XML conversion."""
         handled = set()
         for attr in (
-            "actions_dir", "movements_dir", "talkactions_dir",
-            "creaturescripts_dir", "globalevents_dir", "npc_dir", "npc_scripts_dir",
+            "actions_dir",
+            "movements_dir",
+            "talkactions_dir",
+            "creaturescripts_dir",
+            "globalevents_dir",
+            "npc_dir",
+            "npc_scripts_dir",
         ):
             dir_path = getattr(scan, attr)
             if dir_path:
@@ -469,7 +486,9 @@ class ConversionEngine:
             fr.signatures_updated = ast_transformer.stats.get("signatures_updated", 0)
             fr.constants_replaced = ast_transformer.stats.get("constants_replaced", 0)
             fr.variables_renamed = ast_transformer.stats.get("variables_renamed", 0)
-            fr.defensive_checks_added = ast_transformer.stats.get("defensive_checks_added", 0)
+            fr.defensive_checks_added = ast_transformer.stats.get(
+                "defensive_checks_added", 0
+            )
             fr.warnings = list(ast_transformer.warnings)
 
             if hasattr(ast_transformer, "warnings") and any(
@@ -489,8 +508,12 @@ class ConversionEngine:
 
             if summary != "No changes":
                 logger.info(f"  {rel}: {summary}")
-                self.stats["total_functions_converted"] += ast_transformer.stats.get("functions_converted", 0)
-                self.stats["defensive_checks_added"] += ast_transformer.stats.get("defensive_checks_added", 0)
+                self.stats["total_functions_converted"] += ast_transformer.stats.get(
+                    "functions_converted", 0
+                )
+                self.stats["defensive_checks_added"] += ast_transformer.stats.get(
+                    "defensive_checks_added", 0
+                )
             else:
                 logger.debug(f"  {rel}: No changes needed")
 
@@ -519,7 +542,10 @@ class ConversionEngine:
         converted = 0
         for lua_file in scan.lua_files:
             file_dir = os.path.normpath(os.path.dirname(lua_file))
-            if any(file_dir.startswith(hd) for hd in handled_dirs) and self.target_version == "revscript":
+            if (
+                any(file_dir.startswith(hd) for hd in handled_dirs)
+                and self.target_version == "revscript"
+            ):
                 continue
 
             content = read_file_safe(lua_file)
