@@ -175,9 +175,13 @@ class _UsageTracker:
             self._stack[-1].define(name, kind, line)
 
     def _mark_read(self, name: str) -> None:
-        # Mark as read in ALL frames (closures can read outer scopes)
-        for frame in self._stack:
-            frame.mark_read(name)
+        # Mark read only in the innermost scope that defines this name.
+        # This prevents shadowed outer locals from being falsely marked as read.
+        for frame in reversed(self._stack):
+            if name in frame.defined:
+                frame.mark_read(name)
+                return
+        # Name not defined in any local scope — it's a global, ignore.
 
     def _push_children(self, node, work: list, skip_attr: Optional[str] = None) -> None:
         for attr in reversed(list(node.__dict__.keys())):

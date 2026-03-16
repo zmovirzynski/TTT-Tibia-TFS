@@ -79,3 +79,18 @@ def test_unused_local_has_metadata():
     u = next(r for r in result if r.name == "unused")
     assert u.scope_level >= 0
     assert u.kind in ("variable", "function")
+
+
+def test_function_params_not_flagged():
+    code = """
+function doSomething(player, item, unused_param)
+    player:sendTextMessage(22, "hi")
+    return true
+end
+"""
+    result = find_unused_locals(code)
+    names = {u.name for u in result}
+    # Parameters should never be flagged as unused locals
+    assert "player" not in names
+    assert "item" not in names
+    assert "unused_param" not in names
