@@ -6,6 +6,15 @@ import sys
 from dataclasses import dataclass, field
 from typing import List
 
+try:
+    from luaparser import ast as _lua_ast
+    from luaparser.astnodes import (
+        Node, Function, AnonymousFunction, Name,
+    )
+    _LUAPARSER_AVAILABLE = True
+except ImportError:
+    _LUAPARSER_AVAILABLE = False
+
 _BRANCH_NODE_TYPES = {
     "If", "ElseIf",
     "While", "Repeat",
@@ -40,9 +49,7 @@ def compute_file_complexity(code: str) -> List[FunctionMetrics]:
 
     Returns an empty list on parse failure (never raises).
     """
-    try:
-        from luaparser import ast
-    except ImportError:
+    if not _LUAPARSER_AVAILABLE:
         return []
 
     if not code.strip():
@@ -51,7 +58,7 @@ def compute_file_complexity(code: str) -> List[FunctionMetrics]:
     old_limit = sys.getrecursionlimit()
     try:
         sys.setrecursionlimit(5000)
-        tree = ast.parse(code)
+        tree = _lua_ast.parse(code)
     except Exception:
         return []
     finally:
@@ -63,7 +70,6 @@ def compute_file_complexity(code: str) -> List[FunctionMetrics]:
 
 
 def _is_function_node(node) -> bool:
-    from luaparser.astnodes import Function, AnonymousFunction
     return (
         isinstance(node, (Function, AnonymousFunction))
         or node.__class__.__name__ == "LocalFunction"
@@ -71,8 +77,6 @@ def _is_function_node(node) -> bool:
 
 
 def _collect_functions(node, code: str, results: List[FunctionMetrics]) -> None:
-    from luaparser.astnodes import Node
-
     if node is None:
         return
 
@@ -105,8 +109,6 @@ def _collect_functions(node, code: str, results: List[FunctionMetrics]) -> None:
 
 def _recurse_for_nested_functions(func_node, code: str, results: List[FunctionMetrics]) -> None:
     """Find any functions nested inside func_node and add them to results."""
-    from luaparser.astnodes import Node
-
     for attr in func_node.__dict__:
         if attr.startswith("_"):
             continue
@@ -115,7 +117,6 @@ def _recurse_for_nested_functions(func_node, code: str, results: List[FunctionMe
 
 
 def _visit_child_for_collect(child, code: str, results) -> None:
-    from luaparser.astnodes import Node
     if isinstance(child, Node):
         _collect_functions(child, code, results)
     elif isinstance(child, list):
@@ -126,8 +127,6 @@ def _visit_child_for_collect(child, code: str, results) -> None:
 
 def _measure(func_node) -> tuple:
     """Return (cyclomatic_complexity, max_nesting_depth) for a function node."""
-    from luaparser.astnodes import Node, Function, AnonymousFunction
-
     branches = [0]
     max_nest = [0]
 
@@ -160,7 +159,6 @@ def _measure(func_node) -> tuple:
                 _walk_child(child, new_depth, walk)
 
     def _walk_child(child, depth: int, walk_fn) -> None:
-        from luaparser.astnodes import Node
         if isinstance(child, Node):
             walk_fn(child, depth)
         elif isinstance(child, list):
@@ -173,7 +171,6 @@ def _measure(func_node) -> tuple:
 
 
 def _get_name(node) -> str:
-    from luaparser.astnodes import Name
     name_attr = getattr(node, "name", None)
     if name_attr is None:
         return "<anonymous>"
@@ -187,6 +184,6 @@ def _get_name(node) -> str:
 def _count_lines(node) -> int:
     start = getattr(node, "line", None)
     end = getattr(node, "end_line", None)
-    if start and end:
+    if start is not None and end is not None:
         return end - start + 1
     return 0
