@@ -8,7 +8,7 @@ try:
     from luaparser.astnodes import (
         Node, Name, String, Number, TrueExpr, FalseExpr, Nil,
         Function, AnonymousFunction, LocalFunction,
-        If, While, Repeat, Fornum, Forin,
+        If, ElseIf, While, Repeat, Fornum, Forin,
         Return, Break, Assign, LocalAssign,
         Call, Invoke,
         BinaryOp, UnaryOp,
@@ -79,7 +79,7 @@ def _flatten(node, parts: List[str]) -> None:
     # Structural tokens
     if _LUAPARSER_AVAILABLE and isinstance(node, (Function, AnonymousFunction, LocalFunction)):
         parts.append(_F)
-    elif _LUAPARSER_AVAILABLE and isinstance(node, If) or node_type in ("If", "ElseIf"):
+    elif _LUAPARSER_AVAILABLE and isinstance(node, (If, ElseIf)):
         parts.append("IF")
     elif _LUAPARSER_AVAILABLE and isinstance(node, While):
         parts.append("WHILE")
