@@ -1,0 +1,49 @@
+{
+  "RevScript Action": {
+    "scope": "lua",
+    "prefix": "ttt-action",
+    "body": [
+      "local ${1:actionName} = Action()",
+      "",
+      "function ${1:actionName}.onUse(player, item, fromPosition, target, toPosition, isHotkey)",
+      "    ${0:-- TODO: your logic}",
+      "    return true",
+      "end",
+      "",
+      "${1:actionName}:id(${2:0000})",
+      "${1:actionName}:register()"
+    ],
+    "description": "RevScript Action template"
+  },
+  "RevScript TalkAction": {
+    "scope": "lua",
+    "prefix": "ttt-talkaction",
+    "body": [
+      "local ${1:ta} = TalkAction(\"${2:!cmd}\")",
+      "",
+      "function ${1:ta}.onSay(player, words, param)",
+      "    ${0:-- TODO: your logic}",
+      "    return true",
+      "end",
+      "",
+      "${1:ta}:separator(\" \")",
+      "${1:ta}:register()"
+    ],
+    "description": "RevScript TalkAction template"
+  },
+  "RevScript CreatureEvent": {
+    "scope": "lua",
+    "prefix": "ttt-creatureevent",
+    "body": [
+      "local ${1:event} = CreatureEvent(\"${2:EventName}\")",
+      "",
+      "function ${1:event}.onLogin(player)",
+      "    ${0:-- TODO: your logic}",
+      "    return true",
+      "end",
+      "",
+      "${1:event}:register()"
+    ],
+    "description": "RevScript CreatureEvent template"
+  }
+}

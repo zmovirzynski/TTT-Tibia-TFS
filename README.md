@@ -57,6 +57,16 @@
 - **Backup automático** — Cria `.bak` antes de modificar (desativável com `--no-backup`)
 - **Saída JSON** — Relatório machine-readable para integração com CI/CD
 
+### Formatter (`ttt format`)
+
+- **Formatação consistente de indentação** — tabs ou spaces configuráveis via `.tttformat.json`
+- **Espaçamento de operadores** — Normaliza comparações e atribuições (`>=`, `==`, `=` etc.)
+- **Linhas em branco entre funções** — Mantém separação previsível entre blocos
+- **Alinhamento de tabelas Lua** — Alinha campos `key = value` para leitura rápida
+- **Trailing commas** — Adiciona vírgulas finais em tabelas multilinha
+- **Modo check para CI** — `--check` retorna erro quando há arquivos fora do padrão
+- **Configuração por projeto** — Arquivo `.tttformat.json` com overrides por equipe
+
 ### Analyzer (`ttt analyze`)
 
 - **6 módulos de análise** — Visão completa do estado do servidor
@@ -556,6 +566,30 @@ ttt fix ./data/scripts --format json --output report.json
     invalid-callback-signature: 5 fixes
 ```
 
+### Formatar Scripts (`ttt format`)
+
+```bash
+# Formatar todos os scripts Lua do diretório
+ttt format ./data/scripts
+
+# Rodar em modo check (não altera arquivos; ideal para CI)
+ttt format ./data/scripts --check
+
+# Forçar tabs na indentação
+ttt format ./data/scripts --indent-style tabs
+
+# Usar arquivo de configuração explícito
+ttt format ./data/scripts --config .tttformat.json
+```
+
+| Parâmetro | Descrição |
+|-----------|-----------|
+| `path` | Arquivo ou diretório para formatar |
+| `--check` | Apenas verifica; retorna exit code 1 se houver mudanças pendentes |
+| `--config` | Caminho para arquivo `.tttformat.json` |
+| `--indent-style` | Override: `spaces` ou `tabs` |
+| `--indent-size` | Override do tamanho da indentação em spaces |
+
 ---
 
 ## Antes e Depois
@@ -918,12 +952,19 @@ python -m pytest tests/test_fixer.py -v
 - [x] Analyzer & Doctor
 - [x] Docs generator (HTML/MD/JSON)
 - [x] Script generator (scaffolding)
-- [ ] Formatter (Lua Prettier)
+- [x] Formatter (Lua Prettier)
 - [ ] Server migrator
 - [x] NPC conversation analyzer
-- [ ] Test framework (experimental)
-    - [ ] **Shell (casca) criada:** mocks de API, runner e asserts custom já implementados em `ttt/testing/`.
-    - [ ] **Próxima etapa:** expandir integração do runner, CLI `ttt test`, exemplos reais e cobertura de testes OTServ.
+- [x] Test framework (experimental)
+    - [x] Mocks de API: `mockPlayer`, `mockCreature`, `mockItem`, `mockPosition`
+    - [x] Runner integrado ao CLI: `ttt test ./tests`
+    - [x] Asserts customizados para cenários OTServ
+- [x] VS Code extension (MVP)
+    - [x] Autocomplete para `player:`, `creature:`, `item:`
+    - [x] Hover docs para métodos da API TFS
+    - [x] Diagnostics com integração ao `ttt lint`
+    - [x] Quick fix para auto fix via `ttt fix`
+    - [x] Snippets RevScript e comandos `TTT:*`
 
 ## Usage
 

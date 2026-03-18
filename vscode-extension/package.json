@@ -1,0 +1,132 @@
+{
+  "name": "ttt-otserv-tools",
+  "displayName": "TTT OTServ Tools",
+  "description": "OTServ toolkit extension powered by TTT: completions, diagnostics, quick fixes and commands.",
+  "version": "0.2.0",
+  "publisher": "ttt-project",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zmovirzynski/TTT-Tibia-TFS-Transpiler.git"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Snippets"
+  ],
+  "activationEvents": [
+    "onLanguage:lua"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "lua",
+        "aliases": [
+          "Lua",
+          "lua"
+        ],
+        "extensions": [
+          ".lua"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "ttt.convertFile",
+        "title": "TTT: Convert File"
+      },
+      {
+        "command": "ttt.lintFile",
+        "title": "TTT: Lint File"
+      },
+      {
+        "command": "ttt.generateScript",
+        "title": "TTT: Generate Script"
+      },
+      {
+        "command": "ttt.analyzeServer",
+        "title": "TTT: Analyze Server"
+      },
+      {
+        "command": "ttt.autoFixFile",
+        "title": "TTT: Auto Fix File"
+      },
+      {
+        "command": "ttt.setupOnboarding",
+        "title": "TTT: Primeira Configuração"
+      },
+      {
+        "command": "ttt.installRuntime",
+        "title": "TTT: Instalar Runtime Automático"
+      },
+      {
+        "command": "ttt.createServerApiConfig",
+        "title": "TTT: Criar/Abrir Config API do Servidor"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "lua",
+        "path": "./snippets/revscript.code-snippets"
+      }
+    ],
+    "configuration": {
+      "title": "TTT OTServ",
+      "properties": {
+        "ttt.pythonCommand": {
+          "type": "string",
+          "default": "python",
+          "description": "Python command used to run TTT CLI."
+        },
+        "ttt.runPyPath": {
+          "type": "string",
+          "default": "run.py",
+          "description": "Path to run.py relative to workspace root."
+        },
+        "ttt.lintOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run TTT lint on Lua file save and publish diagnostics."
+        },
+        "ttt.runtimeMode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "embedded",
+            "python"
+          ],
+          "default": "auto",
+          "description": "Runtime mode for TTT execution. 'embedded' does not require Python after runtime installation."
+        },
+        "ttt.runtimePath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to embedded TTT runtime executable (auto-managed by installer)."
+        },
+        "ttt.runtimeBaseUrl": {
+          "type": "string",
+          "default": "https://github.com/zmovirzynski/TTT-Tibia-TFS-Transpiler/releases/latest/download",
+          "description": "Base URL where prebuilt runtime assets are downloaded from."
+        },
+        "ttt.serverApiConfigPath": {
+          "type": "string",
+          "default": ".ttt-server-api.json",
+          "description": "Path (relative to workspace) to custom server API completions/hover config."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.7.1",
+    "typescript": "^5.4.5"
+  }
+}

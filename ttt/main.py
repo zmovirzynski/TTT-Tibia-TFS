@@ -23,6 +23,8 @@ from .docs import (
     DocsGenerator, DocsReport,
     export_markdown, export_html, export_json, format_docs_text,
 )
+from .formatter import LuaFormatter, LuaFormatConfig, FormatReport, format_report_text
+from .testing.runner import run_tests, format_test_report
 
 
 def clear_screen():
@@ -484,6 +486,145 @@ Examples:
         print("\n  (dry-run mode -- no files were modified)")
 
     sys.exit(0)
+
+
+def format_cli():
+    """CLI entry point for 'ttt format'."""
+    parser = argparse.ArgumentParser(
+        prog="ttt format",
+        description="TTT Formatter — Format Lua scripts with consistent style",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  ttt format ./data/scripts
+  ttt format ./data/scripts --check
+  ttt format script.lua --indent-style tabs
+  ttt format ./data/scripts --config .tttformat.json
+        """
+    )
+
+    parser.add_argument(
+        "path",
+        help="File or directory to format"
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Check formatting without writing files (exit 1 if changes needed)"
+    )
+    parser.add_argument(
+        "--config",
+        help="Path to .tttformat.json configuration file"
+    )
+    parser.add_argument(
+        "--indent-style",
+        choices=["spaces", "tabs"],
+        help="Override indentation style"
+    )
+    parser.add_argument(
+        "--indent-size",
+        type=int,
+        help="Override indentation size (for spaces mode)"
+    )
+
+    args = parser.parse_args(sys.argv[2:])
+
+    target_path = os.path.abspath(args.path)
+
+    if not os.path.exists(target_path):
+        print(f"ERROR: Path not found: {target_path}")
+        sys.exit(1)
+
+    if args.config:
+        config = LuaFormatConfig.load(os.path.abspath(args.config))
+    else:
+        config_start = target_path if os.path.isdir(target_path) else os.path.dirname(target_path)
+        config_path = LuaFormatConfig.find_config(config_start)
+        config = LuaFormatConfig.load(config_path) if config_path else LuaFormatConfig()
+
+    if args.indent_style:
+        config.indent_style = args.indent_style
+    if args.indent_size is not None:
+        if args.indent_size < 1:
+            print("ERROR: --indent-size must be >= 1")
+            sys.exit(1)
+        config.indent_size = args.indent_size
+
+    formatter = LuaFormatter(config)
+
+    if os.path.isfile(target_path):
+        result = formatter.format_file(target_path, check=args.check)
+        report = FormatReport(
+            files=[result],
+            target_path=os.path.dirname(target_path),
+            check_mode=args.check,
+        )
+        base_dir = os.path.dirname(target_path)
+    else:
+        report = formatter.format_directory(target_path, check=args.check)
+        base_dir = target_path
+
+    print(format_report_text(report, base_dir=base_dir))
+
+    if report.files_errored > 0:
+        sys.exit(1)
+    if args.check and report.files_changed > 0:
+        sys.exit(1)
+    sys.exit(0)
+
+
+def test_cli():
+    """CLI entry point for 'ttt test'."""
+    parser = argparse.ArgumentParser(
+        prog="ttt test",
+        description="TTT Test Framework — Run OTServ script tests",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  ttt test ./tests
+  ttt test ./tests --pattern test_*.py
+  ttt test tests/test_ttt.py
+  ttt test ./tests --quiet
+        """
+    )
+
+    parser.add_argument(
+        "path",
+        nargs="?",
+        default="tests",
+        help="Test directory or single test file (default: ./tests)"
+    )
+    parser.add_argument(
+        "--pattern",
+        default="test*.py",
+        help="Discovery pattern for test files (default: test*.py)"
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Reduce unittest verbosity"
+    )
+
+    args = parser.parse_args(sys.argv[2:])
+    target_path = os.path.abspath(args.path)
+
+    if not os.path.exists(target_path):
+        print(f"ERROR: Path not found: {target_path}")
+        sys.exit(1)
+
+    try:
+        report = run_tests(
+            test_path=target_path,
+            pattern=args.pattern,
+            verbosity=1 if args.quiet else 2,
+        )
+    except FileNotFoundError as e:
+        print(f"ERROR: {e}")
+        sys.exit(1)
+
+    print()
+    print(format_test_report(report))
+    sys.exit(report.return_code)
 
 
 def cli_mode():
@@ -969,6 +1110,12 @@ def main():
         elif subcommand == "docs":
             docs_cli()
             return
+        elif subcommand == "format":
+            format_cli()
+            return
+        elif subcommand == "test":
+            test_cli()
+            return
         elif subcommand == "convert":
             # Remove the 'convert' subcommand so argparse sees the rest
             sys.argv = [sys.argv[0]] + sys.argv[2:]
@@ -1005,6 +1152,8 @@ def _print_global_help():
         ttt analyze <path> [opts]   Full server analysis and statistics
         ttt doctor <path> [opts]   Health check \u2014 detect broken/conflicting scripts
         ttt docs <path> [opts]     Generate server documentation
+        ttt format <path> [opts]   Format Lua scripts (Prettier-style)
+        ttt test <path> [opts]     Run tests via TTT testing framework
         ttt create [opts]          Generate script skeletons (scaffolding)
 
     Create Options:
@@ -1056,6 +1205,18 @@ def _print_global_help():
         ttt docs <path> --output ./docs    Output directory or file
         ttt docs <path> --serve            Serve HTML docs locally
 
+    Format Options:
+        ttt format <path>          Format Lua file(s) in place
+        ttt format <path> --check  Verify formatting without writing
+        ttt format <path> --config .tttformat.json
+        ttt format <path> --indent-style tabs
+
+    Test Options:
+        ttt test ./tests                 Run discovered tests from directory
+        ttt test tests/test_ttt.py       Run a single test file
+        ttt test ./tests --pattern test_*.py
+        ttt test ./tests --quiet         Reduce unittest verbosity
+
     Examples:
         ttt create --type action --name healing_potion --output ./scripts --format revscript
         ttt create --type npc --name shopkeeper --output ./npc --format tfs1x --params items,gold
@@ -1064,6 +1225,7 @@ def _print_global_help():
         ttt fix ./data/scripts --dry-run --diff
         ttt analyze ./data --format html
         ttt fix ./data/scripts --only deprecated-api deprecated-constant
+        ttt test ./tests
 """)
 def create_cli():
     """CLI handler for 'ttt create' (script scaffolding)."""
