@@ -86,18 +86,15 @@ def interactive_mode():
 
     source_map = {"1": "tfs03", "2": "tfs04", "3": "tfs1x"}
     source_names = {"1": "TFS 0.3.6", "2": "TFS 0.4", "3": "TFS 1.x"}
+    source_num = {v: k for k, v in source_map.items()}  # reverse: tfs03 → "1"
     cfg_source = convert_cfg.get("from", "")
-    cfg_source_hint = (
-        f" [config: {cfg_source}]" if cfg_source in source_map.values() else ""
-    )
+    cfg_source_num = source_num.get(cfg_source, "")
+    cfg_source_hint = f" [press Enter for {cfg_source_num}]" if cfg_source_num else ""
 
     while True:
         choice = input(f"\n  Your choice [1/2/3]{cfg_source_hint}: ").strip()
-        if not choice and cfg_source in source_map.values():
-            source_version = cfg_source
-            src_label = next(v for k, v in source_map.items() if v == cfg_source)
-            print(f"  ✓ Source: {source_names[src_label]}")
-            break
+        if not choice and cfg_source_num:
+            choice = cfg_source_num
         if choice in source_map:
             source_version = source_map[choice]
             print(f"  ✓ Source: {source_names[choice]}")
@@ -128,9 +125,16 @@ def interactive_mode():
     print("  │                                                     │")
     print("  └─────────────────────────────────────────────────────┘")
 
+    cfg_target = convert_cfg.get("to", "")
+    target_num = {v: k for k, v in target_options.items()}  # reverse: revscript → "1"
+    cfg_target_num = target_num.get(cfg_target, "")
+    options_str = "/".join(target_options.keys())
+    cfg_target_hint = f" [press Enter for {cfg_target_num}]" if cfg_target_num else ""
+
     while True:
-        options_str = "/".join(target_options.keys())
-        choice = input(f"\n  Your choice [{options_str}]: ").strip()
+        choice = input(f"\n  Your choice [{options_str}]{cfg_target_hint}: ").strip()
+        if not choice and cfg_target_num:
+            choice = cfg_target_num
         if choice in target_options:
             target_version = target_options[choice]
             tgt_name = VERSIONS.get(target_version, target_version)

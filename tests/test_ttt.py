@@ -592,8 +592,8 @@ class TestHtmlDiff(unittest.TestCase):
         self.assertIn(">1<", html)  # files changed
 
         # Check filter buttons
-        self.assertIn("filterFiles", html)
-        self.assertIn("Changed only", html)
+        self.assertIn("filterNav", html)
+        self.assertIn("Changed", html)
 
     def test_html_generation_to_file(self):
         gen = HtmlDiffGenerator("TFS 0.3", "TFS 1.x", "/in", "/out")
@@ -619,15 +619,22 @@ class TestHtmlDiff(unittest.TestCase):
 
     def test_word_level_diff(self):
         gen = HtmlDiffGenerator("TFS 0.3", "TFS 1.x", "/in", "/out")
+        gen.add_entry(DiffEntry(
+            filename="change.lua",
+            original="doPlayerAddItem(cid, 2160, 1)\n",
+            converted="player:addItem(2160, 1)\n",
+        ))
 
-        left_html, right_html = gen._highlight_word_diff(
-            "doPlayerAddItem(cid, 2160, 1)",
-            "player:addItem(2160, 1)"
-        )
+        html = gen._build_html()
 
-        # Should have word-del and word-add spans
-        self.assertIn("word-del", left_html)
-        self.assertIn("word-add", right_html)
+        # Word-level diff is now handled in JS; check that the JS code is present
+        # and that changed lines are stored in the JSON data block
+        self.assertIn("word-del", html)   # CSS class still in template
+        self.assertIn("word-add", html)   # CSS class still in template
+        self.assertIn("wordDiff", html)   # JS word diff function present
+        # The raw line content should be in the JSON data block
+        self.assertIn("doPlayerAddItem", html)
+        self.assertIn("player:addItem", html)
 
     def test_html_diff_integration(self):
         examples_dir = os.path.join(os.path.dirname(os.path.dirname(
