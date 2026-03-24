@@ -206,23 +206,25 @@ class ConversionEngine:
         self.stats["time_elapsed"] = time.time() - start_time
         self._print_summary()
 
+        html_diff_dir = self.output_dir or self.input_dir
+
         if self.dry_run:
             report_text = self.report.generate_dry_run()
             logger.info("")
             print(report_text)
-            self._guidelines_content = self._generate_oop_guidelines()
+            self._guidelines_content = self._generate_oop_guidelines(html_diff_dir)
         else:
             report_path = os.path.join(self.output_dir, "conversion_report.txt")
             report_text = self.report.generate(report_path)
             logger.info(f"\n  Report saved to: {report_path}")
-            self._guidelines_content = ""
+            self._guidelines_content = self._generate_oop_guidelines(html_diff_dir) if self.html_diff else ""
 
         if self.html_diff:
             self._generate_html_diff()
 
         return self.stats
 
-    def _generate_oop_guidelines(self) -> str:
+    def _generate_oop_guidelines(self, output_dir: str = "") -> str:
         try:
             from .analyzers.lua_oop_analyzer import LuaOopAnalyzer
             from .analyzers.guidelines_generator import GuidelinesGenerator
@@ -253,7 +255,7 @@ class ConversionEngine:
         content = GuidelinesGenerator().generate(analyses, self.report)
 
         guidelines_path = os.path.join(
-            self.input_dir or os.getcwd(), "oop_guidelines.md"
+            output_dir or self.input_dir or os.getcwd(), "llm_refactor_guide.md"
         )
         try:
             with open(guidelines_path, "w", encoding="utf-8") as f:
@@ -261,11 +263,11 @@ class ConversionEngine:
             files_with = sum(1 for a in analyses if a.issues)
             total_issues = sum(len(a.issues) for a in analyses)
             logger.info(
-                f"\n  OOP guidelines saved to: {guidelines_path} "
+                f"\n  LLM refactoring guide saved to: {guidelines_path} "
                 f"({files_with} files, {total_issues} issues)"
             )
         except Exception as e:
-            logger.warning(f"  Could not write OOP guidelines: {e}")
+            logger.warning(f"  Could not write LLM refactoring guide: {e}")
 
         return content
 

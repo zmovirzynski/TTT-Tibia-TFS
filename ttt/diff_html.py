@@ -180,9 +180,9 @@ class HtmlDiffGenerator:
         if self._guidelines_md:
             guidelines_nav = (
                 '<div class="sidebar-nav-title" style="margin-top:12px">Analysis</div>'
-                '<a href="#oop-guidelines" class="nav-item" data-target="oop-guidelines">'
-                '<span class="nav-type" style="background:#1a2a3a;color:#58a6ff">OOP</span>'
-                '<span class="nav-name">Refactoring Guidelines</span>'
+                '<a href="#llm-refactor-guide" class="nav-item" data-target="llm-refactor-guide">'
+                '<span class="nav-type" style="background:#1a2a3a;color:#58a6ff">LLM</span>'
+                '<span class="nav-name">LLM Refactoring Guide</span>'
                 '</a>'
             )
             guidelines_section = _render_guidelines_html(self._guidelines_md)
@@ -266,10 +266,10 @@ class HtmlDiffGenerator:
 def _render_guidelines_html(md: str) -> str:
     """Wrap rendered markdown in a guidelines section div."""
     parts = [
-        '<div class="guidelines-section" id="oop-guidelines">',
+        '<div class="guidelines-section" id="llm-refactor-guide">',
         '<div class="guidelines-header">',
-        '<h2>OOP Refactoring Guidelines</h2>',
-        '<p>Structural analysis of TTT source files for LLM-assisted refactoring</p>',
+        '<h2>LLM Refactoring Guide</h2>',
+        '<p>Per-file analysis and prompts for AI-assisted OOP conversion</p>',
         '</div>',
         '<div class="guidelines-body">',
     ]

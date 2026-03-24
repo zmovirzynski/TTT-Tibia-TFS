@@ -59,7 +59,7 @@ class GuidelinesGenerator:
             conv_info = f"Conversion: {report.source_version} → {report.target_version}  \n"
 
         lines = [
-            "# Lua OOP Refactoring Guidelines",
+            "# LLM Refactoring Guide",
             "",
             f"Generated: {date.today().isoformat()}  ",
             f"{conv_info}Files analyzed: {len(pairs)}  ",
