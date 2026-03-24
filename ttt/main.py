@@ -5,6 +5,7 @@ import sys
 import argparse
 import logging
 
+from .config import load_config
 from .engine import ConversionEngine, VERSIONS, VALID_CONVERSIONS
 from .utils import setup_logging
 from .linter.engine import LintEngine, LintConfig
@@ -67,6 +68,9 @@ def interactive_mode():
     clear_screen()
     print_banner()
 
+    config = load_config()
+    convert_cfg = config.get("convert", {})
+
     print("  Welcome! This tool converts TFS scripts between versions.")
     print("  Just answer a few questions and the conversion will start.\n")
 
@@ -82,9 +86,18 @@ def interactive_mode():
 
     source_map = {"1": "tfs03", "2": "tfs04", "3": "tfs1x"}
     source_names = {"1": "TFS 0.3.6", "2": "TFS 0.4", "3": "TFS 1.x"}
+    cfg_source = convert_cfg.get("from", "")
+    cfg_source_hint = (
+        f" [config: {cfg_source}]" if cfg_source in source_map.values() else ""
+    )
 
     while True:
-        choice = input("\n  Your choice [1/2/3]: ").strip()
+        choice = input(f"\n  Your choice [1/2/3]{cfg_source_hint}: ").strip()
+        if not choice and cfg_source in source_map.values():
+            source_version = cfg_source
+            src_label = next(v for k, v in source_map.items() if v == cfg_source)
+            print(f"  ✓ Source: {source_names[src_label]}")
+            break
         if choice in source_map:
             source_version = source_map[choice]
             print(f"  ✓ Source: {source_names[choice]}")
@@ -132,8 +145,12 @@ def interactive_mode():
     print("  │  (the folder with your current Lua/XML files)      │")
     print("  └─────────────────────────────────────────────────────┘")
 
+    cfg_input = convert_cfg.get("input", "")
+    input_hint = f" [{cfg_input}]" if cfg_input else ""
+
     while True:
-        input_dir = input("\n  Input folder: ").strip().strip('"').strip("'")
+        raw = input(f"\n  Input folder{input_hint}: ").strip().strip('"').strip("'")
+        input_dir = raw or cfg_input
         if os.path.isdir(input_dir):
             input_dir = os.path.abspath(input_dir)
             print(f"  ✓ Input: {input_dir}")
@@ -148,7 +165,8 @@ def interactive_mode():
     print("  │  (where converted files will be saved)             │")
     print("  └─────────────────────────────────────────────────────┘")
 
-    default_output = input_dir + "_converted"
+    cfg_output = convert_cfg.get("output", "")
+    default_output = cfg_output if cfg_output else input_dir + "_converted"
     while True:
         output_input = (
             input(f"\n  Output folder [{default_output}]: ")
@@ -184,9 +202,11 @@ def interactive_mode():
     print("  │                                                     │")
     print("  └─────────────────────────────────────────────────────┘")
 
+    cfg_dry_run = convert_cfg.get("dry_run", False)
+    dr_default_hint = " [config: dry-run]" if cfg_dry_run else ""
     dry_run = False
-    dr_choice = input("\n  Your choice [1/2]: ").strip()
-    if dr_choice == "2":
+    dr_choice = input(f"\n  Your choice [1/2]{dr_default_hint}: ").strip()
+    if dr_choice == "2" or (not dr_choice and cfg_dry_run):
         dry_run = True
         print("  ✓ Mode: Dry-run (preview only)")
     else:
@@ -203,9 +223,11 @@ def interactive_mode():
     print("  │                                                     │")
     print("  └─────────────────────────────────────────────────────┘")
 
+    cfg_html_diff = convert_cfg.get("html_diff", False)
+    hd_default_hint = " [config: yes]" if cfg_html_diff else ""
     html_diff = False
-    hd_choice = input("\n  Your choice [1/2]: ").strip()
-    if hd_choice == "2":
+    hd_choice = input(f"\n  Your choice [1/2]{hd_default_hint}: ").strip()
+    if hd_choice == "2" or (not hd_choice and cfg_html_diff):
         html_diff = True
         print("  ✓ HTML diff: Yes")
     else:
@@ -248,6 +270,9 @@ def interactive_mode():
 
 def lint_cli():
     """CLI entry point for 'ttt lint'."""
+    config = load_config()
+    lint_cfg = config.get("lint", {})
+
     parser = argparse.ArgumentParser(
         prog="ttt lint",
         description="TTT Linter — Static analyzer for TFS/OTServ Lua scripts",
@@ -266,20 +291,20 @@ Examples:
     parser.add_argument(
         "--format",
         choices=["text", "json", "html"],
-        default="text",
+        default=lint_cfg.get("format", "text"),
         help="Output format (default: text)",
     )
     parser.add_argument("--output", "-o", help="Write report to file instead of stdout")
     parser.add_argument(
         "--disable",
         action="append",
-        default=[],
+        default=list(lint_cfg.get("disable", [])),
         help="Disable specific rules (can be used multiple times)",
     )
     parser.add_argument(
         "--enable",
         action="append",
-        default=[],
+        default=list(lint_cfg.get("enable", [])),
         help="Enable only specific rules (can be used multiple times)",
     )
     parser.add_argument(
@@ -289,6 +314,7 @@ Examples:
         "-v",
         "--verbose",
         action="store_true",
+        default=lint_cfg.get("verbose", False),
         help="Show all files including clean ones",
     )
     parser.add_argument(
@@ -377,6 +403,9 @@ Examples:
 
 def fix_cli():
     """CLI entry point for 'ttt fix'."""
+    config = load_config()
+    fix_cfg = config.get("fix", {})
+
     parser = argparse.ArgumentParser(
         prog="ttt fix",
         description="TTT Auto-Fixer — Automatically fix issues in TFS/OTServ Lua scripts",
@@ -398,10 +427,13 @@ Examples:
         """,
     )
 
+    cfg_fix_only = list(fix_cfg.get("only", [])) or None
+
     parser.add_argument("path", help="File or directory to fix")
     parser.add_argument(
         "--dry-run",
         action="store_true",
+        default=fix_cfg.get("dry_run", False),
         help="Preview fixes without writing changes to disk",
     )
     parser.add_argument(
@@ -412,12 +444,14 @@ Examples:
     parser.add_argument(
         "--no-backup",
         action="store_true",
+        default=not fix_cfg.get("backup", True),
         help="Do not create .bak backup files before modifying",
     )
     parser.add_argument(
         "--only",
         nargs="+",
         metavar="RULE",
+        default=cfg_fix_only,
         help="Only apply specific fix rules (e.g. --only deprecated-api deprecated-constant)",
     )
     parser.add_argument(
@@ -507,6 +541,9 @@ Examples:
 
 
 def cli_mode():
+    config = load_config()
+    convert_cfg = config.get("convert", {})
+
     parser = argparse.ArgumentParser(
         description="TTT — TFS Script Converter: Legacy to RevScript Migration Tool",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -526,21 +563,29 @@ Valid conversions:
         """,
     )
 
+    cfg_input = convert_cfg.get("input", "")
+    cfg_source = convert_cfg.get("from", "")
+    cfg_target = convert_cfg.get("to", "")
+
     parser.add_argument(
-        "-i", "--input", required=True, help="Input directory containing TFS scripts"
+        "-i", "--input",
+        required=not bool(cfg_input),
+        default=cfg_input or None,
+        help="Input directory containing TFS scripts",
     )
     parser.add_argument(
         "-o",
         "--output",
         required=False,
-        default="",
+        default=convert_cfg.get("output", ""),
         help="Output directory for converted scripts (optional with --dry-run)",
     )
     parser.add_argument(
         "-f",
         "--from",
         dest="source",
-        required=True,
+        required=not bool(cfg_source),
+        default=cfg_source or None,
         choices=["tfs03", "tfs036", "tfs04", "tfs1x", "tfs1"],
         help="Source TFS version",
     )
@@ -548,21 +593,27 @@ Valid conversions:
         "-t",
         "--to",
         dest="target",
-        required=True,
+        required=not bool(cfg_target),
+        default=cfg_target or None,
         choices=["tfs1x", "revscript"],
         help="Target TFS version",
     )
     parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+        "-v", "--verbose",
+        action="store_true",
+        default=convert_cfg.get("verbose", False),
+        help="Enable verbose logging",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
+        default=convert_cfg.get("dry_run", False),
         help="Analyze scripts without writing files (preview mode)",
     )
     parser.add_argument(
         "--html-diff",
         action="store_true",
+        default=convert_cfg.get("html_diff", False),
         help="Generate an HTML page with side-by-side visual diff (before/after)",
     )
 
@@ -600,6 +651,9 @@ Valid conversions:
 
 def analyze_cli():
     """CLI entry point for 'ttt analyze'."""
+    config = load_config()
+    analyze_cfg = config.get("analyze", {})
+
     parser = argparse.ArgumentParser(
         prog="ttt analyze",
         description="TTT Server Analyzer — Full server analysis and statistics",
@@ -622,11 +676,13 @@ Examples:
         """,
     )
 
+    cfg_only = list(analyze_cfg.get("only", [])) or None
+
     parser.add_argument("path", nargs="?", help="Server data directory to analyze")
     parser.add_argument(
         "--format",
         choices=["text", "json", "html"],
-        default="text",
+        default=analyze_cfg.get("format", "text"),
         help="Output format (default: text)",
     )
     parser.add_argument("--output", "-o", help="Write report to file instead of stdout")
@@ -634,6 +690,7 @@ Examples:
         "--only",
         nargs="+",
         metavar="MODULE",
+        default=cfg_only,
         help="Only run specific modules (e.g. --only stats complexity)",
     )
     parser.add_argument(
@@ -643,6 +700,7 @@ Examples:
         "-v",
         "--verbose",
         action="store_true",
+        default=analyze_cfg.get("verbose", False),
         help="Show verbose output (all details, no truncation)",
     )
     parser.add_argument(
@@ -653,7 +711,7 @@ Examples:
     parser.add_argument(
         "--use-ast",
         action="store_true",
-        default=False,
+        default=analyze_cfg.get("use_ast", False),
         help="Use AST-backed analysis for higher accuracy (requires luaparser).",
     )
 
@@ -711,6 +769,9 @@ Examples:
 
 def doctor_cli():
     """CLI entry point for 'ttt doctor'."""
+    config = load_config()
+    doctor_cfg = config.get("doctor", {})
+
     parser = argparse.ArgumentParser(
         prog="ttt doctor",
         description="TTT Server Doctor \u2014 Health check for OTServ servers",
@@ -746,7 +807,7 @@ Examples:
     parser.add_argument(
         "--format",
         choices=["text", "json", "html"],
-        default="text",
+        default=doctor_cfg.get("format", "text"),
         help="Output format (default: text)",
     )
     parser.add_argument("--output", "-o", help="Write report to file instead of stdout")
@@ -754,7 +815,10 @@ Examples:
         "--no-color", action="store_true", help="Disable colored output"
     )
     parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Show verbose output"
+        "-v", "--verbose",
+        action="store_true",
+        default=doctor_cfg.get("verbose", False),
+        help="Show verbose output",
     )
     parser.add_argument(
         "--list-checks",
@@ -818,6 +882,9 @@ Examples:
 
 def docs_cli():
     """CLI entry point for 'ttt docs'."""
+    config = load_config()
+    docs_cfg = config.get("docs", {})
+
     parser = argparse.ArgumentParser(
         prog="ttt docs",
         description="TTT Docs Generator — Generate server documentation automatically",
@@ -851,27 +918,33 @@ Examples:
     parser.add_argument(
         "--format",
         choices=["text", "markdown", "md", "html", "json"],
-        default="text",
+        default=docs_cfg.get("format", "text"),
         help="Output format (default: text)",
     )
     parser.add_argument(
-        "--output", "-o", help="Output directory (for md/html) or file (for json)"
+        "--output", "-o",
+        default=docs_cfg.get("output") or None,
+        help="Output directory (for md/html) or file (for json)",
     )
     parser.add_argument(
         "--no-color", action="store_true", help="Disable colored output"
     )
     parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Show verbose output"
+        "-v", "--verbose",
+        action="store_true",
+        default=docs_cfg.get("verbose", False),
+        help="Show verbose output",
     )
     parser.add_argument(
         "--serve",
         action="store_true",
+        default=docs_cfg.get("serve", False),
         help="Start a local HTTP server to view HTML docs",
     )
     parser.add_argument(
         "--port",
         type=int,
-        default=8080,
+        default=docs_cfg.get("port", 8080),
         help="Port for local HTTP server (default: 8080)",
     )
 
