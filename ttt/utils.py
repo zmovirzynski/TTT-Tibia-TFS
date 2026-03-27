@@ -50,7 +50,9 @@ def read_file_safe(filepath: str) -> Optional[str]:
     for enc in ("utf-8", "latin-1", "cp1252"):
         try:
             with open(filepath, "r", encoding=enc) as f:
-                return f.read()
+                content = f.read()
+                # Normalize Windows line endings to Unix
+                return content.replace('\r\n', '\n').replace('\r', '\n')
         except (UnicodeDecodeError, UnicodeError):
             continue
         except FileNotFoundError:

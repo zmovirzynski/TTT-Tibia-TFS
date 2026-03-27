@@ -290,18 +290,35 @@ class LuaTransformer:
         wrapper = mapping.get("wrapper")
         note = mapping.get("note")
         custom = mapping.get("custom")
+        chain = mapping.get("chain")  # e.g., ":getId()" to auto-append
+        stub = mapping.get("stub")  # e.g., "needs custom lib: reason" for TTT:STUB flag
+
+        # Build TTT:STUB note if needed
+        stub_note = None
+        if stub:
+            stub_note = f"-- TTT:STUB: {func_name} -- {stub}"
 
         if custom:
-            return self._handle_custom(custom, func_name, args, mapping, var_renames), note
+            result = self._handle_custom(custom, func_name, args, mapping, var_renames)
+            if stub_note:
+                note = stub_note + (f"  {note}" if note else "")
+            return result, note
 
         if method is None:
             # No direct mapping, add a comment
             args_str = ", ".join(args)
+            if stub_note:
+                note = stub_note + (f"  {note}" if note else "")
             return f"{func_name}({args_str})", note
 
         if is_static and static_class:
             args_str = ", ".join(args)
-            return f"{static_class}.{method}({args_str})", note
+            result = f"{static_class}.{method}({args_str})"
+            if chain:
+                result += chain
+            if stub_note:
+                note = stub_note + (f"  {note}" if note else "")
+            return result, note
 
         if obj_param is not None and obj_param < len(args):
             obj_arg = args[obj_param].strip()
@@ -312,7 +329,12 @@ class LuaTransformer:
             remaining = [a for i, a in enumerate(args) if i not in drop_params]
             remaining_str = ", ".join(remaining)
 
-            return f"{obj_var}:{method}({remaining_str})", note
+            result = f"{obj_var}:{method}({remaining_str})"
+            if chain:
+                result += chain
+            if stub_note:
+                note = stub_note + (f"  {note}" if note else "")
+            return result, note
         elif obj_param is None and not is_static:
             args_str = ", ".join(args)
             return f"{func_name}({args_str})", note
