@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(tree:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(git add:*)",
+      "Bash(find:*)",
+      "Bash(pip show:*)",
+      "Bash(git:*)",
+      "Bash(wait)",
+      "Read(//var/home/gaamelu/development/PokeQuest/server/**)",
+      "Read(//var/home/gaamelu/development/PokeQuest/server/data/scripts/**)",
+      "Bash(grep -rh '-- TTT:' /home/gaamelu/development/PokeQuest/server/data-invictus-converted/)",
+      "Bash(grep -oP \"\\\\`[a-zA-Z_][a-zA-Z0-9_]*\\\\`\")",
+      "Bash(tr -d '`')",
+      "Bash(grep -rh registerMethod /home/gaamelu/development/PokeQuest/server/src/lua/functions/ --include=*.cpp)",
+      "Bash(grep -rh lua_register /home/gaamelu/development/PokeQuest/server/src/lua/functions/ --include=*.cpp)"
+    ]
+  }
+}

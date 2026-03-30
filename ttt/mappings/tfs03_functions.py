@@ -36,7 +36,8 @@ PLAYER_GETTERS = {
         "obj_type": "player",
         "obj_param": 0,
         "drop_params": [0],
-        "note": "-- TTT: Returns Vocation object in 1.x. Use :getId() for numeric ID",
+        "chain": ":getId()",
+        "note": "-- TTT: Returns Vocation object, auto-chained :getId() for numeric ID",
     },
     "getPlayerSex": {
         "method": "getSex",
@@ -55,7 +56,8 @@ PLAYER_GETTERS = {
         "obj_type": "player",
         "obj_param": 0,
         "drop_params": [0],
-        "note": "-- TTT: Returns Group object. Use :getId() for numeric ID",
+        "chain": ":getId()",
+        "note": "-- TTT: Returns Group object, auto-chained :getId() for numeric ID",
     },
     "getPlayerAccountId": {
         "method": "getAccountId",
@@ -86,14 +88,16 @@ PLAYER_GETTERS = {
         "obj_type": "player",
         "obj_param": 0,
         "drop_params": [0],
-        "note": "-- TTT: Returns Guild object. Use :getId() for numeric ID",
+        "chain": ":getId()",
+        "note": "-- TTT: Returns Guild object, auto-chained :getId() for numeric ID",
     },
     "getPlayerGuildName": {
         "method": "getGuild",
         "obj_type": "player",
         "obj_param": 0,
         "drop_params": [0],
-        "note": "-- TTT: Returns Guild object. Use :getName() for name",
+        "chain": ":getName()",
+        "note": "-- TTT: Returns Guild object, auto-chained :getName() for name",
     },
     "getPlayerGuildRank": {
         "method": "getGuild",
@@ -138,7 +142,8 @@ PLAYER_GETTERS = {
         "obj_type": "player",
         "obj_param": 0,
         "drop_params": [0],
-        "note": "-- TTT: Returns Town object. Use :getId() for numeric ID",
+        "chain": ":getId()",
+        "note": "-- TTT: Returns Town object, auto-chained :getId() for numeric ID",
     },
     "getPlayerMasterPos": {
         "method": "getTown",
@@ -572,6 +577,12 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
+    "setPlayerStorageValue": {
+        "method": "setStorageValue",
+        "obj_type": "player",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
     "doCreatureSetStorage": {
         "method": "setStorageValue",
         "obj_type": "creature",
@@ -728,6 +739,42 @@ PLAYER_ACTIONS = {
     },
     "doCreatureSetLookDirection": {
         "method": "setDirection",
+        "obj_type": "creature",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "doCreatureSetLookDirOk": {
+        "method": "setDirection",
+        "obj_type": "creature",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "doChangeSpeed": {
+        "method": "changeSpeed",
+        "obj_type": "creature",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "setCreatureMaxHealth": {
+        "method": "setMaxHealth",
+        "obj_type": "creature",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "doCreatureSetHideHealth": {
+        "method": "setHiddenHealth",
+        "obj_type": "creature",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "doCreatureSetNoMove": {
+        "method": "setMoveLocked",
+        "obj_type": "creature",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "doCreatureSetSkullType": {
+        "method": "setSkull",
         "obj_type": "creature",
         "obj_param": 0,
         "drop_params": [0],
@@ -1023,12 +1070,12 @@ GAME_FUNCTIONS = {
         "wrapper": "Position",
     },
     "doSendAnimatedText": {
-        "method": "sendMagicEffect",
+        "method": "sendAnimatedText",
         "obj_type": "position",
         "obj_param": 0,
         "drop_params": [0],
         "wrapper": "Position",
-        "note": "-- TTT: doSendAnimatedText removed in 1.x. Replaced with sendMagicEffect. Review this.",
+        "note": "-- TTT: doSendAnimatedText requires custom implementation in your server (see xtibia.com/topic/240213)",
     },
 
     "getTileItemById": {
@@ -1295,7 +1342,8 @@ GAME_FUNCTIONS = {
         "obj_type": "player",
         "obj_param": 0,
         "drop_params": [0],
-        "note": "-- TTT: returns Town object in 1.x, use :getId() if needed",
+        "chain": ":getId()",
+        "note": "-- TTT: returns Town object, auto-chained :getId()",
     },
     "doPlayerSetBalance": {
         "method": "setBankBalance",
@@ -1311,6 +1359,64 @@ GAME_FUNCTIONS = {
     },
 }
 
+# Game-specific custom functions (PokeInvictus / Pokemon-specific)
+# These require custom lib implementation in the target server
+# They are flagged with TTT:STUB for easy grep and LLM targeting
+
+STUB_FUNCTIONS = {
+    "isWild": {
+        "stub": "needs custom lib: checks if pokemon is wild (storage-based). Suggested: check creature storage value",
+    },
+    "isMega": {
+        "stub": "needs custom lib: checks if pokemon is mega evolved. Suggested: check creature storage value",
+    },
+    "isGod": {
+        "stub": "needs custom lib: checks player access level. Suggested: player:hasGroupFlag(PlayerFlag_IsAdmin)",
+    },
+    "getSubName": {
+        "stub": "needs custom lib: reads pokemon subspecies name from custom storage",
+    },
+    "getRealCreatureName": {
+        "stub": "needs custom lib: gets display name stripping suffixes",
+    },
+    "isSleeping": {
+        "stub": "needs custom lib: checks sleeping condition via creature storage",
+    },
+    "doDanoWithProtect": {
+        "stub": "needs custom lib: wraps doAreaCombatHealth/doTargetCombatHealth with protection logic",
+    },
+    "doDanoInTargetWithDelay": {
+        "stub": "needs custom lib: delayed combat wrapper with addEvent",
+    },
+    "doCorrectString": {
+        "stub": "needs custom lib: string normalization (trim, lower, etc.)",
+    },
+    "getCreatureDirectionToTarget": {
+        "stub": "needs custom lib: computes direction from position delta",
+    },
+    "getDataInt": {
+        "stub": "needs custom lib: reads integer from DB. Suggested: use db.storeQuery",
+    },
+    "getResult": {
+        "stub": "needs custom lib: DB result helper. Suggested: use db.storeQuery result handling",
+    },
+    "doTeleportThingOk": {
+        "stub": "needs custom lib: same as doTeleportThing but returns status boolean",
+    },
+    "doRegainSpeed": {
+        "stub": "needs custom lib: restores speed. Suggested: creature:changeSpeed(+delta)",
+    },
+    "doMoveInAreaMulti": {
+        "stub": "needs custom lib: moves items in area. No direct 1.x equivalent",
+    },
+    "doSendMsg": {
+        "stub": "needs custom lib: broadcast helper. Suggested: wrapper around creature:say or sendTextMessage",
+    },
+    "getID": {
+        "stub": "needs custom lib: returns item unique ID. Suggested: item:getUniqueId()",
+    },
+}
+
 # Combine all mappings
 
 TFS03_TO_1X = {}
@@ -1318,3 +1424,4 @@ TFS03_TO_1X.update(PLAYER_GETTERS)
 TFS03_TO_1X.update(PLAYER_ACTIONS)
 TFS03_TO_1X.update(ITEM_FUNCTIONS)
 TFS03_TO_1X.update(GAME_FUNCTIONS)
+TFS03_TO_1X.update(STUB_FUNCTIONS)

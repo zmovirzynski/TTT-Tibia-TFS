@@ -206,23 +206,25 @@ class ConversionEngine:
         self.stats["time_elapsed"] = time.time() - start_time
         self._print_summary()
 
+        html_diff_dir = self.output_dir or self.input_dir
+
         if self.dry_run:
             report_text = self.report.generate_dry_run()
             logger.info("")
             print(report_text)
-            self._guidelines_content = self._generate_oop_guidelines()
+            self._guidelines_content = self._generate_oop_guidelines(html_diff_dir)
         else:
             report_path = os.path.join(self.output_dir, "conversion_report.txt")
             report_text = self.report.generate(report_path)
             logger.info(f"\n  Report saved to: {report_path}")
-            self._guidelines_content = ""
+            self._guidelines_content = self._generate_oop_guidelines(html_diff_dir) if self.html_diff else ""
 
         if self.html_diff:
             self._generate_html_diff()
 
         return self.stats
 
-    def _generate_oop_guidelines(self) -> str:
+    def _generate_oop_guidelines(self, output_dir: str = "") -> str:
         try:
             from .analyzers.lua_oop_analyzer import LuaOopAnalyzer
             from .analyzers.guidelines_generator import GuidelinesGenerator
@@ -240,22 +242,32 @@ class ConversionEngine:
                 else os.path.basename(fr.source_path)
             )
             if rel.endswith(".lua"):
-                analyses.append(analyzer.analyze_content(fr.original_content, rel))
+                analysis = analyzer.analyze_content(fr.original_content, rel)
+                # Enrich with AST metrics for more accurate LLM guidelines
+                try:
+                    from .analyzers.ast_enricher import enrich_analysis
+
+                    enrich_analysis(analysis, fr.original_content)
+                except Exception:
+                    pass  # AST enrichment is optional; continue without it
+                analyses.append(analysis)
 
         content = GuidelinesGenerator().generate(analyses, self.report)
 
-        guidelines_path = os.path.join(self.input_dir or os.getcwd(), "oop_guidelines.md")
+        guidelines_path = os.path.join(
+            output_dir or self.input_dir or os.getcwd(), "llm_refactor_guide.md"
+        )
         try:
             with open(guidelines_path, "w", encoding="utf-8") as f:
                 f.write(content)
             files_with = sum(1 for a in analyses if a.issues)
             total_issues = sum(len(a.issues) for a in analyses)
             logger.info(
-                f"\n  OOP guidelines saved to: {guidelines_path} "
+                f"\n  LLM refactoring guide saved to: {guidelines_path} "
                 f"({files_with} files, {total_issues} issues)"
             )
         except Exception as e:
-            logger.warning(f"  Could not write OOP guidelines: {e}")
+            logger.warning(f"  Could not write LLM refactoring guide: {e}")
 
         return content
 
@@ -314,11 +326,31 @@ class ConversionEngine:
         diff_gen.generate(html_path)
         logger.info(f"\n  HTML diff saved to: {html_path}")
 
+    def _component_out_dir(self, scripts_dir: Optional[str], name: str, revscript_dir: str) -> str:
+        """Return the output dir for a component's converted scripts.
+
+        When the input_dir IS the component folder (e.g. converting
+        data-invictus/creaturescripts/ directly), the scripts_dir sits at
+        input_dir/scripts/ — so we should NOT append the component name again.
+        When input_dir is a parent folder, scripts_dir lives at
+        input_dir/<name>/scripts/ and we DO need the extra level.
+        """
+        if not revscript_dir:
+            return ""
+        if scripts_dir:
+            rel = os.path.relpath(scripts_dir, self.input_dir)
+            first = rel.split(os.sep)[0]
+            if first != name:
+                # Already inside the component folder — no extra nesting
+                return revscript_dir
+        return os.path.join(revscript_dir, name)
+
     def _convert_xml_to_revscript(
         self, scan: ScanResult, transformer: Optional[LuaTransformer]
     ):
+        ast_transformer = self._select_transformer(transformer)
         converter = XmlToRevScriptConverter(
-            lua_transformer=transformer, dry_run=self.dry_run
+            lua_transformer=ast_transformer, dry_run=self.dry_run
         )
         revscript_dir = (
             os.path.join(self.output_dir, "scripts") if self.output_dir else ""
@@ -329,31 +361,31 @@ class ConversionEngine:
                 scan.actions_xml,
                 scan.actions_dir,
                 "actions",
-                os.path.join(revscript_dir, "actions") if revscript_dir else "",
+                self._component_out_dir(scan.actions_dir, "actions", revscript_dir),
             ),
             (
                 scan.movements_xml,
                 scan.movements_dir,
                 "movements",
-                os.path.join(revscript_dir, "movements") if revscript_dir else "",
+                self._component_out_dir(scan.movements_dir, "movements", revscript_dir),
             ),
             (
                 scan.talkactions_xml,
                 scan.talkactions_dir,
                 "talkactions",
-                os.path.join(revscript_dir, "talkactions") if revscript_dir else "",
+                self._component_out_dir(scan.talkactions_dir, "talkactions", revscript_dir),
             ),
             (
                 scan.creaturescripts_xml,
                 scan.creaturescripts_dir,
                 "creaturescripts",
-                os.path.join(revscript_dir, "creaturescripts") if revscript_dir else "",
+                self._component_out_dir(scan.creaturescripts_dir, "creaturescripts", revscript_dir),
             ),
             (
                 scan.globalevents_xml,
                 scan.globalevents_dir,
                 "globalevents",
-                os.path.join(revscript_dir, "globalevents") if revscript_dir else "",
+                self._component_out_dir(scan.globalevents_dir, "globalevents", revscript_dir),
             ),
         ]
 
@@ -441,7 +473,9 @@ class ConversionEngine:
                 logger.info("  Falling back to regex transformer")
 
         if AST_AVAILABLE:
-            logger.info("  AST transformer available - using with defensive programming")
+            logger.info(
+                "  AST transformer available - using with defensive programming"
+            )
         else:
             logger.info("  AST transformer not available - using regex transformer")
         return transformer
@@ -450,8 +484,13 @@ class ConversionEngine:
         """Return set of normalized directory paths already handled by XML conversion."""
         handled = set()
         for attr in (
-            "actions_dir", "movements_dir", "talkactions_dir",
-            "creaturescripts_dir", "globalevents_dir", "npc_dir", "npc_scripts_dir",
+            "actions_dir",
+            "movements_dir",
+            "talkactions_dir",
+            "creaturescripts_dir",
+            "globalevents_dir",
+            "npc_dir",
+            "npc_scripts_dir",
         ):
             dir_path = getattr(scan, attr)
             if dir_path:
@@ -469,7 +508,9 @@ class ConversionEngine:
             fr.signatures_updated = ast_transformer.stats.get("signatures_updated", 0)
             fr.constants_replaced = ast_transformer.stats.get("constants_replaced", 0)
             fr.variables_renamed = ast_transformer.stats.get("variables_renamed", 0)
-            fr.defensive_checks_added = ast_transformer.stats.get("defensive_checks_added", 0)
+            fr.defensive_checks_added = ast_transformer.stats.get(
+                "defensive_checks_added", 0
+            )
             fr.warnings = list(ast_transformer.warnings)
 
             if hasattr(ast_transformer, "warnings") and any(
@@ -489,8 +530,12 @@ class ConversionEngine:
 
             if summary != "No changes":
                 logger.info(f"  {rel}: {summary}")
-                self.stats["total_functions_converted"] += ast_transformer.stats.get("functions_converted", 0)
-                self.stats["defensive_checks_added"] += ast_transformer.stats.get("defensive_checks_added", 0)
+                self.stats["total_functions_converted"] += ast_transformer.stats.get(
+                    "functions_converted", 0
+                )
+                self.stats["defensive_checks_added"] += ast_transformer.stats.get(
+                    "defensive_checks_added", 0
+                )
             else:
                 logger.debug(f"  {rel}: No changes needed")
 
@@ -519,7 +564,10 @@ class ConversionEngine:
         converted = 0
         for lua_file in scan.lua_files:
             file_dir = os.path.normpath(os.path.dirname(lua_file))
-            if any(file_dir.startswith(hd) for hd in handled_dirs) and self.target_version == "revscript":
+            if (
+                any(file_dir.startswith(hd) for hd in handled_dirs)
+                and self.target_version == "revscript"
+            ):
                 continue
 
             content = read_file_safe(lua_file)

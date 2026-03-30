@@ -1,0 +1,107 @@
+# TTT — TFS Script Transpiler Configuration
+# This file is optional. CLI arguments always take precedence over values here.
+# Requires Python 3.11+ (uses stdlib tomllib). Ignored silently on older versions.
+#
+# Place this file at your project root and customize as needed.
+
+# ---------------------------------------------------------------------------
+# ttt convert — Script conversion settings
+# ---------------------------------------------------------------------------
+[convert]
+# Source TFS version: tfs03, tfs036, tfs04, tfs1x
+from = "tfs03"
+
+# Target TFS version: tfs1x, revscript
+to = "revscript"
+
+# Input directory containing TFS scripts
+input = "/path/to/your/tfs/scripts/"
+
+# Output directory for converted scripts (leave empty to use --dry-run or prompt)
+output = "/path/to/your/converted/scripts/"
+
+# Preview mode: analyze without writing any files
+dry_run = false
+
+# Generate a side-by-side HTML visual diff after conversion
+html_diff = true
+
+# Enable verbose logging
+verbose = true
+
+# ---------------------------------------------------------------------------
+# ttt lint — Static analysis settings
+# ---------------------------------------------------------------------------
+[lint]
+# Rule IDs to disable (e.g. ["deprecated-api", "hardcoded-id"])
+disable = []
+
+# Rule IDs to enable exclusively (empty list = all rules enabled)
+enable = []
+
+# Output format: text, json, html
+format = "text"
+
+# Show all files including clean ones
+verbose = false
+
+# ---------------------------------------------------------------------------
+# ttt analyze — Full server analysis settings
+# ---------------------------------------------------------------------------
+[analyze]
+# Analysis modules to run (empty = all modules)
+# Options: stats, dead_code, duplicates, storage, item_usage, complexity
+only = []
+
+# Output format: text, json, html
+format = "text"
+
+# Show verbose output (all details, no truncation)
+verbose = false
+
+# Use AST-backed analysis for higher accuracy (requires luaparser)
+use_ast = false
+
+# ---------------------------------------------------------------------------
+# ttt fix — Auto-fixer settings
+# ---------------------------------------------------------------------------
+[fix]
+# Preview fixes without writing any changes
+dry_run = true
+
+# Create .bak backup files before modifying scripts
+backup = false
+
+# Fix rules to apply (empty = all fixable rules)
+# Options: deprecated-api, missing-return, global-variable-leak,
+#          deprecated-constant, invalid-callback-signature
+only = []
+
+# ---------------------------------------------------------------------------
+# ttt doctor — Health check settings
+# ---------------------------------------------------------------------------
+[doctor]
+# Output format: text, json, html
+format = "text"
+
+# Show verbose output
+verbose = false
+
+# ---------------------------------------------------------------------------
+# ttt docs — Documentation generator settings
+# ---------------------------------------------------------------------------
+[docs]
+# Output format: text, markdown, html, json
+format = "text"
+
+# Output directory (for markdown/html) or file (for json)
+output = ""
+
+# Start a local HTTP server after generating HTML docs
+serve = false
+
+# Port for local HTTP server
+port = 8080
+
+# Show verbose output
+verbose = false

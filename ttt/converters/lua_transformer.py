@@ -253,26 +253,40 @@ class LuaTransformer:
                 search_start = paren_end + 1
                 continue
 
-            full_replacement = replacement
             if note:
-                # Add note on the line before
-                # Find start of current line
-                line_start = code.rfind("\n", 0, call_start)
-                indent = ""
-                if line_start != -1:
-                    line_text = code[line_start + 1:call_start]
-                    indent = ""
-                    for ch in line_text:
-                        if ch in (" ", "\t"):
-                            indent += ch
-                        else:
-                            break
-                # We'll add the note as inline comment after the replacement
-                full_replacement = replacement + "  " + note
-
-            result.append(code[last_end:call_start])
-            result.append(full_replacement)
-            last_end = paren_end + 1
+                # Add note at end of line, but only if the call is at statement level
+                # (i.e., not inside an expression like an if condition)
+                # Check if this is a statement-level call by looking at what follows
+                after_call = code[paren_end + 1:call_start + 80]  # Look ahead
+                # If followed by operator or comma, it's part of an expression - skip the note
+                is_expression_context = False
+                for ch in after_call:
+                    if ch in '+-*/%=<>~!&|':
+                        is_expression_context = True
+                        break
+                    elif ch not in ' \t\n\r':
+                        break
+                
+                if not is_expression_context:
+                    # Add note at end of line
+                    line_end = code.find("\n", paren_end)
+                    if line_end == -1:
+                        line_end = len(code)
+                    # Insert note before the line end
+                    result.append(code[last_end:call_start])
+                    result.append(replacement)
+                    result.append("  ")
+                    result.append(note)
+                    last_end = paren_end + 1
+                else:
+                    # In expression context - don't add note to avoid breaking syntax
+                    result.append(code[last_end:call_start])
+                    result.append(replacement)
+                    last_end = paren_end + 1
+            else:
+                result.append(code[last_end:call_start])
+                result.append(replacement)
+                last_end = paren_end + 1
             search_start = last_end
             self.stats["functions_converted"] += 1
 
@@ -290,18 +304,35 @@ class LuaTransformer:
         wrapper = mapping.get("wrapper")
         note = mapping.get("note")
         custom = mapping.get("custom")
+        chain = mapping.get("chain")  # e.g., ":getId()" to auto-append
+        stub = mapping.get("stub")  # e.g., "needs custom lib: reason" for TTT:STUB flag
+
+        # Build TTT:STUB note if needed
+        stub_note = None
+        if stub:
+            stub_note = f"-- TTT:STUB: {func_name} -- {stub}"
 
         if custom:
-            return self._handle_custom(custom, func_name, args, mapping, var_renames), note
+            result = self._handle_custom(custom, func_name, args, mapping, var_renames)
+            if stub_note:
+                note = stub_note + (f"  {note}" if note else "")
+            return result, note
 
         if method is None:
             # No direct mapping, add a comment
             args_str = ", ".join(args)
+            if stub_note:
+                note = stub_note + (f"  {note}" if note else "")
             return f"{func_name}({args_str})", note
 
         if is_static and static_class:
             args_str = ", ".join(args)
-            return f"{static_class}.{method}({args_str})", note
+            result = f"{static_class}.{method}({args_str})"
+            if chain:
+                result += chain
+            if stub_note:
+                note = stub_note + (f"  {note}" if note else "")
+            return result, note
 
         if obj_param is not None and obj_param < len(args):
             obj_arg = args[obj_param].strip()
@@ -312,7 +343,12 @@ class LuaTransformer:
             remaining = [a for i, a in enumerate(args) if i not in drop_params]
             remaining_str = ", ".join(remaining)
 
-            return f"{obj_var}:{method}({remaining_str})", note
+            result = f"{obj_var}:{method}({remaining_str})"
+            if chain:
+                result += chain
+            if stub_note:
+                note = stub_note + (f"  {note}" if note else "")
+            return result, note
         elif obj_param is None and not is_static:
             args_str = ", ".join(args)
             return f"{func_name}({args_str})", note
