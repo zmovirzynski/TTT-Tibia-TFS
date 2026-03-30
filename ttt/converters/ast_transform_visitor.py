@@ -500,7 +500,7 @@ class ASTTransformVisitor(ast.ASTVisitor):
                 # Replace with Class.method(args)
                 node.func = Index(
                     value=Name(static_class),
-                    idx=Name(method_name),
+                    idx=String(method_name),
                 )
 
                 self.stats["functions_converted"] += 1
