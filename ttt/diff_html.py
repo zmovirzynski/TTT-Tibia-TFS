@@ -212,8 +212,8 @@ class HtmlDiffGenerator:
                 '<span class="nav-name">LLM Refactoring Guide</span>'
                 '</a>'
             )
-            guidelines_data = _safe_json(
-                _render_guidelines_html(self._guidelines_md)
+            guidelines_data = json.dumps(
+                _render_guidelines_html(self._guidelines_md), ensure_ascii=False
             )
         else:
             guidelines_nav = ""
@@ -231,7 +231,7 @@ class HtmlDiffGenerator:
             total_changes=total_changes,
             nav_items="\n".join(nav_items_html),
             guidelines_nav=guidelines_nav,
-            file_data_json=_safe_json(file_data),
+            file_data_json=json.dumps(file_data, ensure_ascii=False),
             guidelines_data=guidelines_data,
             auto_select=auto_select,
         )
@@ -310,17 +310,6 @@ _LARGE_FILE_THRESHOLD = 1500
 
 def _esc(text: str) -> str:
     return html.escape(str(text))
-
-
-def _safe_json(obj) -> str:
-    """Serialize obj to JSON safe for embedding inside an HTML <script> block.
-
-    The HTML parser terminates a <script> tag at the first </  sequence it sees
-    (e.g. </script>), regardless of whether it is inside a string literal.
-    Replacing </ with <\\/ is valid JSON (forward-slash may always be escaped)
-    and prevents the parser from closing the tag prematurely.
-    """
-    return json.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
 
 
 # ── HTML Template ──────────────────────────────────────────────────────────
