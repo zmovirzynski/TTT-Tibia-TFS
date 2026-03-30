@@ -164,29 +164,19 @@ class HtmlDiffGenerator:
             if has_changes and not first_changed_id:
                 first_changed_id = file_id
 
-            compact_diff = self._compact_diff(
-                self._compute_diff_lines(entry.original, entry.converted)
-            ) if has_changes else None
-
-            line_count = len(compact_diff) if compact_diff else 0
-            is_large = line_count > _LARGE_FILE_THRESHOLD
-
-            large_indicator = (
-                f'<span class="nav-large" title="Large file ({line_count} diff lines) — may be slow to render">⚠</span>'
-                if is_large else ""
-            )
-
             nav_items_html.append(
                 f'<a href="#{file_id}" class="nav-item" data-id="{file_id}"'
                 f' data-changed="{str(has_changes).lower()}"'
-                f' title="{_esc(entry.filename)}"'
                 f' onclick="return selectFile(\'{file_id}\')">'
                 f'<span class="nav-type {_esc(entry.file_type)}">{_esc(type_label)}</span>'
                 f'<span class="nav-name">{_esc(entry.filename)}</span>'
-                f'{large_indicator}'
                 f'<span class="nav-badge {badge_class}">{badge_text}</span>'
                 f'</a>'
             )
+
+            compact_diff = self._compact_diff(
+                self._compute_diff_lines(entry.original, entry.converted)
+            ) if has_changes else None
 
             file_data[file_id] = {
                 "fn": entry.filename,
@@ -196,7 +186,6 @@ class HtmlDiffGenerator:
                 "fc": entry.functions_converted,
                 "tc": entry.total_changes,
                 "hc": has_changes,
-                "lc": line_count,
                 "dl": compact_diff,
             }
 
@@ -302,10 +291,6 @@ def _md_inline(text: str) -> str:
     text = _re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = _re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
     return text
-
-
-# Files with more diff lines than this threshold get a warning before rendering
-_LARGE_FILE_THRESHOLD = 1500
 
 
 def _esc(text: str) -> str:
@@ -417,14 +402,6 @@ body {{ background:var(--bg-dark); color:var(--text); font-family:var(--font-san
 .diff-add .diff-marker {{ color:#3fb950; }}
 .word-del {{ background:var(--red-word); border-radius:2px; padding:0 1px; }}
 .word-add {{ background:var(--green-word); border-radius:2px; padding:0 1px; }}
-.nav-large {{ font-size:10px; color:#d29922; flex-shrink:0; margin-right:-2px; }}
-.large-warning {{ background:var(--bg-card); border:1px solid #d2992255; border-radius:8px; padding:40px 32px; text-align:center; }}
-.large-warning-icon {{ font-size:36px; margin-bottom:12px; }}
-.large-warning-title {{ font-family:var(--font-mono); font-size:13px; color:var(--text); margin-bottom:8px; word-break:break-all; }}
-.large-warning-msg {{ font-size:13px; color:var(--text-muted); margin-bottom:20px; }}
-.large-warning-msg strong {{ color:#d29922; }}
-.render-btn {{ background:#d2992222; border:1px solid #d2992255; color:#d29922; padding:8px 20px; border-radius:6px; cursor:pointer; font-size:13px; font-family:var(--font-sans); transition:all 0.15s; }}
-.render-btn:hover {{ background:#d2992244; }}
 .footer {{ margin-top:32px; padding-top:16px; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:12px; }}
 @media (max-width:900px) {{ .sidebar {{ display:none; }} .main {{ padding:12px; }} }}
 .guidelines-section {{ background:var(--bg-card); border:1px solid var(--border); border-radius:8px; margin-bottom:20px; overflow:hidden; }}
@@ -493,7 +470,6 @@ var FILES = JSON.parse(document.getElementById('file-data').textContent);
 var GUIDELINES = {guidelines_data};
 var SRC = '{source_version}';
 var TGT = '{target_version}';
-var LARGE_THRESHOLD = 1500;
 
 // ── Utilities ────────────────────────────────────────────────────────────
 
@@ -615,25 +591,8 @@ function selectFile(fileId) {{
   document.querySelectorAll('.nav-item').forEach(function(n) {{ n.classList.remove('active'); }});
   var nav = document.querySelector('[data-id="' + fileId + '"]');
   if (nav) nav.classList.add('active');
-  if (data.hc && data.lc > LARGE_THRESHOLD) {{
-    document.getElementById('file-view').innerHTML = renderLargeWarning(fileId, data);
-  }} else {{
-    document.getElementById('file-view').innerHTML = renderFileCard(fileId, data);
-  }}
+  document.getElementById('file-view').innerHTML = renderFileCard(fileId, data);
   return false;
-}}
-
-function renderLargeWarning(fileId, data) {{
-  return '<div class="large-warning">' +
-    '<div class="large-warning-icon">⚠</div>' +
-    '<div class="large-warning-title">' + esc(data.fn) + '</div>' +
-    '<div class="large-warning-msg">This file has <strong>' + data.lc + ' diff lines</strong> and may cause rendering lag.</div>' +
-    '<button class="render-btn" onclick="forceRender(\'' + fileId + '\')">Render anyway</button>' +
-    '</div>';
-}}
-
-function forceRender(fileId) {{
-  document.getElementById('file-view').innerHTML = renderFileCard(fileId, FILES[fileId]);
 }}
 
 function selectGuide() {{
