@@ -6,6 +6,7 @@
 [![Python 3.7+](https://img.shields.io/badge/python-3.7%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)]()
+[![Optional: luaparser](https://img.shields.io/badge/optional-luaparser-orange.svg)]()
 [![Tests](https://img.shields.io/badge/tests-259%20passing-brightgreen.svg)]()
 
 ---
@@ -35,8 +36,9 @@
 - **23 assinaturas de callback** convertidas (`onUse(cid, item, ...)` -> `onUse(player, item, ...)`)
 - **XML -> RevScript** — Converte actions, movements, talkactions, creaturescripts, globalevents
 - **NPC Scripts** — Converte scripts de NPC (XML metadata + Lua com API antiga)
-- **Diff visual (HTML)** — Página HTML interativa com diferenças lado a lado (antes/depois) via `--html-diff`
+- **Diff visual (HTML)** — Página HTML interativa com diferenças lado a lado (antes/depois) via `--html-diff`. Inclui renderização on-demand, tooltips de filename e aviso de arquivos grandes
 - **Relatório de conversão** — `conversion_report.txt` com estatísticas detalhadas e score de confiança
+- **Conversão baseada em AST** — Usa `luaparser` para análise precisa de escopo e transformações mais confiáveis
 
 ### Linter (`ttt lint`)
 
@@ -172,7 +174,7 @@ end
 ### Geral
 
 - **Modo dry-run** — Analisa scripts sem escrever arquivos (preview seguro)
-- **Zero dependências** — Usa apenas a biblioteca padrão do Python
+- **Zero dependências obrigatórias** — Usa apenas a biblioteca padrão do Python (luaparser opcional para modo AST)
 - **Cross-platform** — Windows, Linux, macOS
 - **259 testes unitários** — Cobertura completa de conversão, linter, fixer, analyzer e doctor
 
@@ -216,13 +218,17 @@ end
 
 ## Requisitos
 
-- Python 3.7+
+- Python 3.7+ (Python 3.11+ recomendado para suporte a `config.toml`)
+- `luaparser` (opcional, para modo AST com análise de escopo)
 
 ## Instalação
 
 ```bash
 git clone https://github.com/zmovirzynski/TTT-Tibia-TFS-Transpiler.git
 cd TTT-Tibia-TFS-Transpiler
+
+# (Opcional) Instalar luaparser para modo AST
+pip install luaparser
 ```
 
 Ou como pacote:
@@ -233,6 +239,59 @@ ttt  # executa o conversor
 ```
 
 ---
+
+## Configuração via Arquivo (`config.toml`)
+
+O TTT suporta configuração via arquivo TOML (requer Python 3.11+). Coloque um arquivo `config.toml` na raiz do projeto ou use `config.example.toml` como template:
+
+```toml
+[convert]
+from = "tfs03"
+to = "revscript"
+input = "/path/to/your/tfs/scripts/"
+output = "/path/to/your/converted/scripts/"
+dry_run = false
+html_diff = true
+verbose = true
+
+[lint]
+disable = []
+format = "text"
+
+[analyze]
+only = []
+format = "text"
+use_ast = false
+
+[fix]
+dry_run = true
+backup = false
+
+[doctor]
+format = "text"
+
+[docs]
+format = "text"
+serve = false
+port = 8080
+```
+
+**Prioridade:** CLI arguments > `config.toml` > valores padrão.
+
+## Comandos Make (Makefile)
+
+O projeto inclui um `Makefile` com comandos comuns:
+
+```bash
+make convert    # Executa conversão usando config.toml
+make lint p=./data/scripts       # Executa linter
+make fix p=./data/scripts        # Executa auto-fixer
+make analyze p=./data            # Análise completa
+make doctor p=./data             # Health check
+make docs p=./data               # Gera documentação
+make test                        # Roda testes
+make help                        # Ajuda
+```
 
 ## Uso Rápido
 
@@ -820,6 +879,11 @@ Gera uma página HTML standalone (`conversion_diff.html`) com:
 
 O HTML é 100% self-contained (zero dependências externas). Basta abrir no navegador.
 
+**Recursos do diff HTML:**
+- **Renderização on-demand** — Arquivos grandes são renderizados sob demanda para evitar lag
+- **Tooltips de filename** — Passe o mouse sobre os nomes de arquivo no sidebar para ver o caminho completo
+- **Aviso de arquivos grandes** — Alerta quando há arquivos que podem causar lentidão
+
 Também funciona em modo dry-run: `--dry-run --html-diff`
 
 ---
@@ -828,7 +892,7 @@ Também funciona em modo dry-run: `--dry-run --html-diff`
 
 | Limitação | Detalhes |
 |-----------|----------|
-| Não é um parser Lua completo | Usa regex com tratamento de strings/comentários — cobre 95%+ dos casos reais |
+| Modo AST requer luaparser | Instale `pip install luaparser` para análise de escopo e transformações mais precisas |
 | Funções customizadas do servidor | Funções que não fazem parte da API padrão do TFS precisam de ajuste manual |
 | Lógica complexa em tabelas | Tabelas Lua com metatabelas ou closures complexos podem precisar de revisão |
 | SQL / banco de dados | Queries `db.query()` e `db.storeQuery()` não são convertidas |
@@ -843,6 +907,8 @@ Também funciona em modo dry-run: `--dry-run --html-diff`
 TTT-Tibia-TFS-Transpiler/
 ├── run.py                  # Ponto de entrada
 ├── setup.py                # Configuração do pacote
+├── Makefile                # Comandos comuns (convert, lint, fix, test)
+├── config.example.toml     # Template de configuração (Python 3.11+)
 ├── .tttlint.json           # Configuração do linter (regras, severidades)
 ├── ttt/
 │   ├── __init__.py         # Versão e metadados
@@ -859,9 +925,10 @@ TTT-Tibia-TFS-Transpiler/
 │   │   ├── signatures.py        # 23 assinaturas de callback
 │   │   └── xml_events.py        # Definições XML -> RevScript
 │   ├── converters/
-│   │   ├── lua_transformer.py   # Motor de transformação Lua
-│   │   ├── xml_to_revscript.py  # Conversor XML+Lua -> RevScript
-│   │   └── npc_converter.py     # Conversor de scripts NPC
+│   │   ├── ast_lua_transformer.py  # Transformador principal (AST-based, requer luaparser)
+│   │   ├── lua_transformer.py      # Transformador regex (fallback)
+│   │   ├── xml_to_revscript.py     # Conversor XML+Lua -> RevScript
+│   │   └── npc_converter.py        # Conversor de scripts NPC
 │   ├── linter/
 │   │   ├── __init__.py          # Exports do módulo linter
 │   │   ├── engine.py            # Motor de análise (LintEngine)
@@ -890,8 +957,9 @@ TTT-Tibia-TFS-Transpiler/
 │   ├── test_fixer.py        # 54 testes do fixer
 │   ├── test_analyzer.py     # 43 testes do analyzer
 │   └── test_doctor.py       # 43 testes do doctor
-└── examples/
-    └── tfs03_input/         # Scripts de exemplo TFS 0.3
+├── examples/
+│   └── tfs03_input/         # Scripts de exemplo TFS 0.3
+└── poc_ast/                 # Provas de conceito AST (exemplos/experimentos)
 ```
 
 ---
