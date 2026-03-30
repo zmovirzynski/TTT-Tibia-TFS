@@ -15,10 +15,10 @@ from = "tfs03"
 to = "revscript"
 
 # Input directory containing TFS scripts
-input = "/home/gaamelu/development/pokemon-invictus/PokeInvictus/data/"
+input = "/path/to/your/tfs/scripts/"
 
 # Output directory for converted scripts (leave empty to use --dry-run or prompt)
-output = "/home/gaamelu/development/PokeQuest/server/data-invictus-converted/"
+output = "/path/to/your/converted/scripts/"
 
 # Preview mode: analyze without writing any files
 dry_run = false
@@ -98,7 +98,7 @@ format = "text"
 output = ""
 
 # Start a local HTTP server after generating HTML docs
-serve = true
+serve = false
 
 # Port for local HTTP server
 port = 8080

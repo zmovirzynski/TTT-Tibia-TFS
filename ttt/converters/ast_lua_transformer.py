@@ -125,29 +125,21 @@ class ASTLuaTransformer:
         self.warnings = []
         self._reset_stats()
 
-        # Check if luaparser is available
         if not LUAPARSER_AVAILABLE:
-            logger.warning("luaparser not available, using regex transformer")
-            self.warnings.append("luaparser not available. Used regex fallback.")
-            return self._transform_with_regex(code, filename)
+            logger.error("luaparser not available — AST transformation skipped")
+            self.warnings.append("luaparser not available. File left unchanged.")
+            return code
 
         try:
             return self._transform_with_ast(code, filename)
-        except ImportError as e:
-            # luaparser not available or missing components
-            logger.warning(f"luaparser import error for {filename}: {e}")
-            self.warnings.append(f"luaparser import error: {e}. Used regex fallback.")
-            return self._transform_with_regex(code, filename)
         except SyntaxError as e:
-            # Invalid Lua syntax that parser can't handle
-            logger.warning(f"Syntax error in {filename}: {e}")
-            self.warnings.append(f"Syntax error: {e}. Used regex fallback.")
-            return self._transform_with_regex(code, filename)
+            logger.warning(f"Syntax error in {filename}: {e} — file left unchanged")
+            self.warnings.append(f"Syntax error: {e}. File left unchanged.")
+            return code
         except Exception as e:
-            # Any other error during AST transformation
-            logger.error(f"AST transformation error in {filename}: {e}")
-            self.warnings.append(f"AST transformation error: {e}. Used regex fallback.")
-            return self._transform_with_regex(code, filename)
+            logger.error(f"AST transformation error in {filename}: {e} — file left unchanged")
+            self.warnings.append(f"AST transformation error: {e}. File left unchanged.")
+            return code
 
     def _transform_with_ast(self, code: str, filename: str) -> str:
         """Transform Lua code using AST-based approach.

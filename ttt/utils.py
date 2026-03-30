@@ -47,7 +47,9 @@ def relative_path(filepath: str, base: str) -> str:
 
 
 def read_file_safe(filepath: str) -> Optional[str]:
-    for enc in ("utf-8", "latin-1", "cp1252"):
+    # Try Latin-1 first (most permissive, works for Latin-1 source files)
+    # Then UTF-8, then cp1252 as fallbacks
+    for enc in ("latin-1", "utf-8", "cp1252"):
         try:
             with open(filepath, "r", encoding=enc) as f:
                 content = f.read()

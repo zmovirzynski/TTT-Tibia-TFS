@@ -326,11 +326,31 @@ class ConversionEngine:
         diff_gen.generate(html_path)
         logger.info(f"\n  HTML diff saved to: {html_path}")
 
+    def _component_out_dir(self, scripts_dir: Optional[str], name: str, revscript_dir: str) -> str:
+        """Return the output dir for a component's converted scripts.
+
+        When the input_dir IS the component folder (e.g. converting
+        data-invictus/creaturescripts/ directly), the scripts_dir sits at
+        input_dir/scripts/ — so we should NOT append the component name again.
+        When input_dir is a parent folder, scripts_dir lives at
+        input_dir/<name>/scripts/ and we DO need the extra level.
+        """
+        if not revscript_dir:
+            return ""
+        if scripts_dir:
+            rel = os.path.relpath(scripts_dir, self.input_dir)
+            first = rel.split(os.sep)[0]
+            if first != name:
+                # Already inside the component folder — no extra nesting
+                return revscript_dir
+        return os.path.join(revscript_dir, name)
+
     def _convert_xml_to_revscript(
         self, scan: ScanResult, transformer: Optional[LuaTransformer]
     ):
+        ast_transformer = self._select_transformer(transformer)
         converter = XmlToRevScriptConverter(
-            lua_transformer=transformer, dry_run=self.dry_run
+            lua_transformer=ast_transformer, dry_run=self.dry_run
         )
         revscript_dir = (
             os.path.join(self.output_dir, "scripts") if self.output_dir else ""
@@ -341,31 +361,31 @@ class ConversionEngine:
                 scan.actions_xml,
                 scan.actions_dir,
                 "actions",
-                os.path.join(revscript_dir, "actions") if revscript_dir else "",
+                self._component_out_dir(scan.actions_dir, "actions", revscript_dir),
             ),
             (
                 scan.movements_xml,
                 scan.movements_dir,
                 "movements",
-                os.path.join(revscript_dir, "movements") if revscript_dir else "",
+                self._component_out_dir(scan.movements_dir, "movements", revscript_dir),
             ),
             (
                 scan.talkactions_xml,
                 scan.talkactions_dir,
                 "talkactions",
-                os.path.join(revscript_dir, "talkactions") if revscript_dir else "",
+                self._component_out_dir(scan.talkactions_dir, "talkactions", revscript_dir),
             ),
             (
                 scan.creaturescripts_xml,
                 scan.creaturescripts_dir,
                 "creaturescripts",
-                os.path.join(revscript_dir, "creaturescripts") if revscript_dir else "",
+                self._component_out_dir(scan.creaturescripts_dir, "creaturescripts", revscript_dir),
             ),
             (
                 scan.globalevents_xml,
                 scan.globalevents_dir,
                 "globalevents",
-                os.path.join(revscript_dir, "globalevents") if revscript_dir else "",
+                self._component_out_dir(scan.globalevents_dir, "globalevents", revscript_dir),
             ),
         ]
 

@@ -253,26 +253,40 @@ class LuaTransformer:
                 search_start = paren_end + 1
                 continue
 
-            full_replacement = replacement
             if note:
-                # Add note on the line before
-                # Find start of current line
-                line_start = code.rfind("\n", 0, call_start)
-                indent = ""
-                if line_start != -1:
-                    line_text = code[line_start + 1:call_start]
-                    indent = ""
-                    for ch in line_text:
-                        if ch in (" ", "\t"):
-                            indent += ch
-                        else:
-                            break
-                # We'll add the note as inline comment after the replacement
-                full_replacement = replacement + "  " + note
-
-            result.append(code[last_end:call_start])
-            result.append(full_replacement)
-            last_end = paren_end + 1
+                # Add note at end of line, but only if the call is at statement level
+                # (i.e., not inside an expression like an if condition)
+                # Check if this is a statement-level call by looking at what follows
+                after_call = code[paren_end + 1:call_start + 80]  # Look ahead
+                # If followed by operator or comma, it's part of an expression - skip the note
+                is_expression_context = False
+                for ch in after_call:
+                    if ch in '+-*/%=<>~!&|':
+                        is_expression_context = True
+                        break
+                    elif ch not in ' \t\n\r':
+                        break
+                
+                if not is_expression_context:
+                    # Add note at end of line
+                    line_end = code.find("\n", paren_end)
+                    if line_end == -1:
+                        line_end = len(code)
+                    # Insert note before the line end
+                    result.append(code[last_end:call_start])
+                    result.append(replacement)
+                    result.append("  ")
+                    result.append(note)
+                    last_end = paren_end + 1
+                else:
+                    # In expression context - don't add note to avoid breaking syntax
+                    result.append(code[last_end:call_start])
+                    result.append(replacement)
+                    last_end = paren_end + 1
+            else:
+                result.append(code[last_end:call_start])
+                result.append(replacement)
+                last_end = paren_end + 1
             search_start = last_end
             self.stats["functions_converted"] += 1
 

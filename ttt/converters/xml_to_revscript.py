@@ -331,7 +331,8 @@ class XmlToRevScriptConverter:
         # Determine which handlers we need
         has_step = False
         has_equip = False
-        
+        has_additem = False
+
         for entry in entries:
             event_type = entry.get("type", "")
             event_method = MOVEMENT_TYPES.get(event_type, f"on{event_type}")
@@ -339,7 +340,9 @@ class XmlToRevScriptConverter:
                 has_step = True
             if event_method in ("onEquip", "onDeEquip"):
                 has_equip = True
-        
+            if event_method in ("onAddItem", "onRemoveItem"):
+                has_additem = True
+
         # Generate onStepIn/onStepOut handler
         if has_step:
             func_body = self._extract_function_body(transformed_code, "onStepIn")
@@ -347,17 +350,17 @@ class XmlToRevScriptConverter:
                 func_body = self._extract_function_body(transformed_code, "onStepOut")
             if func_body is None:
                 func_body = "-- TTT: Function body not found"
-            
+
             lines.append(f"function {var_name}.onStepIn(creature, item, position, fromPosition)")
             lines.append(self._indent_code(func_body))
             lines.append("end")
             lines.append("")
-            
+
             lines.append(f"function {var_name}.onStepOut(creature, item, position, fromPosition)")
             lines.append(self._indent_code(func_body))
             lines.append("end")
             lines.append("")
-        
+
         # Generate onEquip/onDeEquip handler
         if has_equip:
             func_body = self._extract_function_body(transformed_code, "onEquip")
@@ -365,22 +368,40 @@ class XmlToRevScriptConverter:
                 func_body = self._extract_function_body(transformed_code, "onDeEquip")
             if func_body is None:
                 func_body = "-- TTT: Function body not found"
-            
+
             lines.append(f"function {var_name}.onEquip(player, item, slot, isCheck)")
             lines.append(self._indent_code(func_body))
             lines.append("end")
             lines.append("")
-            
+
             lines.append(f"function {var_name}.onDeEquip(player, item, slot, isCheck)")
             lines.append(self._indent_code(func_body))
             lines.append("end")
             lines.append("")
-        
+
+        # Generate onAddItem/onRemoveItem handler
+        if has_additem:
+            func_body = self._extract_function_body(transformed_code, "onAddItem")
+            if func_body is None:
+                func_body = self._extract_function_body(transformed_code, "onRemoveItem")
+            if func_body is None:
+                func_body = "-- TTT: Function body not found"
+
+            lines.append(f"function {var_name}.onAddItem(moveitem, tileitem, position)")
+            lines.append(self._indent_code(func_body))
+            lines.append("end")
+            lines.append("")
+
+        # Emit :type() once (all grouped entries share the same type)
+        first_type = entries[0].get("type", "") if entries else ""
+        if first_type:
+            lines.append(f'{var_name}:type("{first_type.lower()}")')
+
         # Add all registration lines
         for entry in entries:
             reg_lines = self._generate_registration_lines(var_name, entry, MOVEMENT_REGISTRATION)
             lines.extend(reg_lines)
-        
+
         lines.append(f"{var_name}:register()")
         
         return "\n".join(lines) + "\n"
@@ -868,113 +889,45 @@ class XmlToRevScriptConverter:
         return entries
 
     def _extract_function_body(self, code: str, func_name: str) -> Optional[str]:
-        """Extract the body of a function - AST primary, line-based regex fallback."""
-        
-        # Try AST-based extraction first - uses statement positions for accuracy
-        if LUAPARSER_AVAILABLE:
-            try:
-                tree = lua_ast.parse(code)
-                for node in lua_ast.walk(tree):
-                    if isinstance(node, lua_ast.Function):
-                        name = self._get_function_name(node)
-                        if name == func_name:
-                            # Get body block
-                            body_block = getattr(node, 'body', None)
-                            if body_block and hasattr(body_block, 'body') and body_block.body:
-                                last_stmt = body_block.body[-1]
-                                last_char = getattr(last_stmt, 'stop_char', None)
+        """Extract the body of a named function using AST only."""
+        if not LUAPARSER_AVAILABLE:
+            logger.error(f"Cannot extract function body for {func_name}: luaparser not available")
+            return None
 
-                                # luaparser stop_char is inclusive, so slice needs +1.
-                                # luaparser Call node start_char points to '(' not the
-                                # function name, so we derive body start from the function
-                                # declaration's first newline instead of first_stmt.start_char.
-                                func_start = getattr(node, 'start_char', None)
-                                if func_start is not None and last_char is not None:
-                                    first_nl = code.find('\n', func_start)
-                                    if first_nl != -1:
-                                        return code[first_nl + 1:last_char + 1]
-                            
-                            # Fallback: use function offsets and extract manually
-                            start_char = getattr(node, 'start_char', None)
-                            stop_char = getattr(node, 'stop_char', None)
-                            if start_char is not None and stop_char is not None:
-                                func_block = code[start_char:stop_char]
-                                # Remove declaration line
-                                first_nl = func_block.find('\n')
-                                if first_nl != -1:
-                                    body = func_block[first_nl + 1:]
-                                    # Remove trailing 'end'
-                                    body = body.rstrip()
-                                    if body.endswith('end'):
-                                        body = body[:-3].rstrip()
-                                    return body
-            except Exception as e:
-                logger.debug(f"AST extraction failed for {func_name}: {e}")
-        
-        # Fallback: line-based regex extraction
-        lines = code.split('\n')
-        
-        # Find function declaration
-        func_pattern = re.compile(r'^(local\s+)?function\s+' + re.escape(func_name) + r'\s*\(')
-        func_line = -1
-        
-        for i, line in enumerate(lines):
-            if func_pattern.match(line.strip()):
-                func_line = i
-                break
-        
-        if func_line == -1:
-            return None
-        
-        # Count depth to find matching end
-        depth = 1
-        end_line = -1
-        
-        open_pattern = re.compile(r'\b(function|if|for|while|do|repeat)\b')
-        close_pattern = re.compile(r'\b(end|until)\b')
-        
-        for i in range(func_line + 1, len(lines)):
-            line = lines[i]
-            
-            # Skip comments and strings (simplified)
-            clean_line = line
-            if '--' in clean_line:
-                clean_line = clean_line[:clean_line.index('--')]
-            
-            # Count opens and closes
-            for match in open_pattern.finditer(clean_line):
-                start, end = match.span()
-                before = clean_line[start-1] if start > 0 else ' '
-                after = clean_line[end] if end < len(clean_line) else ' '
-                if not before.isalnum() and not after.isalnum():
-                    depth += 1
-            
-            for match in close_pattern.finditer(clean_line):
-                start, end = match.span()
-                before = clean_line[start-1] if start > 0 else ' '
-                after = clean_line[end] if end < len(clean_line) else ' '
-                if not before.isalnum() and not after.isalnum():
-                    depth -= 1
-                    if depth == 0:
-                        end_line = i
-                        break
-            
-            if depth == 0:
-                break
-        
-        if end_line == -1:
-            return None
-        
-        # Extract body
-        body_lines = lines[func_line + 1:end_line]
-        
-        # Clean up
-        while body_lines and not body_lines[0].strip():
-            body_lines.pop(0)
-        while body_lines and not body_lines[-1].strip():
-            body_lines.pop()
-        
-        return '\n'.join(body_lines)
+        try:
+            tree = lua_ast.parse(code)
+            for node in lua_ast.walk(tree):
+                if not isinstance(node, lua_ast.Function):
+                    continue
+                if self._get_function_name(node) != func_name:
+                    continue
+
+                body_block = getattr(node, 'body', None)
+                if body_block and hasattr(body_block, 'body') and body_block.body:
+                    last_stmt = body_block.body[-1]
+                    last_char = getattr(last_stmt, 'stop_char', None)
+                    func_start = getattr(node, 'start_char', None)
+                    if func_start is not None and last_char is not None:
+                        first_nl = code.find('\n', func_start)
+                        if first_nl != -1:
+                            return code[first_nl + 1:last_char + 1]
+
+                # Body positions unavailable — use function-level offsets and strip the wrapper
+                start_char = getattr(node, 'start_char', None)
+                stop_char = getattr(node, 'stop_char', None)
+                if start_char is not None and stop_char is not None:
+                    func_block = code[start_char:stop_char]
+                    first_nl = func_block.find('\n')
+                    if first_nl != -1:
+                        body = func_block[first_nl + 1:].rstrip()
+                        if body.endswith('end'):
+                            body = body[:-3].rstrip()
+                        return body
+
+        except Exception as e:
+            logger.warning(f"AST extraction failed for {func_name}: {e}")
+
+        return None
     
     def _get_function_name(self, node) -> Optional[str]:
         """Extract function name from AST node."""
