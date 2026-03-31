@@ -1,13 +1,70 @@
+# ===========================================
+# Python
+# ===========================================
 __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
+*.egg
 dist/
 build/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ===========================================
+# Virtual environments
+# ===========================================
+.venv/
+venv/
+env/
+.env
+
+# ===========================================
+# Editor / OS
+# ===========================================
 .vscode/
 *.swp
 *.swo
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db
 .worktrees/
-ROADMAP.md
+
+# ===========================================
+# AI tool instructions (local dev tooling)
+# ===========================================
+CLAUDE.md
+AGENTS.md
+.claude/
+
+# ===========================================
+# Local config (user-specific)
+# ===========================================
 config.toml
+.ttt-server-api.json
+.tttformat.json
+.tttlint.json
+
+# ===========================================
+# Generated output
+# ===========================================
+docs.json
+docs/*.html
+oop_guidelines.md
+
+# ===========================================
+# Internal / private docs (not for public repo)
+# ===========================================
+docs/po-techlead-review-*.md
+docs/investigation-findings-*.md
+docs/superpowers/
+diagnose_conversion.py
+
+# ===========================================
+# ROADMAP kept as labeled history in repo
+# but was previously gitignored — now tracked
+# ===========================================

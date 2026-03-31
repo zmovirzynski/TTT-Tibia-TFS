@@ -293,7 +293,7 @@ Examples:
         """,
     )
 
-    parser.add_argument("path", help="File or directory to lint")
+    parser.add_argument("path", nargs="?", default=None, help="File or directory to lint")
     parser.add_argument(
         "--format",
         choices=["text", "json", "html"],
@@ -341,6 +341,9 @@ Examples:
             print(f"  {rule_id:<30s} {r.severity.value:<8s}  {r.description}")
         print()
         return
+
+    if args.path is None:
+        parser.error("the following arguments are required: path")
 
     target_path = os.path.abspath(args.path)
 
@@ -401,7 +404,12 @@ Examples:
             f.write(output)
         print(f"Report written to: {args.output}")
     else:
-        print(output)
+        # Handle Windows console encoding issues
+        try:
+            print(output)
+        except UnicodeEncodeError:
+            sys.stdout.buffer.write(output.encode("utf-8", errors="replace"))
+            sys.stdout.buffer.write(b"\n")
 
     # Exit code: 1 if there are errors/warnings, 0 if clean
     sys.exit(1 if report.total_errors > 0 or report.total_warnings > 0 else 0)

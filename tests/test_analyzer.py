@@ -696,7 +696,7 @@ class TestExampleData(unittest.TestCase):
         report = engine.analyze(self.EXAMPLES_DIR)
 
         self.assertIsNotNone(report.stats)
-        self.assertEqual(report.stats.total_lua_files, 8)
+        self.assertEqual(report.stats.total_lua_files, 9)
         self.assertGreater(report.stats.total_lines, 100)
         self.assertGreater(report.stats.total_functions_defined, 5)
 

@@ -1,4 +1,7 @@
 import pytest
+
+luaparser = pytest.importorskip("luaparser", reason="luaparser not installed")
+
 from ttt.converters.ast_dead_code import find_unused_locals, UnusedLocal
 
 CLEAN_LUA = """

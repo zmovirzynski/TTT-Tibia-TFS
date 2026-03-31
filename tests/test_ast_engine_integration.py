@@ -4,6 +4,9 @@
 import os
 import tempfile
 import pytest
+
+luaparser = pytest.importorskip("luaparser", reason="luaparser not installed")
+
 from ttt.analyzer.engine import AnalyzeEngine, format_analysis_text
 
 SWORD_LUA = """
