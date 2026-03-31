@@ -1070,12 +1070,11 @@ GAME_FUNCTIONS = {
         "wrapper": "Position",
     },
     "doSendAnimatedText": {
-        "method": "sendAnimatedText",
+        "method": None,
         "obj_type": "position",
         "obj_param": 0,
-        "drop_params": [0],
-        "wrapper": "Position",
-        "note": "-- TTT: doSendAnimatedText requires custom implementation in your server (see xtibia.com/topic/240213)",
+        "drop_params": [],
+        "note": "-- TTT: doSendAnimatedText removed in TFS 1.x. No direct equivalent. Options: creature:say(text, TALKTYPE_MONSTER_SAY), position:sendMagicEffect(CONST_ME_*), or remove entirely.",
     },
 
     "getTileItemById": {
@@ -1115,12 +1114,11 @@ GAME_FUNCTIONS = {
         "note": "-- TTT: Use Tile(pos):hasFlag(TILESTATE_PROTECTIONZONE)",
     },
     "getTileInfo": {
-        "method": "getGround",
+        "method": None,
         "obj_type": "tile",
         "obj_param": 0,
-        "drop_params": [0],
-        "wrapper": "Tile",
-        "note": "-- TTT: getTileInfo replaced. Use Tile methods individually.",
+        "drop_params": [],
+        "note": "-- TTT: getTileInfo replaced. Use: local tile = Tile(pos); tile:getGround(), tile:getItems(), tile:getCreatures(), tile:getTopVisibleCreature(), tile:hasFlag(TILESTATE_*)",
     },
     "doCleanTile": {
         "method": "clean",
@@ -1357,6 +1355,148 @@ GAME_FUNCTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
+
+    # --- New mappings: investigation-findings-2026-03-24 ---
+
+    "getItemNameById": {
+        "method": "getName",
+        "obj_type": "item",
+        "obj_param": 0,
+        "drop_params": [0],
+        "wrapper": "ItemType",
+        "note": "-- TTT: getItemNameById(id) → ItemType(id):getName()",
+    },
+    "getTownTemplePosition": {
+        "method": "getTemplePosition",
+        "obj_type": "town",
+        "obj_param": 0,
+        "drop_params": [0],
+        "wrapper": "Town",
+    },
+    "isContainer": {
+        "method": "isContainer",
+        "obj_type": "item",
+        "obj_param": 0,
+        "drop_params": [0],
+        "wrapper": "Item",
+    },
+    "isSightClear": {
+        "method": "isSightClear",
+        "obj_type": "position",
+        "obj_param": 0,
+        "drop_params": [0],
+        "note": "-- TTT: isSightClear(fromPos, toPos[, sameFloor]) → fromPos:isSightClear(toPos[, sameFloor])",
+    },
+    "doSendPlayerExtendedOpcode": {
+        "method": "sendExtendedOpcode",
+        "obj_type": "player",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "getHouseFromPos": {
+        "method": "getHouse",
+        "obj_type": "tile",
+        "obj_param": 0,
+        "drop_params": [0],
+        "wrapper": "Tile",
+    },
+    "getThingPosWithDebug": {
+        "method": "getPosition",
+        "obj_type": "creature",
+        "obj_param": 0,
+        "drop_params": [0],
+        "note": "-- TTT: getThingPosWithDebug treated as getThingPos; remove debug logging if present",
+    },
+    "isInArray": {
+        "method": None,
+        "obj_type": None,
+        "obj_param": None,
+        "drop_params": [],
+        "note": "-- TTT: isInArray needs custom lib in 1.x: function isInArray(t, v) for _, val in ipairs(t) do if val == v then return true end end return false end",
+    },
+    "getCreatureSpeed": {
+        "method": "getSpeed",
+        "obj_type": "creature",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "getCreatureMaster": {
+        "method": "getMaster",
+        "obj_type": "creature",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "getCreatureSummons": {
+        "method": "getSummons",
+        "obj_type": "creature",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "getItemWeight": {
+        "method": "getWeight",
+        "obj_type": "item",
+        "obj_param": 0,
+        "drop_params": [0],
+        "wrapper": "ItemType",
+    },
+    "getItemDescriptions": {
+        "method": "getDescription",
+        "obj_type": "item",
+        "obj_param": 0,
+        "drop_params": [0],
+        "wrapper": "ItemType",
+    },
+    "getItemIdByName": {
+        "method": "getId",
+        "obj_type": "item",
+        "obj_param": 0,
+        "drop_params": [0],
+        "wrapper": "ItemType",
+        "note": "-- TTT: getItemIdByName(name) → ItemType(name):getId() — verify string lookup support",
+    },
+    "doPlayerSetVocation": {
+        "method": "setVocation",
+        "obj_type": "player",
+        "obj_param": 0,
+        "drop_params": [0],
+        "note": "-- TTT: In 1.x use player:setVocation(Vocation(vocId))",
+    },
+    "getPlayerSkillLevel": {
+        "method": "getSkillLevel",
+        "obj_type": "player",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "getPlayerSkillTries": {
+        "method": "getSkillTries",
+        "obj_type": "player",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "doPlayerAddSkillTry": {
+        "method": "addSkillTries",
+        "obj_type": "player",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "getCreatureOutfit": {
+        "method": "getOutfit",
+        "obj_type": "creature",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "doCreatureSetOutfit": {
+        "method": "setOutfit",
+        "obj_type": "creature",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
+    "doPlayerSetMaxCapacity": {
+        "method": "setCapacity",
+        "obj_type": "player",
+        "obj_param": 0,
+        "drop_params": [0],
+    },
 }
 
 # Game-specific custom functions (PokeInvictus / Pokemon-specific)
@@ -1364,6 +1504,12 @@ GAME_FUNCTIONS = {
 # They are flagged with TTT:STUB for easy grep and LLM targeting
 
 STUB_FUNCTIONS = {
+    "isSummon": {
+        "stub": "Replace with: creature:getMaster() ~= nil",
+    },
+    "isPlayerSummon": {
+        "stub": "Replace with: local m = creature:getMaster(); m and m:isPlayer()",
+    },
     "isWild": {
         "stub": "needs custom lib: checks if pokemon is wild (storage-based). Suggested: check creature storage value",
     },

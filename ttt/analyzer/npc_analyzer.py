@@ -1,6 +1,11 @@
 """
-NPC Conversation Analyzer
-Detecta loops infinitos, keywords duplicadas, respostas inalcançáveis, greet/farewell ausentes, valida shop items e gera grafo visual.
+NPC Conversation Analyzer — STUB
+
+Status: Stub. Estrutura existe mas todas as análises retornam placeholders vazios.
+Não integrado ao CLI (ttt analyze). Não pronto para uso em produção.
+
+Para contribuir: implementar parse_npc_xml() e parse_npc_lua() com parsing real
+de scripts de NPC do TFS, e integrar ao AnalyzeEngine.
 """
 
 import os

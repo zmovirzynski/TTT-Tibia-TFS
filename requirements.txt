@@ -1,2 +1,9 @@
 # TTT has no external dependencies - uses only Python standard library
 # Python 3.7+ required
+
+# Development dependencies (install with: pip install -r requirements.txt)
+pytest>=7.0
+ruff>=0.4.0
+
+# Optional: AST-based features (structural analysis, semantic duplicates)
+# luaparser>=3.0

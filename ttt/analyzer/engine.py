@@ -58,6 +58,7 @@ class AnalysisReport:
             total += self.duplicates.total_issues
         if self.storage:
             total += self.storage.total_issues
+        total += len(self.semantic_duplicates)
         return total
 
     def as_dict(self) -> Dict:
@@ -74,6 +75,11 @@ class AnalysisReport:
             d["item_usage"] = self.item_usage.as_dict()
         if self.complexity:
             d["complexity"] = self.complexity.as_dict()
+        if self.semantic_duplicates:
+            d["semantic_duplicates"] = [
+                {"file_a": sd.file_a, "file_b": sd.file_b, "similarity": sd.similarity}
+                for sd in self.semantic_duplicates
+            ]
         return d
 
 

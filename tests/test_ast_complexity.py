@@ -1,5 +1,8 @@
 # tests/test_ast_complexity.py
 import pytest
+
+luaparser = pytest.importorskip("luaparser", reason="luaparser not installed")
+
 from ttt.converters.ast_complexity import compute_file_complexity, FunctionMetrics
 
 SIMPLE_LUA = """

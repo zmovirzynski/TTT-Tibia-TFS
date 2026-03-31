@@ -889,10 +889,9 @@ class XmlToRevScriptConverter:
         return entries
 
     def _extract_function_body(self, code: str, func_name: str) -> Optional[str]:
-        """Extract the body of a named function using AST only."""
+        """Extract the body of a named function using AST with regex fallback."""
         if not LUAPARSER_AVAILABLE:
-            logger.error(f"Cannot extract function body for {func_name}: luaparser not available")
-            return None
+            return self._extract_function_body_regex(code, func_name)
 
         try:
             tree = lua_ast.parse(code)
@@ -929,6 +928,18 @@ class XmlToRevScriptConverter:
 
         return None
     
+    def _extract_function_body_regex(self, code: str, func_name: str) -> Optional[str]:
+        """Regex fallback for extracting a function body when luaparser is unavailable."""
+        import re
+        pattern = re.compile(
+            r'^[ \t]*(?:local\s+)?function\s+' + re.escape(func_name) + r'\s*\([^)]*\)\s*\n(.*?)\nend\s*$',
+            re.MULTILINE | re.DOTALL,
+        )
+        m = pattern.search(code)
+        if m:
+            return m.group(1)
+        return None
+
     def _get_function_name(self, node) -> Optional[str]:
         """Extract function name from AST node."""
         if not isinstance(node, lua_ast.Function):

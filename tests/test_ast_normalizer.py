@@ -1,6 +1,9 @@
 import os
 import tempfile
 import pytest
+
+luaparser = pytest.importorskip("luaparser", reason="luaparser not installed")
+
 from ttt.converters.ast_normalizer import normalize_ast_structure, structural_similarity
 
 FUNC_A = """

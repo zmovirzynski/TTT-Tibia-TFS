@@ -665,5 +665,206 @@ class TestHtmlDiff(unittest.TestCase):
             shutil.rmtree(output_dir, ignore_errors=True)
 
 
+class TestRegressionCorpus(unittest.TestCase):
+    """Regression tests exercising all major mapping categories."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.transformer = LuaTransformer(TFS03_TO_1X, "tfs03")
+        corpus_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "examples", "tfs03_input", "actions", "scripts", "regression_corpus.lua",
+        )
+        with open(corpus_path, encoding="utf-8") as f:
+            cls.original = f.read()
+        cls.converted = cls.transformer.transform(cls.original, "regression_corpus.lua")
+
+    # --- Player Getters ---
+    def test_player_getters_converted(self):
+        c = self.converted
+        self.assertIn("player:getName()", c)
+        self.assertIn("player:getLevel()", c)
+        self.assertIn("player:getExperience()", c)
+        self.assertIn("player:getMagicLevel()", c)
+        self.assertIn("player:getSex()", c)
+        self.assertIn("player:getGuid()", c)
+        self.assertIn("player:getIp()", c)
+        self.assertIn("player:getPosition()", c)
+        self.assertIn("player:getHealth()", c)
+        self.assertIn("player:getMaxHealth()", c)
+        self.assertIn("player:getMana()", c)
+        self.assertIn("player:getMaxMana()", c)
+        self.assertIn("player:getFreeCapacity()", c)
+        self.assertIn("player:getSoul()", c)
+        self.assertIn("player:getStamina()", c)
+        self.assertIn("player:getBankBalance()", c)
+        self.assertIn("player:getSkillLevel(", c)
+        self.assertIn("player:getSkillTries(", c)
+
+    def test_town_guild_vocation_chain(self):
+        c = self.converted
+        self.assertIn("player:getVocation():getId()", c)
+        self.assertIn("player:getGroup():getId()", c)
+        self.assertIn("player:getTown():getId()", c)
+        self.assertIn("player:getGuild():getId()", c)
+        self.assertIn("player:getGuild():getName()", c)
+        self.assertIn("player:getGuildNick()", c)
+
+    def test_storage_operations(self):
+        c = self.converted
+        self.assertIn("player:getStorageValue(", c)
+        self.assertIn("player:setStorageValue(", c)
+
+    # --- Player Actions ---
+    def test_player_actions_converted(self):
+        c = self.converted
+        self.assertIn("player:sendTextMessage(", c)
+        self.assertIn("player:sendCancelMessage(", c)
+        self.assertIn("player:addItem(", c)
+        self.assertIn("player:removeItem(", c)
+        self.assertIn("player:addMana(", c)
+        self.assertIn("player:addHealth(", c)
+        self.assertIn("player:addSoul(", c)
+        self.assertIn("player:addMoney(", c)
+        self.assertIn("player:removeMoney(", c)
+        self.assertIn("player:setVocation(", c)
+        self.assertIn("player:setCapacity(", c)
+        self.assertIn("player:addSkillTries(", c)
+        self.assertIn("player:setBankBalance(", c)
+        self.assertIn("player:setStamina(", c)
+        self.assertIn("player:save()", c)
+
+    # --- Creature Functions ---
+    def test_creature_functions(self):
+        c = self.converted
+        self.assertIn("player:getSpeed()", c)
+        self.assertIn("player:getMaster()", c)
+        self.assertIn("player:getSummons()", c)
+        self.assertIn("player:getOutfit()", c)
+        self.assertIn("player:changeSpeed(", c)
+        self.assertIn("player:setMaxHealth(", c)
+        self.assertIn("player:setHiddenHealth(", c)
+        self.assertIn("player:setMoveLocked(", c)
+        self.assertIn("player:setSkull(", c)
+        self.assertIn("player:setDirection(", c)
+        self.assertIn("player:setOutfit(", c)
+        self.assertIn("player:registerEvent(", c)
+
+    # --- Item Functions ---
+    def test_item_functions(self):
+        c = self.converted
+        self.assertIn("ItemType(item.uid):getName()", c)
+        self.assertIn("ItemType(2160):getName()", c)
+        self.assertIn("Item(item.uid):transform(", c)
+        self.assertIn("Item(item.uid):setAttribute(", c)
+        self.assertIn("Item(item.uid):removeAttribute(", c)
+        self.assertIn("Item(item.uid):setActionId(", c)
+        self.assertIn("Item(item.uid):setText(", c)
+        self.assertIn("Item(item.uid):decay()", c)
+        self.assertIn("Item(item.uid):remove(", c)
+        self.assertIn("Item(item.uid):isContainer()", c)
+
+    # --- Game / Static Functions ---
+    def test_game_functions(self):
+        c = self.converted
+        self.assertIn("Game.broadcastMessage(", c)
+        self.assertIn("Game.createItem(", c)
+        self.assertIn("Game.createMonster(", c)
+        self.assertIn("Game.createNpc(", c)
+        self.assertIn("Player.getPlayerByName(", c)
+        self.assertIn("Game.getWorldTime()", c)
+        self.assertIn("Game.getWorldUpTime()", c)
+        self.assertIn("Game.getPlayerCount()", c)
+
+    # --- Position / Effect Functions ---
+    def test_position_effects(self):
+        c = self.converted
+        self.assertIn(":sendMagicEffect(", c)
+        self.assertIn(":sendDistanceEffect(", c)
+
+    # --- doSendAnimatedText: note-only, no broken conversion ---
+    def test_animated_text_removed_properly(self):
+        c = self.converted
+        # Should NOT produce sendAnimatedText method call
+        self.assertNotIn(":sendAnimatedText(", c)
+        # Should keep original call and add note
+        self.assertIn("doSendAnimatedText(", c)
+        self.assertIn("doSendAnimatedText removed in TFS 1.x", c)
+
+    # --- getTileInfo: note-only, no broken conversion ---
+    def test_tile_info_note_only(self):
+        c = self.converted
+        # Should keep original and provide guidance
+        self.assertIn("getTileInfo(", c)
+        self.assertIn("getTileInfo replaced", c)
+
+    # --- Tile Functions ---
+    def test_tile_functions(self):
+        c = self.converted
+        # PARAM_RENAME_MAP converts topos→toPosition at OOP resolution time,
+        # which short-circuits before the Tile() wrapper is applied
+        self.assertIn("toPosition:getItemById(", c)
+        self.assertIn("toPosition:hasFlag()", c)
+        self.assertIn("toPosition:getTopVisibleThing()", c)
+        self.assertIn("toPosition:getHouse()", c)
+
+    # --- isSightClear ---
+    def test_sight_clear(self):
+        c = self.converted
+        # Object var frompos→fromPosition via PARAM_RENAME_MAP, but the
+        # remaining arg topos stays as-is (no global variable rename)
+        self.assertIn("fromPosition:isSightClear(topos)", c)
+
+    # --- House Functions ---
+    def test_house_functions(self):
+        c = self.converted
+        # 'house' matches obj_type='house' so no House() wrapper is applied
+        self.assertIn("house:getOwnerGuid()", c)
+        self.assertIn("house:getName()", c)
+        self.assertIn("house:getRent()", c)
+        self.assertIn("house:getExitPosition()", c)
+        self.assertIn("house:getTown()", c)
+        self.assertIn("house:setOwnerGuid(", c)
+
+    # --- New mappings from investigation findings ---
+    def test_extended_opcode(self):
+        c = self.converted
+        self.assertIn("player:sendExtendedOpcode(", c)
+
+    def test_town_temple_position(self):
+        c = self.converted
+        self.assertIn("Town(1):getTemplePosition()", c)
+
+    def test_thing_pos_with_debug(self):
+        c = self.converted
+        self.assertIn("getThingPosWithDebug treated as getThingPos", c)
+
+    # --- Constants ---
+    def test_boolean_constants(self):
+        c = self.converted
+        self.assertNotIn("return TRUE", c)
+        self.assertNotIn("return FALSE", c)
+        self.assertIn("return true", c)
+        self.assertIn("return false", c)
+
+    # --- Signatures ---
+    def test_signatures_updated(self):
+        c = self.converted
+        # onLogin(cid) → onLogin(player) via SIGNATURE_MAP match
+        self.assertIn("function onLogin(player)", c)
+        # cid→player rename propagates globally to all function bodies
+        self.assertNotIn("(cid", c)
+        self.assertNotIn(" cid ", c)
+
+    # --- TTT marker count (baseline) ---
+    def test_ttt_marker_count(self):
+        markers = self.converted.count("-- TTT:")
+        stubs = self.converted.count("-- TTT:STUB:")
+        # Establish baseline: we expect markers but within reasonable bounds
+        # This test documents the current marker count for regression tracking
+        self.assertGreater(markers, 0, "Expected some TTT markers in complex corpus")
+        self.assertLess(markers, 30, f"Too many TTT markers ({markers}), conversion may have regressed")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
