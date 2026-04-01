@@ -4,7 +4,7 @@ import os
 from datetime import date
 from typing import Dict, List, Optional, TYPE_CHECKING
 
-from .lua_oop_analyzer import LuaFileAnalysis, LuaOopIssue
+from .lua_oop_analyzer import LuaFileAnalysis
 
 if TYPE_CHECKING:
     from ..report import ConversionReport, FileReport
@@ -47,7 +47,11 @@ class GuidelinesGenerator:
             pairs.append((lua, fr, _priority(lua, fr)))
         pairs.sort(key=lambda x: -x[2])
 
-        files_with_issues = [p for p in pairs if p[0].issues or (p[1] and (p[1].ttt_warnings or p[1].unrecognized_calls))]
+        files_with_issues = [
+            p
+            for p in pairs
+            if p[0].issues or (p[1] and (p[1].ttt_warnings or p[1].unrecognized_calls))
+        ]
         files_clean = [p for p in pairs if p not in files_with_issues]
 
         total_lua_issues = sum(len(p[0].issues) for p in pairs)
@@ -56,7 +60,9 @@ class GuidelinesGenerator:
 
         conv_info = ""
         if report:
-            conv_info = f"Conversion: {report.source_version} → {report.target_version}  \n"
+            conv_info = (
+                f"Conversion: {report.source_version} → {report.target_version}  \n"
+            )
 
         lines = [
             "# LLM Refactoring Guide",
@@ -94,7 +100,11 @@ class GuidelinesGenerator:
     ) -> List[str]:
         # Build priority label
         conf_label = fr.confidence_label if fr else "N/A"
-        priority = "HIGH" if conf_label in ("LOW", "REVIEW") else ("MEDIUM" if conf_label == "MEDIUM" else "LOW")
+        priority = (
+            "HIGH"
+            if conf_label in ("LOW", "REVIEW")
+            else ("MEDIUM" if conf_label == "MEDIUM" else "LOW")
+        )
         if lua.issues and priority == "LOW":
             priority = "MEDIUM"
 
@@ -130,7 +140,9 @@ class GuidelinesGenerator:
                 if len(fr.unrecognized_calls) > 8:
                     funcs += f" (+{len(fr.unrecognized_calls) - 8} more)"
                 lines.append(f"- Unrecognized functions: {funcs}")
-                lines.append("  These have no automatic mapping and need manual OOP conversion.")
+                lines.append(
+                    "  These have no automatic mapping and need manual OOP conversion."
+                )
                 lines.append("")
             if fr.ttt_warnings:
                 lines.append(
@@ -144,11 +156,12 @@ class GuidelinesGenerator:
         if fr and fr.unrecognized_calls:
             topics.append("unrecognized call mapping")
         topics_str = "; ".join(topics) if topics else "review for OOP conversion"
-        if getattr(lua, "ast_metrics", None) and lua.ast_metrics.high_complexity_functions:
+        if (
+            getattr(lua, "ast_metrics", None)
+            and lua.ast_metrics.high_complexity_functions
+        ):
             fn = lua.ast_metrics.high_complexity_functions[0]
-            complexity_hint = (
-                f" Focus on `{fn.name}` (cyclomatic={fn.cyclomatic}, nesting={fn.nesting_depth}) first."
-            )
+            complexity_hint = f" Focus on `{fn.name}` (cyclomatic={fn.cyclomatic}, nesting={fn.nesting_depth}) first."
         else:
             complexity_hint = ""
         lines.append(

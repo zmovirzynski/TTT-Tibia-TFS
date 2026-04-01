@@ -2,7 +2,7 @@ import pytest
 
 luaparser = pytest.importorskip("luaparser", reason="luaparser not installed")
 
-from ttt.converters.ast_dead_code import find_unused_locals, UnusedLocal
+from ttt.converters.ast_dead_code import find_unused_locals  # noqa: E402
 
 CLEAN_LUA = """
 function onUse(player, item)

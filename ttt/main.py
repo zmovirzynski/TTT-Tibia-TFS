@@ -3,7 +3,6 @@
 import os
 import sys
 import argparse
-import logging
 
 from .config import load_config
 from .engine import ConversionEngine, VERSIONS, VALID_CONVERSIONS
@@ -11,7 +10,6 @@ from .utils import setup_logging
 from .linter.engine import LintEngine, LintConfig
 from .analyzer.engine import (
     AnalyzeEngine,
-    ANALYZER_MODULES,
     format_analysis_text,
     format_analysis_json,
     format_analysis_html,
@@ -26,7 +24,6 @@ from .fixer.auto_fix import (
 )
 from .doctor.engine import (
     DoctorEngine,
-    DOCTOR_MODULES,
     format_doctor_text,
     format_doctor_json,
     format_doctor_html,
@@ -34,7 +31,6 @@ from .doctor.engine import (
 from .doctor.health_check import HEALTH_CHECKS
 from .docs import (
     DocsGenerator,
-    DocsReport,
     export_markdown,
     export_html,
     export_json,
@@ -42,6 +38,29 @@ from .docs import (
 )
 from .formatter import LuaFormatter, LuaFormatConfig, FormatReport, format_report_text
 from .testing.runner import run_tests, format_test_report
+from .migrator import MigrationConfig, MigrationOrchestrator
+from .migrator.orchestrator import format_migration_summary
+from .review import (
+    ReviewScanner,
+    format_review_text,
+    format_review_html,
+    format_review_json,
+)
+from .benchmark import (
+    BenchmarkEngine,
+    CorpusEntry,
+    format_benchmark_text,
+    format_benchmark_json,
+)
+from .benchmark.trend import (
+    load_history,
+    append_result,
+    format_trend_text,
+    format_trend_json,
+    generate_trend_html,
+)
+from .init import init_project
+from .init.scaffold import load_project_config, get_profile
 
 
 def clear_screen():
@@ -189,7 +208,7 @@ def interactive_mode():
 
         if os.path.exists(output_dir) and os.listdir(output_dir):
             confirm = (
-                input(f"  Folder already exists. Overwrite? [y/N]: ").strip().lower()
+                input("  Folder already exists. Overwrite? [y/N]: ").strip().lower()
             )
             if confirm not in ("y", "yes", "s", "sim"):
                 continue
@@ -293,7 +312,9 @@ Examples:
         """,
     )
 
-    parser.add_argument("path", nargs="?", default=None, help="File or directory to lint")
+    parser.add_argument(
+        "path", nargs="?", default=None, help="File or directory to lint"
+    )
     parser.add_argument(
         "--format",
         choices=["text", "json", "html"],
@@ -566,31 +587,21 @@ Examples:
   ttt format ./data/scripts --check
   ttt format script.lua --indent-style tabs
   ttt format ./data/scripts --config .tttformat.json
-        """
+        """,
     )
 
-    parser.add_argument(
-        "path",
-        help="File or directory to format"
-    )
+    parser.add_argument("path", help="File or directory to format")
     parser.add_argument(
         "--check",
         action="store_true",
-        help="Check formatting without writing files (exit 1 if changes needed)"
+        help="Check formatting without writing files (exit 1 if changes needed)",
+    )
+    parser.add_argument("--config", help="Path to .tttformat.json configuration file")
+    parser.add_argument(
+        "--indent-style", choices=["spaces", "tabs"], help="Override indentation style"
     )
     parser.add_argument(
-        "--config",
-        help="Path to .tttformat.json configuration file"
-    )
-    parser.add_argument(
-        "--indent-style",
-        choices=["spaces", "tabs"],
-        help="Override indentation style"
-    )
-    parser.add_argument(
-        "--indent-size",
-        type=int,
-        help="Override indentation size (for spaces mode)"
+        "--indent-size", type=int, help="Override indentation size (for spaces mode)"
     )
 
     args = parser.parse_args(sys.argv[2:])
@@ -604,7 +615,9 @@ Examples:
     if args.config:
         config = LuaFormatConfig.load(os.path.abspath(args.config))
     else:
-        config_start = target_path if os.path.isdir(target_path) else os.path.dirname(target_path)
+        config_start = (
+            target_path if os.path.isdir(target_path) else os.path.dirname(target_path)
+        )
         config_path = LuaFormatConfig.find_config(config_start)
         config = LuaFormatConfig.load(config_path) if config_path else LuaFormatConfig()
 
@@ -651,24 +664,22 @@ Examples:
   ttt test ./tests --pattern test_*.py
   ttt test tests/test_ttt.py
   ttt test ./tests --quiet
-        """
+        """,
     )
 
     parser.add_argument(
         "path",
         nargs="?",
         default="tests",
-        help="Test directory or single test file (default: ./tests)"
+        help="Test directory or single test file (default: ./tests)",
     )
     parser.add_argument(
         "--pattern",
         default="test*.py",
-        help="Discovery pattern for test files (default: test*.py)"
+        help="Discovery pattern for test files (default: test*.py)",
     )
     parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Reduce unittest verbosity"
+        "--quiet", action="store_true", help="Reduce unittest verbosity"
     )
 
     args = parser.parse_args(sys.argv[2:])
@@ -721,7 +732,8 @@ Valid conversions:
     cfg_target = convert_cfg.get("to", "")
 
     parser.add_argument(
-        "-i", "--input",
+        "-i",
+        "--input",
         required=not bool(cfg_input),
         default=cfg_input or None,
         help="Input directory containing TFS scripts",
@@ -752,7 +764,8 @@ Valid conversions:
         help="Target TFS version",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         default=convert_cfg.get("verbose", False),
         help="Enable verbose logging",
@@ -768,6 +781,12 @@ Valid conversions:
         action="store_true",
         default=convert_cfg.get("html_diff", False),
         help="Generate an HTML page with side-by-side visual diff (before/after)",
+    )
+    parser.add_argument(
+        "--explain",
+        action="store_true",
+        default=convert_cfg.get("explain", False),
+        help="Generate a detailed explain report showing the reasoning for each transformation",
     )
 
     args = parser.parse_args()
@@ -785,6 +804,7 @@ Valid conversions:
         verbose=args.verbose,
         dry_run=args.dry_run,
         html_diff=args.html_diff,
+        explain=args.explain,
     )
 
     errors = engine.validate()
@@ -968,7 +988,8 @@ Examples:
         "--no-color", action="store_true", help="Disable colored output"
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         default=doctor_cfg.get("verbose", False),
         help="Show verbose output",
@@ -1075,7 +1096,8 @@ Examples:
         help="Output format (default: text)",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default=docs_cfg.get("output") or None,
         help="Output directory (for md/html) or file (for json)",
     )
@@ -1083,7 +1105,8 @@ Examples:
         "--no-color", action="store_true", help="Disable colored output"
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         default=docs_cfg.get("verbose", False),
         help="Show verbose output",
@@ -1138,7 +1161,7 @@ Examples:
             else os.path.join(os.getcwd(), "docs")
         )
         written = export_markdown(report, out_dir)
-        print(f"\nGenerated Markdown documentation:")
+        print("\nGenerated Markdown documentation:")
         for p in written:
             print(f"  {os.path.relpath(p)}")
         print(f"\n  {len(written)} files written to {out_dir}")
@@ -1151,7 +1174,7 @@ Examples:
             else os.path.join(os.getcwd(), "docs")
         )
         written = export_html(report, out_dir)
-        print(f"\nGenerated HTML documentation:")
+        print("\nGenerated HTML documentation:")
         for p in written:
             print(f"  {os.path.relpath(p)}")
         print(f"\n  {len(written)} files written to {out_dir}")
@@ -1179,7 +1202,7 @@ def _serve_docs(directory: str, port: int):
         http.server.SimpleHTTPRequestHandler, directory=directory
     )
     print(f"\n  Serving docs at http://localhost:{port}")
-    print(f"  Press Ctrl+C to stop.\n")
+    print("  Press Ctrl+C to stop.\n")
 
     try:
         with http.server.HTTPServer(("", port), handler) as httpd:
@@ -1221,6 +1244,18 @@ def main():
         elif subcommand == "create":
             create_cli()
             return
+        elif subcommand in ("migrate-server", "migrate"):
+            migrate_server_cli()
+            return
+        elif subcommand == "review":
+            review_cli()
+            return
+        elif subcommand == "benchmark":
+            benchmark_cli()
+            return
+        elif subcommand == "init":
+            init_cli()
+            return
         elif subcommand in ("-h", "--help") and len(sys.argv) == 2:
             _print_global_help()
             return
@@ -1253,6 +1288,23 @@ def _print_global_help():
         ttt format <path> [opts]   Format Lua scripts (Prettier-style)
         ttt test <path> [opts]     Run tests via TTT testing framework
         ttt create [opts]          Generate script skeletons (scaffolding)
+        ttt migrate-server [opts]  Full server migration pipeline
+        ttt review <path> [opts]   Review residual -- TTT: markers
+        ttt benchmark [opts]       Run benchmark against conversion corpus
+        ttt init [directory]       Scaffold ttt.project.toml for project setup
+
+    Review Options:
+        ttt review <path>               Scan for -- TTT: markers
+        ttt review <path> --format html  Generate HTML review report
+        ttt review <path> --format json  Export JSON for tooling
+        ttt review <path> --output report.html
+
+    Migrate Options:
+        ttt migrate-server -i <dir> -o <dir> -f <ver> -t <ver>
+        ttt migrate-server -i ./data -f tfs03 -t revscript --dry-run
+        ttt migrate-server -i ./data -o ./out -f tfs03 -t revscript --only convert fix
+        ttt migrate-server -i ./data -o ./out -f tfs03 -t revscript --skip docs
+        ttt migrate-server -i ./data -o ./out -f tfs03 -t revscript --json
 
     Create Options:
         ttt create --type <script_type>    Script type (action, movement, creaturescript, globalevent, talkaction, spell, npc)
@@ -1325,6 +1377,500 @@ def _print_global_help():
         ttt fix ./data/scripts --only deprecated-api deprecated-constant
         ttt test ./tests
 """)
+
+
+def init_cli():
+    """CLI entry point for 'ttt init'."""
+    parser = argparse.ArgumentParser(
+        prog="ttt init",
+        description="TTT Init — Scaffold a ttt.project.toml for your server project",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  ttt init
+  ttt init --name my-server --from tfs03 --to revscript
+  ttt init --force
+        """,
+    )
+
+    parser.add_argument(
+        "directory",
+        nargs="?",
+        default=".",
+        help="Directory to initialize (default: current directory)",
+    )
+    parser.add_argument(
+        "--name",
+        default=None,
+        help="Project name (defaults to directory name)",
+    )
+    parser.add_argument(
+        "-f",
+        "--from",
+        dest="source",
+        default="tfs03",
+        choices=["tfs03", "tfs036", "tfs04", "tfs1x"],
+        help="Source TFS version (default: tfs03)",
+    )
+    parser.add_argument(
+        "-t",
+        "--to",
+        dest="target",
+        default="revscript",
+        choices=["tfs1x", "revscript"],
+        help="Target TFS version (default: revscript)",
+    )
+    parser.add_argument(
+        "--input",
+        default="./data",
+        help="Default input directory path (default: ./data)",
+    )
+    parser.add_argument(
+        "--output",
+        default="./output",
+        help="Default output directory path (default: ./output)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing ttt.project.toml",
+    )
+    parser.add_argument(
+        "--profile",
+        default=None,
+        help="Show the named profile from the project config",
+    )
+
+    args = parser.parse_args(sys.argv[2:])
+
+    # If --profile is specified, just show the profile from the existing config
+    if args.profile:
+        config = load_project_config(args.directory)
+        if not config:
+            print("No ttt.project.toml found.")
+            sys.exit(1)
+        profile = get_profile(config, args.profile)
+        if not profile:
+            print(f"Profile '{args.profile}' not found.")
+            available = list(config.get("profiles", {}).keys())
+            if available:
+                print(f"Available profiles: {', '.join(available)}")
+            sys.exit(1)
+        import json as json_mod
+
+        print(json_mod.dumps(profile, indent=2))
+        return
+
+    result = init_project(
+        args.directory,
+        name=args.name,
+        source_version=args.source,
+        target_version=args.target,
+        input_dir=args.input,
+        output_dir=args.output,
+        force=args.force,
+    )
+
+    if result.already_exists and not result.created:
+        print(f"  {result.error}")
+        print(f"  Path: {result.path}")
+        sys.exit(1)
+
+    if result.created:
+        print(f"  Created: {result.path}")
+        print("  Edit ttt.project.toml to customize your migration profiles.")
+    else:
+        print(f"  Error: {result.error}")
+        sys.exit(1)
+
+
+def benchmark_cli():
+    """CLI entry point for 'ttt benchmark'."""
+    parser = argparse.ArgumentParser(
+        prog="ttt benchmark",
+        description="TTT Benchmark — Run conversion benchmark against a corpus",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Corpus Layout:
+  A benchmark corpus is a directory containing:
+    input/       Source scripts (TFS 0.3/0.4/1.x)
+    expected/    (optional) Golden output files for comparison
+
+  Multiple corpora can live under one parent directory.
+
+Examples:
+  ttt benchmark -i ./examples/tfs03_input -f tfs03 -t revscript
+  ttt benchmark -i ./examples/tfs03_input -f tfs03 -t revscript --golden ./examples/tfs1x_output
+  ttt benchmark -i ./examples/tfs03_input -f tfs03 -t revscript --json
+  ttt benchmark -i ./examples/tfs03_input -f tfs03 -t revscript --output results.json
+  ttt benchmark --trend
+  ttt benchmark --trend --trend-html trend.html
+        """,
+    )
+
+    parser.add_argument(
+        "-i",
+        "--input",
+        required=False,
+        default="",
+        help="Input corpus directory containing source scripts",
+    )
+    parser.add_argument(
+        "-f",
+        "--from",
+        dest="source",
+        required=False,
+        default="",
+        choices=["tfs03", "tfs036", "tfs04", "tfs1x", "tfs1"],
+        help="Source TFS version",
+    )
+    parser.add_argument(
+        "-t",
+        "--to",
+        dest="target",
+        required=False,
+        default="",
+        choices=["tfs1x", "revscript"],
+        help="Target TFS version",
+    )
+    parser.add_argument(
+        "--golden",
+        default="",
+        help="Path to golden expected output directory for comparison",
+    )
+    parser.add_argument(
+        "--name",
+        default="",
+        help="Name for the benchmark run (defaults to input dir basename)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output results as JSON",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        help="Write results to file instead of stdout",
+    )
+    parser.add_argument(
+        "--trend",
+        action="store_true",
+        help="Show trend report from benchmark history instead of running a new benchmark",
+    )
+    parser.add_argument(
+        "--trend-html",
+        default="",
+        help="Generate an HTML trend report with charts to the given path",
+    )
+    parser.add_argument(
+        "--history-file",
+        default="",
+        help="Path to benchmark history JSON file (default: ./benchmark_history.json)",
+    )
+    parser.add_argument(
+        "--save",
+        action="store_true",
+        help="Save benchmark result to history file after running",
+    )
+    parser.add_argument(
+        "--label",
+        default="",
+        help="Label for this benchmark run (used in trend reports)",
+    )
+
+    args = parser.parse_args(sys.argv[2:])
+
+    history_path = args.history_file or None
+
+    # Trend-only mode
+    if args.trend or args.trend_html:
+        history = load_history(history_path)
+        if args.trend_html:
+            html = generate_trend_html(history)
+            os.makedirs(os.path.dirname(args.trend_html) or ".", exist_ok=True)
+            with open(args.trend_html, "w", encoding="utf-8") as f:
+                f.write(html)
+            print(f"Trend HTML report written to {args.trend_html}")
+        if args.json:
+            print(format_trend_json(history))
+        elif not args.trend_html:
+            print(format_trend_text(history))
+        sys.exit(0)
+
+    if not args.input:
+        parser.error("-i/--input is required when not using --trend")
+
+    if not os.path.isdir(args.input):
+        print(f"ERROR: input directory does not exist: {args.input}")
+        sys.exit(1)
+
+    if not args.source or not args.target:
+        parser.error("-f/--from and -t/--to are required when running a benchmark")
+
+    corpus_name = args.name or os.path.basename(os.path.abspath(args.input))
+
+    entry = CorpusEntry(
+        name=corpus_name,
+        input_dir=os.path.abspath(args.input),
+        golden_dir=os.path.abspath(args.golden) if args.golden else "",
+        source_version=args.source,
+        target_version=args.target,
+    )
+
+    engine = BenchmarkEngine()
+    result = engine.run(entry)
+
+    # Save to history if requested
+    if args.save:
+        hp = append_result(result, path=history_path, label=args.label)
+        print(f"Result saved to history: {hp}")
+
+    if args.json:
+        content = format_benchmark_json([result])
+    else:
+        content = format_benchmark_text([result])
+
+    if args.output:
+        os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(content)
+        print(f"Benchmark results written to {args.output}")
+    else:
+        print(content)
+
+    sys.exit(0 if result.success else 1)
+
+
+def review_cli():
+    """CLI entry point for 'ttt review'."""
+    parser = argparse.ArgumentParser(
+        prog="ttt review",
+        description="TTT Review — Scan converted scripts for residual -- TTT: markers",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Categories:
+  api-replacement     API calls that need manual replacement
+  object-unwrapping   Object unwrapping / chained calls
+  unsupported-legacy  Removed or deprecated functions
+  custom-function     Game-specific / stub functions
+  confidence-risk     Low confidence conversions needing verification
+  general             Other markers
+
+Examples:
+  ttt review ./output/scripts
+  ttt review ./output --format html --output review.html
+  ttt review ./output --format json --output review.json
+        """,
+    )
+
+    parser.add_argument(
+        "path",
+        help="Path to file or directory to scan for review markers",
+    )
+    parser.add_argument(
+        "--format",
+        dest="fmt",
+        choices=["text", "html", "json"],
+        default="text",
+        help="Output format (default: text)",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        help="Write report to file instead of stdout",
+    )
+    parser.add_argument(
+        "--context-lines",
+        type=int,
+        default=2,
+        help="Number of context lines around each marker (default: 2)",
+    )
+
+    args = parser.parse_args(sys.argv[2:])
+
+    if not os.path.exists(args.path):
+        print(f"ERROR: path does not exist: {args.path}")
+        sys.exit(1)
+
+    scanner = ReviewScanner(context_lines=args.context_lines)
+    report = scanner.scan_with_relative_paths(args.path)
+
+    if args.fmt == "json":
+        content = format_review_json(report)
+    elif args.fmt == "html":
+        content = format_review_html(report)
+    else:
+        content = format_review_text(report)
+
+    if args.output:
+        os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(content)
+        print(f"Review report written to {args.output}")
+    else:
+        print(content)
+
+    sys.exit(0 if report.total_markers == 0 else 1)
+
+
+def migrate_server_cli():
+    """CLI entry point for 'ttt migrate-server'."""
+    config = load_config()
+    migrate_cfg = config.get("migrate", {})
+
+    parser = argparse.ArgumentParser(
+        prog="ttt migrate-server",
+        description="TTT Server Migration — Full migration pipeline in one command",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Pipeline steps (in order):
+  convert    Convert scripts between TFS versions
+  fix        Auto-fix common issues in converted scripts
+  analyze    Run server analysis (stats, dead code, complexity)
+  doctor     Health check (broken refs, conflicts, syntax)
+  docs       Generate server documentation
+
+Examples:
+  ttt migrate-server -i ./data -o ./migrated -f tfs03 -t revscript
+  ttt migrate-server -i ./data -f tfs03 -t revscript --dry-run
+  ttt migrate-server -i ./data -o ./migrated -f tfs04 -t tfs1x --skip fix docs
+  ttt migrate-server -i ./data -o ./migrated -f tfs03 -t revscript --only convert fix
+        """,
+    )
+
+    cfg_input = migrate_cfg.get("input", "")
+    cfg_source = migrate_cfg.get("from", "")
+    cfg_target = migrate_cfg.get("to", "")
+
+    parser.add_argument(
+        "-i",
+        "--input",
+        required=not bool(cfg_input),
+        default=cfg_input or None,
+        help="Input directory containing TFS server scripts",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        default=migrate_cfg.get("output", ""),
+        help="Output directory for migrated results",
+    )
+    parser.add_argument(
+        "-f",
+        "--from",
+        dest="source",
+        required=not bool(cfg_source),
+        default=cfg_source or None,
+        choices=["tfs03", "tfs036", "tfs04", "tfs1x", "tfs1"],
+        help="Source TFS version",
+    )
+    parser.add_argument(
+        "-t",
+        "--to",
+        dest="target",
+        required=not bool(cfg_target),
+        default=cfg_target or None,
+        choices=["tfs1x", "revscript"],
+        help="Target TFS version",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=migrate_cfg.get("dry_run", False),
+        help="Run the full pipeline without writing files",
+    )
+    parser.add_argument(
+        "--html-diff",
+        action="store_true",
+        default=migrate_cfg.get("html_diff", False),
+        help="Generate HTML diff for the convert step",
+    )
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        metavar="STEP",
+        help="Only run specific steps (e.g. --only convert fix)",
+    )
+    parser.add_argument(
+        "--skip",
+        nargs="+",
+        metavar="STEP",
+        help="Skip specific steps (e.g. --skip docs analyze)",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        default=migrate_cfg.get("verbose", False),
+        help="Enable verbose logging",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output the run report as JSON",
+    )
+    parser.add_argument(
+        "--no-backup",
+        action="store_true",
+        default=not migrate_cfg.get("backup", True),
+        help="Skip creating a backup of the input directory before migration",
+    )
+    parser.add_argument(
+        "--profile",
+        default=None,
+        help="Load settings from a named profile in ttt.project.toml",
+    )
+
+    args = parser.parse_args(sys.argv[2:])
+
+    # Merge profile settings from ttt.project.toml if --profile is set
+    if args.profile:
+        project_cfg = load_project_config()
+        profile = get_profile(project_cfg, args.profile)
+        if profile:
+            if not args.only and "steps" in profile:
+                args.only = profile["steps"]
+            if "html_diff" in profile and not args.html_diff:
+                args.html_diff = profile["html_diff"]
+            if "verbose" in profile and not args.verbose:
+                args.verbose = profile["verbose"]
+
+    if not args.dry_run and not args.output:
+        parser.error("--output is required unless --dry-run is set")
+
+    setup_logging(verbose=args.verbose)
+
+    migration_config = MigrationConfig(
+        input_dir=os.path.abspath(args.input),
+        output_dir=os.path.abspath(args.output) if args.output else "",
+        source_version=args.source,
+        target_version=args.target,
+        dry_run=args.dry_run,
+        verbose=args.verbose,
+        html_diff=args.html_diff,
+        enabled_steps=args.only,
+        skip_steps=args.skip,
+        backup=not args.no_backup,
+    )
+
+    errors = migration_config.validate()
+    if errors:
+        for e in errors:
+            print(f"ERROR: {e}")
+        sys.exit(1)
+
+    orchestrator = MigrationOrchestrator(migration_config)
+    report = orchestrator.run()
+
+    if args.json:
+        import json as _json
+
+        print(_json.dumps(report.to_dict(), indent=2))
+    else:
+        print(format_migration_summary(report))
+
+    sys.exit(0 if report.success else 1)
 
 
 def create_cli():

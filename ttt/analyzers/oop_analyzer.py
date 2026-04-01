@@ -102,7 +102,9 @@ class OopAnalyzer:
 
         return FileAnalysis(file_path=rel_path, issues=issues, total_lines=total_lines)
 
-    def _detect_long_methods(self, tree: ast.AST, lines: list, file_path: str) -> List[OopIssue]:
+    def _detect_long_methods(
+        self, tree: ast.AST, lines: list, file_path: str
+    ) -> List[OopIssue]:
         issues = []
         for node in ast.walk(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -111,18 +113,20 @@ class OopAnalyzer:
             end = node.end_lineno or start
             length = end - start + 1
             if length > MAX_METHOD_LINES:
-                issues.append(OopIssue(
-                    file_path=file_path,
-                    entity_name=node.name,
-                    issue_type="METHOD_TOO_LONG",
-                    line_start=start,
-                    line_end=end,
-                    description=(
-                        f"`{node.name}` spans {length} lines ({start}–{end}), "
-                        f"exceeding the {MAX_METHOD_LINES}-line limit."
-                    ),
-                    guideline=_GUIDELINES["METHOD_TOO_LONG"],
-                ))
+                issues.append(
+                    OopIssue(
+                        file_path=file_path,
+                        entity_name=node.name,
+                        issue_type="METHOD_TOO_LONG",
+                        line_start=start,
+                        line_end=end,
+                        description=(
+                            f"`{node.name}` spans {length} lines ({start}–{end}), "
+                            f"exceeding the {MAX_METHOD_LINES}-line limit."
+                        ),
+                        guideline=_GUIDELINES["METHOD_TOO_LONG"],
+                    )
+                )
         return issues
 
     def _detect_many_params(self, tree: ast.AST, file_path: str) -> List[OopIssue]:
@@ -134,18 +138,20 @@ class OopAnalyzer:
             param_names = [a.arg for a in args.args if a.arg != "self"]
             param_names += [a.arg for a in args.posonlyargs if a.arg != "self"]
             if len(param_names) > MAX_PARAMS:
-                issues.append(OopIssue(
-                    file_path=file_path,
-                    entity_name=node.name,
-                    issue_type="TOO_MANY_PARAMS",
-                    line_start=node.lineno,
-                    line_end=node.end_lineno or node.lineno,
-                    description=(
-                        f"`{node.name}` has {len(param_names)} parameters "
-                        f"({', '.join(param_names)}), exceeding the limit of {MAX_PARAMS}."
-                    ),
-                    guideline=_GUIDELINES["TOO_MANY_PARAMS"],
-                ))
+                issues.append(
+                    OopIssue(
+                        file_path=file_path,
+                        entity_name=node.name,
+                        issue_type="TOO_MANY_PARAMS",
+                        line_start=node.lineno,
+                        line_end=node.end_lineno or node.lineno,
+                        description=(
+                            f"`{node.name}` has {len(param_names)} parameters "
+                            f"({', '.join(param_names)}), exceeding the limit of {MAX_PARAMS}."
+                        ),
+                        guideline=_GUIDELINES["TOO_MANY_PARAMS"],
+                    )
+                )
         return issues
 
     def _detect_dict_patterns(self, tree: ast.AST, file_path: str) -> List[OopIssue]:
@@ -163,19 +169,21 @@ class OopAnalyzer:
                     keys.add(child.slice.value)
             if len(keys) >= MIN_DICT_KEYS:
                 sorted_keys = sorted(keys)
-                issues.append(OopIssue(
-                    file_path=file_path,
-                    entity_name=node.name,
-                    issue_type="DICT_AS_OBJECT",
-                    line_start=node.lineno,
-                    line_end=node.end_lineno or node.lineno,
-                    description=(
-                        f"`{node.name}` accesses {len(keys)} distinct string keys "
-                        f"({', '.join(repr(k) for k in sorted_keys[:6])}{'…' if len(sorted_keys) > 6 else ''}), "
-                        f"suggesting dict-as-object usage."
-                    ),
-                    guideline=_GUIDELINES["DICT_AS_OBJECT"],
-                ))
+                issues.append(
+                    OopIssue(
+                        file_path=file_path,
+                        entity_name=node.name,
+                        issue_type="DICT_AS_OBJECT",
+                        line_start=node.lineno,
+                        line_end=node.end_lineno or node.lineno,
+                        description=(
+                            f"`{node.name}` accesses {len(keys)} distinct string keys "
+                            f"({', '.join(repr(k) for k in sorted_keys[:6])}{'…' if len(sorted_keys) > 6 else ''}), "
+                            f"suggesting dict-as-object usage."
+                        ),
+                        guideline=_GUIDELINES["DICT_AS_OBJECT"],
+                    )
+                )
         return issues
 
     def _detect_module_functions(self, tree: ast.AST, file_path: str) -> List[OopIssue]:
@@ -185,16 +193,18 @@ class OopAnalyzer:
         issues = []
         for node in tree.body:  # type: ignore[attr-defined]
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                issues.append(OopIssue(
-                    file_path=file_path,
-                    entity_name=node.name,
-                    issue_type="STANDALONE_FUNCTION",
-                    line_start=node.lineno,
-                    line_end=node.end_lineno or node.lineno,
-                    description=(
-                        f"`{node.name}` is a module-level function in a file "
-                        f"that also defines classes."
-                    ),
-                    guideline=_GUIDELINES["STANDALONE_FUNCTION"],
-                ))
+                issues.append(
+                    OopIssue(
+                        file_path=file_path,
+                        entity_name=node.name,
+                        issue_type="STANDALONE_FUNCTION",
+                        line_start=node.lineno,
+                        line_end=node.end_lineno or node.lineno,
+                        description=(
+                            f"`{node.name}` is a module-level function in a file "
+                            f"that also defines classes."
+                        ),
+                        guideline=_GUIDELINES["STANDALONE_FUNCTION"],
+                    )
+                )
         return issues

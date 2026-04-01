@@ -2,16 +2,18 @@
 
 import re
 import logging
-from typing import Dict, List, Optional, Tuple, Set
+from typing import Dict, List, Optional, Tuple
 
 from ..utils import split_lua_args
 from ..mappings.constants import ALL_CONSTANTS
 from ..mappings.signatures import SIGNATURE_MAP, PARAM_RENAME_MAP
+from .explain import ExplainEntry, ExplainReport
+from .rule_confidence import rule_confidence
 
 logger = logging.getLogger("ttt")
 
-class LuaTransformer:
 
+class LuaTransformer:
     def __init__(self, function_map: Dict, source_version: str = "tfs03"):
         self.function_map = function_map
         self.source_version = source_version
@@ -22,10 +24,15 @@ class LuaTransformer:
             "constants_replaced": 0,
             "variables_renamed": 0,
         }
+        self.rule_confidences: List[float] = []
+        self.explain: Optional[ExplainReport] = None
+        self._current_file = ""
 
     def transform(self, code: str, filename: str = "") -> str:
         self.warnings = []
         self.stats = {k: 0 for k in self.stats}
+        self.rule_confidences = []
+        self._current_file = filename
 
         code, var_renames = self._transform_signatures(code)
 
@@ -52,10 +59,10 @@ class LuaTransformer:
         # Pattern to match: function onXxx(params)
         # Also matches: function eventName.onXxx(params)
         pattern = re.compile(
-            r'(function\s+(?:\w+[.:])?)'   # "function " or "function name."
-            r'(\w+)'                         # event name (onUse, onLogin, etc.)
-            r'\s*\(([^)]*)\)',              # (params)
-            re.MULTILINE
+            r"(function\s+(?:\w+[.:])?)"  # "function " or "function name."
+            r"(\w+)"  # event name (onUse, onLogin, etc.)
+            r"\s*\(([^)]*)\)",  # (params)
+            re.MULTILINE,
         )
 
         def replace_signature(match):
@@ -101,7 +108,16 @@ class LuaTransformer:
 
             self.stats["signatures_updated"] += 1
             new_params_str = ", ".join(new_params)
-            return f"{prefix}{event_name}({new_params_str})"
+            new_sig_str = f"{prefix}{event_name}({new_params_str})"
+            self._add_explain(
+                "signature",
+                match.group(0),
+                new_sig_str,
+                rule=event_name,
+                reasoning=f"Callback {event_name}: updated parameter list from "
+                f"({old_params_str}) to ({new_params_str})",
+            )
+            return new_sig_str
 
         code = pattern.sub(replace_signature, code)
         return code, var_renames
@@ -181,14 +197,16 @@ class LuaTransformer:
             if ch == "[" and i + 1 < len(text) and text[i + 1] == "[":
                 end = text.find("]]", i + 2)
                 if end != -1:
-                    result.append(text[i:end + 2])
+                    result.append(text[i : end + 2])
                     i = end + 2
                     continue
 
-            if text[i:i + len(old)] == old:
-                before_ok = (i == 0 or not (text[i - 1].isalnum() or text[i - 1] == "_"))
+            if text[i : i + len(old)] == old:
+                before_ok = i == 0 or not (text[i - 1].isalnum() or text[i - 1] == "_")
                 after_pos = i + len(old)
-                after_ok = (after_pos >= len(text) or not (text[after_pos].isalnum() or text[after_pos] == "_"))
+                after_ok = after_pos >= len(text) or not (
+                    text[after_pos].isalnum() or text[after_pos] == "_"
+                )
 
                 if before_ok and after_ok:
                     result.append(new)
@@ -212,13 +230,11 @@ class LuaTransformer:
 
         return code
 
-    def _replace_function(self, code: str, func_name: str, mapping: Dict,
-                          var_renames: Dict[str, str]) -> str:
+    def _replace_function(
+        self, code: str, func_name: str, mapping: Dict, var_renames: Dict[str, str]
+    ) -> str:
         escaped_name = re.escape(func_name)
-        pattern = re.compile(
-            r'(?<![.\w:])' + escaped_name + r'\s*\(',
-            re.MULTILINE
-        )
+        pattern = re.compile(r"(?<![.\w:])" + escaped_name + r"\s*\(", re.MULTILINE)
 
         result = []
         last_end = 0
@@ -242,7 +258,7 @@ class LuaTransformer:
                 search_start = match.end()
                 continue
 
-            args_str = code[paren_start + 1:paren_end]
+            args_str = code[paren_start + 1 : paren_end]
             args = split_lua_args(args_str)
 
             replacement, note = self._generate_replacement(
@@ -257,16 +273,16 @@ class LuaTransformer:
                 # Add note at end of line, but only if the call is at statement level
                 # (i.e., not inside an expression like an if condition)
                 # Check if this is a statement-level call by looking at what follows
-                after_call = code[paren_end + 1:call_start + 80]  # Look ahead
+                after_call = code[paren_end + 1 : call_start + 80]  # Look ahead
                 # If followed by operator or comma, it's part of an expression - skip the note
                 is_expression_context = False
                 for ch in after_call:
-                    if ch in '+-*/%=<>~!&|':
+                    if ch in "+-*/%=<>~!&|":
                         is_expression_context = True
                         break
-                    elif ch not in ' \t\n\r':
+                    elif ch not in " \t\n\r":
                         break
-                
+
                 if not is_expression_context:
                     # Add note at end of line
                     line_end = code.find("\n", paren_end)
@@ -290,11 +306,36 @@ class LuaTransformer:
             search_start = last_end
             self.stats["functions_converted"] += 1
 
+            # Per-rule confidence scoring
+            conf = rule_confidence(mapping)
+            self.rule_confidences.append(conf)
+
+            # Explain entry for function call
+            original_call = f"{func_name}({args_str})"
+            line_num = code[:call_start].count("\n") + 1
+            mapping_type = mapping.get("custom") or mapping.get("type", "method")
+            method_name = mapping.get("method", mapping.get("custom", ""))
+            self._add_explain(
+                "function",
+                original_call,
+                replacement,
+                rule=func_name,
+                reasoning=f"Procedural → OOP: {func_name} mapped to {method_name} "
+                f"(type={mapping_type})",
+                line=line_num,
+                confidence=conf,
+            )
+
         result.append(code[last_end:])
         return "".join(result)
 
-    def _generate_replacement(self, func_name: str, args: List[str],
-                               mapping: Dict, var_renames: Dict[str, str]) -> Tuple[Optional[str], Optional[str]]:
+    def _generate_replacement(
+        self,
+        func_name: str,
+        args: List[str],
+        mapping: Dict,
+        var_renames: Dict[str, str],
+    ) -> Tuple[Optional[str], Optional[str]]:
         method = mapping.get("method")
         obj_type = mapping.get("obj_type")
         obj_param = mapping.get("obj_param", 0)
@@ -357,9 +398,13 @@ class LuaTransformer:
         args_str = ", ".join(args)
         return f"{func_name}({args_str})", note
 
-    def _resolve_object_var(self, arg: str, obj_type: str,
-                            var_renames: Dict[str, str],
-                            wrapper: Optional[str] = None) -> str:
+    def _resolve_object_var(
+        self,
+        arg: str,
+        obj_type: str,
+        var_renames: Dict[str, str],
+        wrapper: Optional[str] = None,
+    ) -> str:
         renamed = var_renames.get(arg)
         if renamed:
             return renamed
@@ -407,14 +452,24 @@ class LuaTransformer:
 
         return arg
 
-    def _handle_custom(self, custom_type: str, func_name: str, args: List[str],
-                       mapping: Dict, var_renames: Dict[str, str]) -> Optional[str]:
+    def _handle_custom(
+        self,
+        custom_type: str,
+        func_name: str,
+        args: List[str],
+        mapping: Dict,
+        var_renames: Dict[str, str],
+    ) -> Optional[str]:
         if custom_type == "type_check":
             cls = mapping.get("custom_class", "Creature")
             if args:
                 arg = args[0].strip()
                 renamed = var_renames.get(arg, PARAM_RENAME_MAP.get(arg, arg))
-                return f"{renamed}:is{cls}()" if renamed in ("player", "creature", "target") else f"{cls}({arg}) ~= nil"
+                return (
+                    f"{renamed}:is{cls}()"
+                    if renamed in ("player", "creature", "target")
+                    else f"{cls}({arg}) ~= nil"
+                )
             return f"{func_name}()"
 
         if custom_type == "vocation_check":
@@ -433,17 +488,17 @@ class LuaTransformer:
         if custom_type == "item_type_by_name":
             if args:
                 return f"ItemType({args[0].strip()}):getId()"
-            return f"ItemType():getId()"
+            return "ItemType():getId()"
 
         if custom_type == "combat_passthrough":
             args_str = ", ".join(args)
-            note = mapping.get("note", "")
+            mapping.get("note", "")
             return f"{func_name}({args_str})"
 
         if custom_type == "house_lookup":
             if args:
                 return f"House({args[0].strip()})"
-            return f"House()"
+            return "House()"
 
         if custom_type == "npc_self":
             args_str = ", ".join(args)
@@ -484,31 +539,54 @@ class LuaTransformer:
             # Replace whole-word only, outside strings
             code = self._replace_word_outside_strings(code, old_const, new_const)
             self.stats["constants_replaced"] += 1
+            self._add_explain(
+                "constant",
+                old_const,
+                new_const,
+                rule=old_const,
+                reasoning=f"Constant renamed: {old_const} → {new_const}",
+            )
 
         return code
 
     def _transform_positions(self, code: str) -> str:
         pattern = re.compile(
-            r'\{\s*x\s*=\s*(\w+)\s*,\s*y\s*=\s*(\w+)\s*,\s*z\s*=\s*(\w+)\s*\}',
-            re.IGNORECASE
+            r"\{\s*x\s*=\s*(\w+)\s*,\s*y\s*=\s*(\w+)\s*,\s*z\s*=\s*(\w+)\s*\}",
+            re.IGNORECASE,
         )
 
         def replace_pos(match):
             x, y, z = match.group(1), match.group(2), match.group(3)
-            return f"Position({x}, {y}, {z})"
+            result = f"Position({x}, {y}, {z})"
+            self._add_explain(
+                "position",
+                match.group(0),
+                result,
+                rule="position_literal",
+                reasoning="Table-style position → Position() constructor",
+            )
+            return result
 
         code = pattern.sub(replace_pos, code)
 
         pattern2 = re.compile(
-            r'\{\s*x\s*=\s*(\w+)\s*,\s*y\s*=\s*(\w+)\s*,\s*z\s*=\s*(\w+)\s*,'
-            r'\s*stackpos\s*=\s*(\w+)\s*\}',
-            re.IGNORECASE
+            r"\{\s*x\s*=\s*(\w+)\s*,\s*y\s*=\s*(\w+)\s*,\s*z\s*=\s*(\w+)\s*,"
+            r"\s*stackpos\s*=\s*(\w+)\s*\}",
+            re.IGNORECASE,
         )
 
         def replace_pos_stack(match):
             x, y, z = match.group(1), match.group(2), match.group(3)
             stackpos = match.group(4)
-            return f"Position({x}, {y}, {z})"  # stackpos not needed in 1.x Position
+            result = f"Position({x}, {y}, {z})"  # stackpos not needed in 1.x Position
+            self._add_explain(
+                "position",
+                match.group(0),
+                result,
+                rule="position_stackpos",
+                reasoning=f"Position with stackpos={stackpos} — stackpos dropped in 1.x",
+            )
+            return result
 
         code = pattern2.sub(replace_pos_stack, code)
 
@@ -593,7 +671,9 @@ class LuaTransformer:
         if self.stats["signatures_updated"]:
             parts.append(f"{self.stats['signatures_updated']} signature(s) updated")
         if self.stats["functions_converted"]:
-            parts.append(f"{self.stats['functions_converted']} function call(s) converted")
+            parts.append(
+                f"{self.stats['functions_converted']} function call(s) converted"
+            )
         if self.stats["constants_replaced"]:
             parts.append(f"{self.stats['constants_replaced']} constant(s) replaced")
         if self.stats["variables_renamed"]:
@@ -601,3 +681,29 @@ class LuaTransformer:
         if self.warnings:
             parts.append(f"{len(self.warnings)} warning(s)")
         return ", ".join(parts) if parts else "No changes"
+
+    def _add_explain(
+        self,
+        stage: str,
+        original: str,
+        transformed: str,
+        rule: str,
+        reasoning: str,
+        line: int = 0,
+        confidence: float = 1.0,
+    ) -> None:
+        """Record an explain entry if explain mode is enabled."""
+        if self.explain is None:
+            return
+        self.explain.add(
+            ExplainEntry(
+                file=self._current_file,
+                line=line,
+                stage=stage,
+                original=original.strip(),
+                transformed=transformed.strip(),
+                rule=rule,
+                reasoning=reasoning,
+                confidence=confidence,
+            )
+        )

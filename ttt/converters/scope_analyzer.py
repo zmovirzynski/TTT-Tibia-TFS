@@ -7,7 +7,7 @@ TFS 1.x format.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 from luaparser import ast
 from luaparser.astnodes import (
     Node,
@@ -18,20 +18,14 @@ from luaparser.astnodes import (
     Name,
     Call,
     Invoke,
-    Index,
-    String,
     Number,
-    TrueExpr,
-    Block,
-    Return,
-    If,
     Chunk,
 )
 
 # Import from existing mappings
 from ..mappings.signatures import SIGNATURE_MAP, PARAM_RENAME_MAP
-from ..mappings.tfs03_functions import TFS03_TO_1X, GAME_FUNCTIONS
-from .ast_utils import get_function_name, get_base_name
+from ..mappings.tfs03_functions import TFS03_TO_1X
+from .ast_utils import get_function_name
 
 
 @dataclass
@@ -711,7 +705,9 @@ class ScopeAnalyzer(ast.ASTVisitor):
         if isinstance(node, LocalAssign):
             if hasattr(node, "targets") and hasattr(node, "values"):
                 for target, value in zip(node.targets, node.values or []):
-                    if isinstance(target, Name) and isinstance(value, (Function, AnonymousFunction)):
+                    if isinstance(target, Name) and isinstance(
+                        value, (Function, AnonymousFunction)
+                    ):
                         # Store function name for later use
                         self._current_function_name = target.id
 
@@ -719,7 +715,9 @@ class ScopeAnalyzer(ast.ASTVisitor):
         elif isinstance(node, Assign):
             if hasattr(node, "targets") and hasattr(node, "values"):
                 for target, value in zip(node.targets, node.values or []):
-                    if isinstance(target, Name) and isinstance(value, (Function, AnonymousFunction)):
+                    if isinstance(target, Name) and isinstance(
+                        value, (Function, AnonymousFunction)
+                    ):
                         self._current_function_name = target.id
 
     def generic_visit(self, node: Node) -> None:

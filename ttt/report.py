@@ -12,7 +12,6 @@ Produces a detailed conversion_report.txt with:
 """
 
 import os
-import re
 import time
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -37,6 +36,7 @@ class FileReport:
     ttt_warnings: int = 0
     unrecognized_calls: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    rule_confidences: List[float] = field(default_factory=list)
     error: str = ""
     success: bool = True
     original_content: str = ""
@@ -59,6 +59,12 @@ class FileReport:
             return 1.0  # nothing to change or pure copy
 
         score = 1.0
+
+        # Use per-rule confidence if available
+        if self.rule_confidences:
+            avg_rule = sum(self.rule_confidences) / len(self.rule_confidences)
+            score = avg_rule
+
         # Each TTT warning reduces confidence
         if self.total_changes > 0:
             warning_ratio = self.ttt_warnings / max(self.total_changes, 1)
@@ -359,7 +365,7 @@ class ConversionReport:
         w(f"  Files that will need review:    {len(needs_review)}")
         w(f"  Files with errors:              {len(will_fail)}")
         w("")
-        w(f"  Estimated changes:")
+        w("  Estimated changes:")
         w(f"    Function calls:               {self.total_functions_converted}")
         w(f"    Callback signatures:          {self.total_signatures_updated}")
         w(f"    Constants:                    {self.total_constants_replaced}")

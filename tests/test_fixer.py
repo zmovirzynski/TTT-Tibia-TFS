@@ -11,7 +11,6 @@ Covers:
 
 import json
 import os
-import shutil
 import tempfile
 import unittest
 
@@ -34,10 +33,10 @@ from ttt.fixer.auto_fix import (
 # Fix: deprecated-api
 # ═══════════════════════════════════════════════════════════
 
-class TestFixDeprecatedApi(unittest.TestCase):
 
+class TestFixDeprecatedApi(unittest.TestCase):
     def test_replaces_simple_getter(self):
-        code = 'local lvl = getPlayerLevel(cid)'
+        code = "local lvl = getPlayerLevel(cid)"
         fixed, fixes = fix_deprecated_api(code)
         self.assertIn("player:getLevel()", fixed)
         self.assertGreater(len(fixes), 0)
@@ -55,7 +54,7 @@ class TestFixDeprecatedApi(unittest.TestCase):
         self.assertIn("Game.broadcastMessage(", fixed)
 
     def test_skips_comments(self):
-        code = '-- doPlayerSendTextMessage(cid, msg)\nlocal x = 1'
+        code = "-- doPlayerSendTextMessage(cid, msg)\nlocal x = 1"
         fixed, fixes = fix_deprecated_api(code)
         self.assertIn("-- doPlayerSendTextMessage", fixed)
         self.assertEqual(len(fixes), 0)
@@ -75,13 +74,13 @@ local name = getCreatureName(cid)"""
         self.assertEqual(len(fixes), 2)
 
     def test_nested_call(self):
-        code = 'doSendMagicEffect(getCreaturePosition(cid), CONST_ME_POFF)'
+        code = "doSendMagicEffect(getCreaturePosition(cid), CONST_ME_POFF)"
         fixed, fixes = fix_deprecated_api(code)
         self.assertIn(":getPosition()", fixed)
         self.assertGreater(len(fixes), 0)
 
     def test_preserves_non_deprecated(self):
-        code = 'local x = player:getLevel()\nplayer:sendTextMessage(msg)'
+        code = "local x = player:getLevel()\nplayer:sendTextMessage(msg)"
         fixed, fixes = fix_deprecated_api(code)
         self.assertEqual(code, fixed)
         self.assertEqual(len(fixes), 0)
@@ -91,8 +90,8 @@ local name = getCreatureName(cid)"""
 # Fix: missing-return
 # ═══════════════════════════════════════════════════════════
 
-class TestFixMissingReturn(unittest.TestCase):
 
+class TestFixMissingReturn(unittest.TestCase):
     def test_adds_return_to_callback(self):
         code = """function onUse(player, item, fromPosition, target, toPosition, isHotkey)
     player:sendTextMessage(MESSAGE_INFO_DESCR, "Hello")
@@ -154,8 +153,8 @@ end"""
 # Fix: global-variable-leak
 # ═══════════════════════════════════════════════════════════
 
-class TestFixGlobalVariableLeak(unittest.TestCase):
 
+class TestFixGlobalVariableLeak(unittest.TestCase):
     def test_adds_local(self):
         code = """function onUse(player)
     healAmount = 100
@@ -205,8 +204,8 @@ end"""
 # Fix: deprecated-constant
 # ═══════════════════════════════════════════════════════════
 
-class TestFixDeprecatedConstants(unittest.TestCase):
 
+class TestFixDeprecatedConstants(unittest.TestCase):
     def test_replaces_TRUE(self):
         code = "return TRUE"
         fixed, fixes = fix_deprecated_constants(code)
@@ -253,8 +252,8 @@ class TestFixDeprecatedConstants(unittest.TestCase):
 # Fix: invalid-callback-signature
 # ═══════════════════════════════════════════════════════════
 
-class TestFixInvalidCallbackSignature(unittest.TestCase):
 
+class TestFixInvalidCallbackSignature(unittest.TestCase):
     def test_updates_onUse_signature(self):
         code = "function onUse(cid, item, frompos, item2, topos)"
         fixed, fixes = fix_invalid_callback_signature(code)
@@ -301,8 +300,8 @@ end"""
 # FixEngine
 # ═══════════════════════════════════════════════════════════
 
-class TestFixEngine(unittest.TestCase):
 
+class TestFixEngine(unittest.TestCase):
     def setUp(self):
         self.engine = FixEngine(dry_run=True, create_backup=False)
 
@@ -350,7 +349,7 @@ end"""
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".lua", delete=False, encoding="utf-8"
         ) as f:
-            f.write('return TRUE\n')
+            f.write("return TRUE\n")
             tmp_path = f.name
 
         try:
@@ -360,7 +359,7 @@ end"""
             # Since dry_run=True, file should NOT be modified
             with open(tmp_path, "r", encoding="utf-8") as f:
                 on_disk = f.read()
-            self.assertEqual(on_disk, 'return TRUE\n')
+            self.assertEqual(on_disk, "return TRUE\n")
         finally:
             os.unlink(tmp_path)
 
@@ -370,7 +369,7 @@ end"""
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".lua", delete=False, encoding="utf-8"
         ) as f:
-            f.write('return TRUE\n')
+            f.write("return TRUE\n")
             tmp_path = f.name
 
         try:
@@ -390,7 +389,7 @@ end"""
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".lua", delete=False, encoding="utf-8"
         ) as f:
-            f.write('return TRUE\n')
+            f.write("return TRUE\n")
             tmp_path = f.name
 
         bak_path = tmp_path + ".bak"
@@ -403,7 +402,7 @@ end"""
             # Backup should contain original content
             with open(bak_path, "r", encoding="utf-8") as f:
                 backup_content = f.read()
-            self.assertEqual(backup_content, 'return TRUE\n')
+            self.assertEqual(backup_content, "return TRUE\n")
         finally:
             os.unlink(tmp_path)
             if os.path.exists(bak_path):
@@ -419,7 +418,8 @@ end"""
         # Use the examples directory
         examples_dir = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "tfs03_input"
+            "examples",
+            "tfs03_input",
         )
         if os.path.isdir(examples_dir):
             report = self.engine.fix_directory(examples_dir)
@@ -432,8 +432,8 @@ end"""
 # FileFixResult
 # ═══════════════════════════════════════════════════════════
 
-class TestFileFixResult(unittest.TestCase):
 
+class TestFileFixResult(unittest.TestCase):
     def test_changed_property(self):
         r = FileFixResult(filepath="test.lua", original_code="a", fixed_code="b")
         self.assertTrue(r.changed)
@@ -468,11 +468,15 @@ class TestFileFixResult(unittest.TestCase):
 # FixReport
 # ═══════════════════════════════════════════════════════════
 
-class TestFixReport(unittest.TestCase):
 
+class TestFixReport(unittest.TestCase):
     def test_summary_counts(self):
-        r1 = FileFixResult(filepath="a.lua", original_code="a", fixed_code="b",
-                           fixes=[FixAction("deprecated-api", 1, "fix1")])
+        r1 = FileFixResult(
+            filepath="a.lua",
+            original_code="a",
+            fixed_code="b",
+            fixes=[FixAction("deprecated-api", 1, "fix1")],
+        )
         r2 = FileFixResult(filepath="b.lua", original_code="a", fixed_code="a")
         r3 = FileFixResult(filepath="c.lua", error="read error")
 
@@ -484,9 +488,11 @@ class TestFixReport(unittest.TestCase):
 
     def test_fix_summary(self):
         from ttt.fixer.auto_fix import FixAction
+
         r = FileFixResult(
             filepath="test.lua",
-            original_code="a", fixed_code="b",
+            original_code="a",
+            fixed_code="b",
             fixes=[
                 FixAction("deprecated-api", 1, "fix1"),
                 FixAction("deprecated-api", 2, "fix2"),
@@ -503,10 +509,11 @@ class TestFixReport(unittest.TestCase):
 # Reporters
 # ═══════════════════════════════════════════════════════════
 
-class TestFixReporters(unittest.TestCase):
 
+class TestFixReporters(unittest.TestCase):
     def _make_report(self):
         from ttt.fixer.auto_fix import FixAction
+
         r = FileFixResult(
             filepath=os.path.join(tempfile.gettempdir(), "test.lua"),
             original_code="return TRUE\n",
@@ -526,8 +533,10 @@ class TestFixReporters(unittest.TestCase):
     def test_format_text_with_diff(self):
         report = self._make_report()
         output = format_fix_text(
-            report, tempfile.gettempdir(),
-            use_colors=False, show_diff=True,
+            report,
+            tempfile.gettempdir(),
+            use_colors=False,
+            show_diff=True,
         )
         self.assertIn("-return TRUE", output)
         self.assertIn("+return true", output)
@@ -551,6 +560,7 @@ class TestFixReporters(unittest.TestCase):
 # End-to-end: fix example scripts (dry-run)
 # ═══════════════════════════════════════════════════════════
 
+
 class TestFixExampleScripts(unittest.TestCase):
     """Test the fixer on real example scripts (dry-run mode)."""
 
@@ -558,7 +568,8 @@ class TestFixExampleScripts(unittest.TestCase):
         self.engine = FixEngine(dry_run=True, create_backup=False)
         self.examples_dir = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "tfs03_input"
+            "examples",
+            "tfs03_input",
         )
 
     def test_fix_healing_potion(self):
@@ -615,8 +626,8 @@ class TestFixExampleScripts(unittest.TestCase):
 # Constants & metadata
 # ═══════════════════════════════════════════════════════════
 
-class TestFixerConstants(unittest.TestCase):
 
+class TestFixerConstants(unittest.TestCase):
     def test_fixable_rules(self):
         self.assertIn("deprecated-api", FIXABLE_RULES)
         self.assertIn("missing-return", FIXABLE_RULES)
@@ -627,7 +638,7 @@ class TestFixerConstants(unittest.TestCase):
 
 
 # Need FixAction import at module level for TestFixReport
-from ttt.fixer.auto_fix import FixAction
+from ttt.fixer.auto_fix import FixAction  # noqa: E402
 
 
 if __name__ == "__main__":

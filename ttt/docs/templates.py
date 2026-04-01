@@ -8,6 +8,8 @@ Provides:
   - full CSS embedded in each page
 """
 
+import re
+
 
 # ---------------------------------------------------------------------------
 # CSS (common)
@@ -102,12 +104,14 @@ footer {
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _html_escape(text: str) -> str:
-    return (text
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;"))
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
 
 
 def _nav(active: str = "") -> str:
@@ -167,6 +171,7 @@ def _badge(category: str) -> str:
 # Index page
 # ---------------------------------------------------------------------------
 
+
 def render_index(report) -> str:
     """Render the main index page."""
     cats = report.categories
@@ -174,7 +179,9 @@ def render_index(report) -> str:
     for cat_name, entries in cats.items():
         if not entries:
             continue
-        label = cat_name.replace("scripts", " Scripts").replace("events", " Events").title()
+        label = (
+            cat_name.replace("scripts", " Scripts").replace("events", " Events").title()
+        )
         stats_html += f"""
     <div class="stat-box">
       <div class="stat-value">{len(entries)}</div>
@@ -225,6 +232,7 @@ def render_index(report) -> str:
 # ---------------------------------------------------------------------------
 # Category page
 # ---------------------------------------------------------------------------
+
 
 def render_category(category: str, entries) -> str:
     """Render a category listing page."""
@@ -282,6 +290,7 @@ def _category_columns(category: str):
 # Detail page
 # ---------------------------------------------------------------------------
 
+
 def render_detail(entry) -> str:
     """Render a script detail page."""
     title = entry.name
@@ -291,7 +300,7 @@ def render_detail(entry) -> str:
     if entry.attributes:
         attrs_html = '<div class="meta">'
         for k, v in entry.attributes.items():
-            attrs_html += f'<span><strong>{_html_escape(k)}:</strong> {_html_escape(str(v))}</span>'
+            attrs_html += f"<span><strong>{_html_escape(k)}:</strong> {_html_escape(str(v))}</span>"
         attrs_html += "</div>"
 
     # Code block
@@ -313,7 +322,11 @@ def render_detail(entry) -> str:
 
   {code_html}
 """
-    cat_title = entry.category.replace("scripts", " Scripts").replace("events", " Events").title()
+    cat_title = (
+        entry.category.replace("scripts", " Scripts")
+        .replace("events", " Events")
+        .title()
+    )
     return _page(title, body, active=cat_title.split()[0])
 
 
@@ -321,10 +334,8 @@ def render_detail(entry) -> str:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _safe_filename(category: str, name: str) -> str:
     """Create a filesystem-safe filename from category + name."""
-    safe = re.sub(r'[^\w\-]', '_', f"{category}_{name}")
+    safe = re.sub(r"[^\w\-]", "_", f"{category}_{name}")
     return safe[:80]
-
-
-import re

@@ -10,9 +10,8 @@ Validates:
 import os
 import re
 import xml.etree.ElementTree as ET
-from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List
 
 from ..utils import read_file_safe, find_xml_files
 
@@ -21,10 +20,12 @@ from ..utils import read_file_safe, find_xml_files
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class XmlIssue:
     """A single XML validation issue."""
-    severity: str   # "error", "warning"
+
+    severity: str  # "error", "warning"
     check_name: str  # "xml-malformed", "xml-missing-attr", "xml-missing-script"
     filepath: str
     line: int = 0
@@ -43,6 +44,7 @@ class XmlIssue:
 @dataclass
 class XmlValidationReport:
     """Aggregated XML validation results."""
+
     issues: List[XmlIssue] = field(default_factory=list)
     total_files_scanned: int = 0
     total_files_valid: int = 0
@@ -108,17 +110,20 @@ ID_ATTRS = {
 # Validators
 # ---------------------------------------------------------------------------
 
+
 def _check_wellformed(xml_path: str) -> List[XmlIssue]:
     """Check if an XML file is well-formed."""
     issues = []
     content = read_file_safe(xml_path)
     if content is None:
-        issues.append(XmlIssue(
-            severity="error",
-            check_name="xml-malformed",
-            filepath=xml_path,
-            message="File could not be read",
-        ))
+        issues.append(
+            XmlIssue(
+                severity="error",
+                check_name="xml-malformed",
+                filepath=xml_path,
+                message="File could not be read",
+            )
+        )
         return issues
 
     try:
@@ -127,16 +132,18 @@ def _check_wellformed(xml_path: str) -> List[XmlIssue]:
         line = 0
         msg = str(e)
         # Extract line number from error: "syntax error: line X, column Y"
-        m = re.search(r'line (\d+)', msg)
+        m = re.search(r"line (\d+)", msg)
         if m:
             line = int(m.group(1))
-        issues.append(XmlIssue(
-            severity="error",
-            check_name="xml-malformed",
-            filepath=xml_path,
-            line=line,
-            message=f"XML parse error: {msg}",
-        ))
+        issues.append(
+            XmlIssue(
+                severity="error",
+                check_name="xml-malformed",
+                filepath=xml_path,
+                line=line,
+                message=f"XML parse error: {msg}",
+            )
+        )
 
     return issues
 
@@ -164,7 +171,7 @@ def _check_required_attrs(xml_path: str) -> List[XmlIssue]:
                 # Check if attribs match
                 match = True
                 for k, v in list(attribs.items())[:1]:
-                    if f'{k}=' in line_lower:
+                    if f"{k}=" in line_lower:
                         match = True
                         break
                 if match:
@@ -183,13 +190,15 @@ def _check_required_attrs(xml_path: str) -> List[XmlIssue]:
             for required_set, desc in REQUIRED_ATTRS[tag]:
                 for attr in required_set:
                     if attr not in attribs_lower:
-                        issues.append(XmlIssue(
-                            severity="warning",
-                            check_name="xml-missing-attr",
-                            filepath=xml_path,
-                            line=line_counter,
-                            message=f"Missing attribute '{attr}' — {desc}",
-                        ))
+                        issues.append(
+                            XmlIssue(
+                                severity="warning",
+                                check_name="xml-missing-attr",
+                                filepath=xml_path,
+                                line=line_counter,
+                                message=f"Missing attribute '{attr}' — {desc}",
+                            )
+                        )
 
         # Check that actions/movements have at least one ID attribute
         if tag in ID_ATTRS:
@@ -197,15 +206,22 @@ def _check_required_attrs(xml_path: str) -> List[XmlIssue]:
             has_id = any(a in attribs_lower for a in id_list)
             if not has_id:
                 # Check if it's the root element (e.g. <actions>)
-                if tag not in ("actions", "movements", "talkactions",
-                               "creaturescripts", "globalevents"):
-                    issues.append(XmlIssue(
-                        severity="warning",
-                        check_name="xml-missing-attr",
-                        filepath=xml_path,
-                        line=line_counter,
-                        message=f"<{tag}> has no ID attribute (expected one of: {', '.join(id_list)})",
-                    ))
+                if tag not in (
+                    "actions",
+                    "movements",
+                    "talkactions",
+                    "creaturescripts",
+                    "globalevents",
+                ):
+                    issues.append(
+                        XmlIssue(
+                            severity="warning",
+                            check_name="xml-missing-attr",
+                            filepath=xml_path,
+                            line=line_counter,
+                            message=f"<{tag}> has no ID attribute (expected one of: {', '.join(id_list)})",
+                        )
+                    )
 
     return issues
 
@@ -229,13 +245,15 @@ def _check_script_paths(xml_path: str) -> List[XmlIssue]:
                 os.path.join(scripts_dir, script_ref),
             ]
             if not any(os.path.isfile(c) for c in candidates):
-                issues.append(XmlIssue(
-                    severity="error",
-                    check_name="xml-missing-script",
-                    filepath=xml_path,
-                    line=i,
-                    message=f"Script file not found: '{script_ref}'",
-                ))
+                issues.append(
+                    XmlIssue(
+                        severity="error",
+                        check_name="xml-missing-script",
+                        filepath=xml_path,
+                        line=i,
+                        message=f"Script file not found: '{script_ref}'",
+                    )
+                )
 
     return issues
 
@@ -243,6 +261,7 @@ def _check_script_paths(xml_path: str) -> List[XmlIssue]:
 # ---------------------------------------------------------------------------
 # Main validation function
 # ---------------------------------------------------------------------------
+
 
 def validate_xml_files(directory: str) -> XmlValidationReport:
     """Validate all XML files in a server directory."""
@@ -269,10 +288,12 @@ def validate_xml_files(directory: str) -> XmlValidationReport:
 
     report.total_files_valid = valid_count
 
-    report.issues.sort(key=lambda i: (
-        0 if i.severity == "error" else 1,
-        i.filepath,
-        i.line,
-    ))
+    report.issues.sort(
+        key=lambda i: (
+            0 if i.severity == "error" else 1,
+            i.filepath,
+            i.line,
+        )
+    )
 
     return report

@@ -19,7 +19,6 @@ from ttt.engine import ConversionEngine
 
 
 class TestArgSplitter(unittest.TestCase):
-
     def test_simple_args(self):
         result = split_lua_args("cid, 2160, 1")
         self.assertEqual(result, ["cid", "2160", "1"])
@@ -46,14 +45,16 @@ class TestArgSplitter(unittest.TestCase):
 
 
 class TestLuaTransformer(unittest.TestCase):
-
     def setUp(self):
         self.transformer = LuaTransformer(TFS03_TO_1X, "tfs03")
 
     def test_signature_transform_onuse(self):
         code = "function onUse(cid, item, frompos, item2, topos)\n    return true\nend"
         result = self.transformer.transform(code)
-        self.assertIn("function onUse(player, item, fromPosition, target, toPosition, isHotkey)", result)
+        self.assertIn(
+            "function onUse(player, item, fromPosition, target, toPosition, isHotkey)",
+            result,
+        )
 
     def test_signature_transform_onlogin(self):
         code = "function onLogin(cid)\n    return true\nend"
@@ -71,7 +72,9 @@ class TestLuaTransformer(unittest.TestCase):
     return true
 end"""
         result = self.transformer.transform(code)
-        self.assertIn('player:sendTextMessage(MESSAGE_STATUS_DEFAULT, "Hello!")', result)
+        self.assertIn(
+            'player:sendTextMessage(MESSAGE_STATUS_DEFAULT, "Hello!")', result
+        )
 
     def test_function_call_getPlayerLevel(self):
         code = """function onUse(cid, item, frompos, item2, topos)
@@ -116,7 +119,7 @@ end"""
         self.assertIn('Game.broadcastMessage("Hello!", MESSAGE_STATUS_WARNING)', result)
 
     def test_static_call_createItem(self):
-        code = 'doCreateItem(2160, 1, pos)'
+        code = "doCreateItem(2160, 1, pos)"
         result = self.transformer.transform(code)
         self.assertIn("Game.createItem(2160, 1, pos)", result)
 
@@ -208,9 +211,14 @@ end"""
         result = self.transformer.transform(code)
 
         # Check key transformations
-        self.assertIn("function onUse(player, item, fromPosition, target, toPosition, isHotkey)", result)
+        self.assertIn(
+            "function onUse(player, item, fromPosition, target, toPosition, isHotkey)",
+            result,
+        )
         self.assertIn("player:getLevel()", result)
-        self.assertIn('player:sendCancelMessage("You need level 10 to use this item.")', result)
+        self.assertIn(
+            'player:sendCancelMessage("You need level 10 to use this item.")', result
+        )
         self.assertIn("player:getHealth()", result)
         self.assertIn("player:getMaxHealth()", result)
         self.assertIn("player:addHealth(healAmount)", result)
@@ -220,35 +228,34 @@ end"""
 
 
 class TestXmlToRevScript(unittest.TestCase):
-
     def setUp(self):
         self.converter = XmlToRevScriptConverter()
 
     def test_parse_actions_xml(self):
-        xml = '''<?xml version="1.0" encoding="UTF-8"?>
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
 <actions>
     <action itemid="2274" script="healing_potion.lua" />
     <action itemid="2275" script="teleport_scroll.lua" />
-</actions>'''
+</actions>"""
         entries = self.converter._parse_xml_entries(xml, "action")
         self.assertEqual(len(entries), 2)
         self.assertEqual(entries[0]["itemid"], "2274")
         self.assertEqual(entries[0]["script"], "healing_potion.lua")
 
     def test_parse_talkactions_xml(self):
-        xml = '''<?xml version="1.0" encoding="UTF-8"?>
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
 <talkactions>
     <talkaction words="/bc" script="broadcast.lua" access="3" />
-</talkactions>'''
+</talkactions>"""
         entries = self.converter._parse_xml_entries(xml, "talkaction")
         self.assertEqual(len(entries), 1)
         self.assertEqual(entries[0]["words"], "/bc")
 
     def test_parse_creaturescripts_xml(self):
-        xml = '''<?xml version="1.0" encoding="UTF-8"?>
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
 <creaturescripts>
     <event type="login" name="PlayerLogin" script="login.lua" />
-</creaturescripts>'''
+</creaturescripts>"""
         entries = self.converter._parse_xml_entries(xml, "event")
         self.assertEqual(len(entries), 1)
         self.assertEqual(entries[0]["type"], "login")
@@ -264,13 +271,16 @@ end"""
         self.assertIn("return true", body)
 
     def test_make_var_name(self):
-        self.assertEqual(self.converter._make_var_name("healing_potion.lua"), "healing_potion")
-        self.assertEqual(self.converter._make_var_name("TeleportScroll.lua"), "teleportScroll")
+        self.assertEqual(
+            self.converter._make_var_name("healing_potion.lua"), "healing_potion"
+        )
+        self.assertEqual(
+            self.converter._make_var_name("TeleportScroll.lua"), "teleportScroll"
+        )
         self.assertEqual(self.converter._make_var_name("123test.lua"), "script_123test")
 
 
 class TestConversionEngine(unittest.TestCase):
-
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         self.input_dir = os.path.join(self.test_dir, "input")
@@ -311,7 +321,7 @@ end"""
             f.write(lua_content)
 
         engine = ConversionEngine("tfs03", "tfs1x", self.input_dir, self.output_dir)
-        stats = engine.run()
+        engine.run()
 
         # Check output exists
         out_file = os.path.join(self.output_dir, "scripts", "test.lua")
@@ -320,17 +330,22 @@ end"""
         with open(out_file, "r") as f:
             result = f.read()
 
-        self.assertIn("function onUse(player, item, fromPosition, target, toPosition, isHotkey)", result)
-        self.assertIn('player:sendTextMessage(MESSAGE_STATUS_DEFAULT, "Hello!")', result)
+        self.assertIn(
+            "function onUse(player, item, fromPosition, target, toPosition, isHotkey)",
+            result,
+        )
+        self.assertIn(
+            'player:sendTextMessage(MESSAGE_STATUS_DEFAULT, "Hello!")', result
+        )
         self.assertIn("return true", result)
 
 
 class TestIntegration(unittest.TestCase):
-
     def test_convert_examples(self):
         examples_dir = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "tfs03_input"
+            "examples",
+            "tfs03_input",
         )
 
         if not os.path.exists(examples_dir):
@@ -340,6 +355,7 @@ class TestIntegration(unittest.TestCase):
 
         try:
             from ttt.utils import setup_logging
+
             setup_logging(verbose=False)
 
             engine = ConversionEngine("tfs03", "revscript", examples_dir, output_dir)
@@ -352,8 +368,10 @@ class TestIntegration(unittest.TestCase):
             scripts_dir = os.path.join(output_dir, "scripts")
             if os.path.exists(scripts_dir):
                 lua_count = sum(
-                    1 for root, _, files in os.walk(scripts_dir)
-                    for f in files if f.endswith(".lua")
+                    1
+                    for root, _, files in os.walk(scripts_dir)
+                    for f in files
+                    if f.endswith(".lua")
                 )
                 self.assertGreater(lua_count, 0, "No RevScript files generated")
 
@@ -362,17 +380,16 @@ class TestIntegration(unittest.TestCase):
 
 
 class TestNpcConverter(unittest.TestCase):
-
     def test_parse_npc_xml(self):
         converter = NpcConverter()
-        xml_content = '''<?xml version="1.0"?>
+        xml_content = """<?xml version="1.0"?>
 <npc name="Captain" script="captain.lua" walkinterval="2000" floorchange="0">
     <health now="100" max="100"/>
     <look type="128" head="95" body="116" legs="114" feet="114" addons="3"/>
     <parameters>
         <parameter key="message_greet" value="Hello!"/>
     </parameters>
-</npc>'''
+</npc>"""
         info = converter._parse_npc_xml(xml_content, "test.xml")
         self.assertIsNotNone(info)
         self.assertEqual(info["name"], "Captain")
@@ -423,13 +440,13 @@ class TestNpcConverter(unittest.TestCase):
         transformer = LuaTransformer(TFS03_TO_1X, "tfs03")
         converter = NpcConverter(lua_transformer=transformer, dry_run=True)
 
-        npc_code = '''function creatureSayCallback(cid, type, msg)
+        npc_code = """function creatureSayCallback(cid, type, msg)
     if msgcontains(msg, "level") then
         local level = getPlayerLevel(cid)
         selfSay("You are level " .. level .. ".", cid)
     end
     return true
-end'''
+end"""
 
         output_dir = tempfile.mkdtemp()
         try:
@@ -438,11 +455,11 @@ end'''
             scripts_dir = os.path.join(npc_dir, "scripts")
             os.makedirs(scripts_dir, exist_ok=True)
 
-            xml_content = '''<?xml version="1.0"?>
+            xml_content = """<?xml version="1.0"?>
 <npc name="TestNpc" script="test.lua" walkinterval="2000">
     <health now="100" max="100"/>
     <look type="130"/>
-</npc>'''
+</npc>"""
             xml_path = os.path.join(npc_dir, "testnpc.xml")
             with open(xml_path, "w") as f:
                 f.write(xml_content)
@@ -472,7 +489,8 @@ end'''
     def test_npc_integration(self):
         examples_dir = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "tfs03_input"
+            "examples",
+            "tfs03_input",
         )
 
         npc_dir = os.path.join(examples_dir, "npc")
@@ -482,6 +500,7 @@ end'''
         output_dir = tempfile.mkdtemp()
         try:
             from ttt.utils import setup_logging
+
             setup_logging(verbose=False)
 
             engine = ConversionEngine("tfs03", "revscript", examples_dir, output_dir)
@@ -507,7 +526,6 @@ end'''
 
 
 class TestHtmlDiff(unittest.TestCase):
-
     def test_diff_entry_creation(self):
         entry = DiffEntry(
             filename="healing.lua",
@@ -528,7 +546,7 @@ class TestHtmlDiff(unittest.TestCase):
 
         lines = gen._compute_diff_lines(original, converted)
 
-        statuses = [l["status"] for l in lines]
+        statuses = [ln["status"] for ln in lines]
         self.assertIn("equal", statuses)
         self.assertIn("change", statuses)
         self.assertEqual(statuses.count("equal"), 2)  # line1 and line3
@@ -541,34 +559,40 @@ class TestHtmlDiff(unittest.TestCase):
         converted = "aaa\nccc\nbbb\n"
 
         lines = gen._compute_diff_lines(original, converted)
-        statuses = [l["status"] for l in lines]
+        statuses = [ln["status"] for ln in lines]
         self.assertIn("add", statuses)
 
     def test_html_generation(self):
-        gen = HtmlDiffGenerator("TFS 0.3.6", "TFS 1.3+ (RevScript)", "/input", "/output")
+        gen = HtmlDiffGenerator(
+            "TFS 0.3.6", "TFS 1.3+ (RevScript)", "/input", "/output"
+        )
 
-        gen.add_entry(DiffEntry(
-            filename="test_action.lua",
-            original='function onUse(cid, item, frompos, item2, topos)\n'
-                     '    doPlayerAddItem(cid, 2160, 1)\n'
-                     '    return TRUE\n'
-                     'end\n',
-            converted='function onUse(player, item, fromPosition, target, toPosition, isHotkey)\n'
-                      '    player:addItem(2160, 1)\n'
-                      '    return true\n'
-                      'end\n',
-            file_type="action",
-            confidence="HIGH",
-            functions_converted=2,
-            total_changes=3,
-        ))
+        gen.add_entry(
+            DiffEntry(
+                filename="test_action.lua",
+                original="function onUse(cid, item, frompos, item2, topos)\n"
+                "    doPlayerAddItem(cid, 2160, 1)\n"
+                "    return TRUE\n"
+                "end\n",
+                converted="function onUse(player, item, fromPosition, target, toPosition, isHotkey)\n"
+                "    player:addItem(2160, 1)\n"
+                "    return true\n"
+                "end\n",
+                file_type="action",
+                confidence="HIGH",
+                functions_converted=2,
+                total_changes=3,
+            )
+        )
 
-        gen.add_entry(DiffEntry(
-            filename="unchanged.lua",
-            original='print("hello")\n',
-            converted='print("hello")\n',
-            file_type="lua_transform",
-        ))
+        gen.add_entry(
+            DiffEntry(
+                filename="unchanged.lua",
+                original='print("hello")\n',
+                converted='print("hello")\n',
+                file_type="lua_transform",
+            )
+        )
 
         html = gen._build_html()
 
@@ -597,11 +621,13 @@ class TestHtmlDiff(unittest.TestCase):
 
     def test_html_generation_to_file(self):
         gen = HtmlDiffGenerator("TFS 0.3", "TFS 1.x", "/in", "/out")
-        gen.add_entry(DiffEntry(
-            filename="script.lua",
-            original="getPlayerLevel(cid)\n",
-            converted="player:getLevel()\n",
-        ))
+        gen.add_entry(
+            DiffEntry(
+                filename="script.lua",
+                original="getPlayerLevel(cid)\n",
+                converted="player:getLevel()\n",
+            )
+        )
 
         output_dir = tempfile.mkdtemp(prefix="ttt_diff_test_")
         try:
@@ -619,26 +645,31 @@ class TestHtmlDiff(unittest.TestCase):
 
     def test_word_level_diff(self):
         gen = HtmlDiffGenerator("TFS 0.3", "TFS 1.x", "/in", "/out")
-        gen.add_entry(DiffEntry(
-            filename="change.lua",
-            original="doPlayerAddItem(cid, 2160, 1)\n",
-            converted="player:addItem(2160, 1)\n",
-        ))
+        gen.add_entry(
+            DiffEntry(
+                filename="change.lua",
+                original="doPlayerAddItem(cid, 2160, 1)\n",
+                converted="player:addItem(2160, 1)\n",
+            )
+        )
 
         html = gen._build_html()
 
         # Word-level diff is now handled in JS; check that the JS code is present
         # and that changed lines are stored in the JSON data block
-        self.assertIn("word-del", html)   # CSS class still in template
-        self.assertIn("word-add", html)   # CSS class still in template
-        self.assertIn("wordDiff", html)   # JS word diff function present
+        self.assertIn("word-del", html)  # CSS class still in template
+        self.assertIn("word-add", html)  # CSS class still in template
+        self.assertIn("wordDiff", html)  # JS word diff function present
         # The raw line content should be in the JSON data block
         self.assertIn("doPlayerAddItem", html)
         self.assertIn("player:addItem", html)
 
     def test_html_diff_integration(self):
-        examples_dir = os.path.join(os.path.dirname(os.path.dirname(
-            os.path.abspath(__file__))), "examples", "tfs03_input")
+        examples_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "examples",
+            "tfs03_input",
+        )
 
         if not os.path.isdir(examples_dir):
             self.skipTest("Example files not found")
@@ -646,14 +677,18 @@ class TestHtmlDiff(unittest.TestCase):
         output_dir = tempfile.mkdtemp(prefix="ttt_hdiff_int_")
         try:
             engine = ConversionEngine(
-                "tfs03", "revscript", examples_dir, output_dir,
+                "tfs03",
+                "revscript",
+                examples_dir,
+                output_dir,
                 html_diff=True,
             )
-            stats = engine.run()
+            engine.run()
 
             html_path = os.path.join(output_dir, "conversion_diff.html")
-            self.assertTrue(os.path.isfile(html_path),
-                            "conversion_diff.html was not generated")
+            self.assertTrue(
+                os.path.isfile(html_path), "conversion_diff.html was not generated"
+            )
 
             with open(html_path, "r", encoding="utf-8") as f:
                 html = f.read()
@@ -673,7 +708,11 @@ class TestRegressionCorpus(unittest.TestCase):
         cls.transformer = LuaTransformer(TFS03_TO_1X, "tfs03")
         corpus_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "tfs03_input", "actions", "scripts", "regression_corpus.lua",
+            "examples",
+            "tfs03_input",
+            "actions",
+            "scripts",
+            "regression_corpus.lua",
         )
         with open(corpus_path, encoding="utf-8") as f:
             cls.original = f.read()
@@ -859,11 +898,15 @@ class TestRegressionCorpus(unittest.TestCase):
     # --- TTT marker count (baseline) ---
     def test_ttt_marker_count(self):
         markers = self.converted.count("-- TTT:")
-        stubs = self.converted.count("-- TTT:STUB:")
+        self.converted.count("-- TTT:STUB:")
         # Establish baseline: we expect markers but within reasonable bounds
         # This test documents the current marker count for regression tracking
         self.assertGreater(markers, 0, "Expected some TTT markers in complex corpus")
-        self.assertLess(markers, 30, f"Too many TTT markers ({markers}), conversion may have regressed")
+        self.assertLess(
+            markers,
+            30,
+            f"Too many TTT markers ({markers}), conversion may have regressed",
+        )
 
 
 if __name__ == "__main__":

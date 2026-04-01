@@ -9,10 +9,8 @@ Detects:
 
 import os
 import re
-import xml.etree.ElementTree as ET
-from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set, Tuple
 
 from ..utils import read_file_safe, find_lua_files, find_xml_files
 from ..scanner import scan_directory, ScanResult
@@ -22,9 +20,11 @@ from ..scanner import scan_directory, ScanResult
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class OrphanScript:
     """A Lua script file that is not referenced in any XML."""
+
     filepath: str
     category: str  # actions, movements, etc.
     reason: str = "Not referenced in any XML registration file"
@@ -33,6 +33,7 @@ class OrphanScript:
 @dataclass
 class BrokenXmlRef:
     """An XML entry referencing a script that doesn't exist."""
+
     xml_file: str
     script_ref: str
     expected_path: str
@@ -42,6 +43,7 @@ class BrokenXmlRef:
 @dataclass
 class UnusedFunction:
     """A function defined but never called anywhere in the project."""
+
     filepath: str
     function_name: str
     line: int
@@ -50,6 +52,7 @@ class UnusedFunction:
 @dataclass
 class DeadCodeReport:
     """Aggregated dead code report."""
+
     orphan_scripts: List[OrphanScript] = field(default_factory=list)
     broken_xml_refs: List[BrokenXmlRef] = field(default_factory=list)
     unused_functions: List[UnusedFunction] = field(default_factory=list)
@@ -58,8 +61,11 @@ class DeadCodeReport:
 
     @property
     def total_issues(self) -> int:
-        return (len(self.orphan_scripts) + len(self.broken_xml_refs) +
-                len(self.unused_functions))
+        return (
+            len(self.orphan_scripts)
+            + len(self.broken_xml_refs)
+            + len(self.unused_functions)
+        )
 
     def as_dict(self) -> Dict:
         return {
@@ -68,12 +74,20 @@ class DeadCodeReport:
                 for o in self.orphan_scripts
             ],
             "broken_xml_refs": [
-                {"xml_file": b.xml_file, "script_ref": b.script_ref,
-                 "expected_path": b.expected_path, "line": b.line}
+                {
+                    "xml_file": b.xml_file,
+                    "script_ref": b.script_ref,
+                    "expected_path": b.expected_path,
+                    "line": b.line,
+                }
                 for b in self.broken_xml_refs
             ],
             "unused_functions": [
-                {"filepath": u.filepath, "function_name": u.function_name, "line": u.line}
+                {
+                    "filepath": u.filepath,
+                    "function_name": u.function_name,
+                    "line": u.line,
+                }
                 for u in self.unused_functions
             ],
             "total_scripts_scanned": self.total_scripts_scanned,
@@ -85,6 +99,7 @@ class DeadCodeReport:
 # ---------------------------------------------------------------------------
 # XML script reference extraction
 # ---------------------------------------------------------------------------
+
 
 def _extract_xml_script_refs(xml_path: str) -> List[Tuple[str, int]]:
     """Extract all 'script' attribute values from an XML file.
@@ -134,19 +149,42 @@ def _resolve_script_path(xml_path: str, script_ref: str, scan: ScanResult) -> st
 # ---------------------------------------------------------------------------
 
 _FUNC_DEF_RE = re.compile(
-    r'^\s*(?:local\s+)?function\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?::[A-Za-z_]\w*)?)\s*\(',
+    r"^\s*(?:local\s+)?function\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?::[A-Za-z_]\w*)?)\s*\(",
     re.MULTILINE,
 )
 
 # Standard callbacks that are expected (not dead even if not called directly)
 _KNOWN_CALLBACKS = {
-    "onUse", "onSay", "onLogin", "onLogout", "onDeath", "onKill",
-    "onThink", "onStepIn", "onStepOut", "onEquip", "onDeEquip",
-    "onAddItem", "onRemoveItem", "onStartup", "onShutdown", "onRecord",
-    "onTime", "onPrepareDeath", "onAdvance", "onTextEdit",
-    "onHealthChange", "onManaChange", "onModalWindow", "onExtendedOpcode",
-    "onCastSpell", "creatureSayCallback", "onCreatureAppear",
-    "onCreatureDisappear", "onCreatureMove", "onCreatureSay",
+    "onUse",
+    "onSay",
+    "onLogin",
+    "onLogout",
+    "onDeath",
+    "onKill",
+    "onThink",
+    "onStepIn",
+    "onStepOut",
+    "onEquip",
+    "onDeEquip",
+    "onAddItem",
+    "onRemoveItem",
+    "onStartup",
+    "onShutdown",
+    "onRecord",
+    "onTime",
+    "onPrepareDeath",
+    "onAdvance",
+    "onTextEdit",
+    "onHealthChange",
+    "onManaChange",
+    "onModalWindow",
+    "onExtendedOpcode",
+    "onCastSpell",
+    "creatureSayCallback",
+    "onCreatureAppear",
+    "onCreatureDisappear",
+    "onCreatureMove",
+    "onCreatureSay",
 }
 
 
@@ -155,7 +193,7 @@ def _find_function_definitions(code: str) -> List[Tuple[str, int]]:
     defs = []
     for m in _FUNC_DEF_RE.finditer(code):
         name = m.group(1)
-        line = code[:m.start()].count("\n") + 1
+        line = code[: m.start()].count("\n") + 1
         defs.append((name, line))
     return defs
 
@@ -164,7 +202,7 @@ def _find_function_references(code: str, func_name: str) -> int:
     """Count how many times a function name appears as a call (not definition)."""
     # Simple name (no dots/colons)
     base_name = func_name.split(".")[-1].split(":")[-1]
-    pattern = re.compile(r'\b' + re.escape(base_name) + r'\b')
+    pattern = re.compile(r"\b" + re.escape(base_name) + r"\b")
     count = 0
     for m in pattern.finditer(code):
         # Skip the definition itself
@@ -173,7 +211,7 @@ def _find_function_references(code: str, func_name: str) -> int:
         if line_end == -1:
             line_end = len(code)
         line_text = code[line_start:line_end]
-        if re.match(r'\s*(?:local\s+)?function\s+', line_text):
+        if re.match(r"\s*(?:local\s+)?function\s+", line_text):
             continue
         count += 1
     return count
@@ -182,6 +220,7 @@ def _find_function_references(code: str, func_name: str) -> int:
 # ---------------------------------------------------------------------------
 # Main detector
 # ---------------------------------------------------------------------------
+
 
 def detect_dead_code(directory: str) -> DeadCodeReport:
     """Run the full dead-code analysis on a server directory."""
@@ -196,8 +235,13 @@ def detect_dead_code(directory: str) -> DeadCodeReport:
     # 1) Collect all script references from XMLs
     referenced_scripts: Set[str] = set()  # normalized absolute paths
     xml_registration_files = []
-    for xml_name in ("actions.xml", "movements.xml", "talkactions.xml",
-                      "creaturescripts.xml", "globalevents.xml"):
+    for xml_name in (
+        "actions.xml",
+        "movements.xml",
+        "talkactions.xml",
+        "creaturescripts.xml",
+        "globalevents.xml",
+    ):
         attr_name = xml_name.replace(".xml", "_xml")
         xml_path = getattr(scan, attr_name, None)
         if xml_path:
@@ -210,12 +254,14 @@ def detect_dead_code(directory: str) -> DeadCodeReport:
             if os.path.isfile(resolved):
                 referenced_scripts.add(os.path.normpath(resolved).lower())
             else:
-                report.broken_xml_refs.append(BrokenXmlRef(
-                    xml_file=xml_path,
-                    script_ref=script_ref,
-                    expected_path=resolved,
-                    line=line_num,
-                ))
+                report.broken_xml_refs.append(
+                    BrokenXmlRef(
+                        xml_file=xml_path,
+                        script_ref=script_ref,
+                        expected_path=resolved,
+                        line=line_num,
+                    )
+                )
 
     # 2) Find orphan scripts (Lua in component dirs but not referenced in XML)
     component_dirs = {}
@@ -236,10 +282,12 @@ def detect_dead_code(directory: str) -> DeadCodeReport:
         for comp_dir, category in component_dirs.items():
             if norm_path.startswith(comp_dir):
                 if norm_path not in referenced_scripts:
-                    report.orphan_scripts.append(OrphanScript(
-                        filepath=filepath,
-                        category=category,
-                    ))
+                    report.orphan_scripts.append(
+                        OrphanScript(
+                            filepath=filepath,
+                            category=category,
+                        )
+                    )
                 break
 
     # 3) Unused functions (defined but never called anywhere in the project)
@@ -266,10 +314,12 @@ def detect_dead_code(directory: str) -> DeadCodeReport:
 
         ref_count = _find_function_references(combined, func_name)
         if ref_count == 0:
-            report.unused_functions.append(UnusedFunction(
-                filepath=filepath,
-                function_name=func_name,
-                line=line,
-            ))
+            report.unused_functions.append(
+                UnusedFunction(
+                    filepath=filepath,
+                    function_name=func_name,
+                    line=line,
+                )
+            )
 
     return report

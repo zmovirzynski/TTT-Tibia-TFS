@@ -29,7 +29,6 @@ TFS04_SPECIFIC = {
         "drop_params": [0],
         "note": "-- TTT: Death penalty system changed in 1.x. Review this.",
     },
-
     "getCreatureNoMove": {
         "method": "isMovementBlocked",
         "obj_type": "creature",
@@ -54,7 +53,6 @@ TFS04_SPECIFIC = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doCombat": {
         "method": "execute",
         "obj_type": "combat",
@@ -63,7 +61,6 @@ TFS04_SPECIFIC = {
         "note": "-- TTT: Use Combat:execute() in 1.x",
         "custom": "combat_passthrough",
     },
-
     "doCreatureCastSpell": {
         "method": "castSpell",
         "obj_type": "creature",
@@ -71,7 +68,6 @@ TFS04_SPECIFIC = {
         "drop_params": [0],
         "note": "-- TTT: Review spell casting API in 1.x",
     },
-
     "getContainerSize": {
         "method": "getSize",
         "obj_type": "container",
@@ -93,7 +89,6 @@ TFS04_SPECIFIC = {
         "drop_params": [0],
         "wrapper": "Container",
     },
-
     "doItemSetActionId": {
         "method": "setActionId",
         "obj_type": "item",
@@ -101,7 +96,6 @@ TFS04_SPECIFIC = {
         "drop_params": [0],
         "wrapper": "Item",
     },
-
     "getTileHouseInfo": {
         "method": "getHouse",
         "obj_type": "tile",
@@ -123,7 +117,6 @@ TFS04_SPECIFIC = {
         "drop_params": [0],
         "wrapper": "Tile",
     },
-
     "getTownId": {
         "method": "getId",
         "obj_type": "town",
@@ -145,7 +138,6 @@ TFS04_SPECIFIC = {
         "drop_params": [0],
         "wrapper": "Town",
     },
-
     "getCreatureByName": {
         "method": "getCreatureByName",
         "obj_type": "game",
@@ -154,14 +146,12 @@ TFS04_SPECIFIC = {
         "static": True,
         "static_class": "Creature",
     },
-
     "doPlayerSendModalWindow": {
         "method": "sendModalWindow",
         "obj_type": "player",
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "getPlayerDepotItems": {
         "method": "getDepotChest",
         "obj_type": "player",
@@ -169,14 +159,12 @@ TFS04_SPECIFIC = {
         "drop_params": [0],
         "note": "-- TTT: In 1.x use player:getDepotChest(depotId)",
     },
-
     "doPlayerOpenChannel": {
         "method": "openChannel",
         "obj_type": "player",
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doPlayerSetStorageValue": {
         "method": "setStorageValue",
         "obj_type": "player",

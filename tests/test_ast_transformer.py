@@ -8,7 +8,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
     from luaparser.astnodes import Name, Index, String, Call
-    from ttt.converters.ast_utils import get_function_name, get_base_name, get_wrapper_class
+    from ttt.converters.ast_utils import (
+        get_function_name,
+        get_base_name,
+        get_wrapper_class,
+    )
+
     LUAPARSER_AVAILABLE = True
 except ImportError:
     LUAPARSER_AVAILABLE = False
@@ -16,7 +21,6 @@ except ImportError:
 
 @unittest.skipUnless(LUAPARSER_AVAILABLE, "luaparser not installed")
 class TestAstUtils(unittest.TestCase):
-
     def test_get_function_name_simple(self):
         node = Name("doPlayerAddItem")
         self.assertEqual(get_function_name(node), "doPlayerAddItem")
@@ -60,11 +64,11 @@ class TestAstUtils(unittest.TestCase):
 
 @unittest.skipUnless(LUAPARSER_AVAILABLE, "luaparser not installed")
 class TestScopeAnalyzer(unittest.TestCase):
-
     def _analyze(self, code: str):
         from luaparser import ast as luaast
         from ttt.converters.scope_analyzer import ScopeAnalyzer
         from ttt.mappings.signatures import SIGNATURE_MAP
+
         tree = luaast.parse(code)
         analyzer = ScopeAnalyzer(SIGNATURE_MAP)
         return analyzer.analyze(tree)
@@ -99,23 +103,17 @@ class TestScopeAnalyzer(unittest.TestCase):
         self.assertTrue(var.is_param)
 
     def test_local_var_is_not_param(self):
-        code = (
-            "function onLogin(cid)\n"
-            "    local x = 1\n"
-            "    return true\nend"
-        )
+        code = "function onLogin(cid)\n    local x = 1\n    return true\nend"
         info = self._analyze(code)
         scopes = dict(info.function_scopes)
         var = scopes["onLogin"].lookup("x")
         self.assertIsNotNone(var)
         self.assertFalse(var.is_param)
 
-
     def test_anonymous_function_param_typed(self):
         """onUse = function(cid, item, ...) end — anonymous function via assignment."""
         code = (
-            "onUse = function(cid, item, frompos, item2, topos)\n"
-            "    return true\nend"
+            "onUse = function(cid, item, frompos, item2, topos)\n    return true\nend"
         )
         info = self._analyze(code)
         # The anonymous function should be associated with 'onUse'
@@ -140,13 +138,13 @@ class TestScopeAnalyzer(unittest.TestCase):
 
 @unittest.skipUnless(LUAPARSER_AVAILABLE, "luaparser not installed")
 class TestASTTransformVisitor(unittest.TestCase):
-
     def _transform(self, code: str) -> str:
         try:
             from ttt.converters.ast_lua_transformer import ASTLuaTransformer
         except ImportError:
             raise unittest.SkipTest("ASTLuaTransformer not available")
         from ttt.mappings.tfs03_functions import TFS03_TO_1X
+
         t = ASTLuaTransformer(TFS03_TO_1X, "tfs03")
         return t.transform(code, "test.lua")
 
@@ -177,7 +175,6 @@ class TestASTTransformVisitor(unittest.TestCase):
         result = self._transform(code)
         self.assertIn("sendTextMessage", result)
         self.assertNotIn("doPlayerSendTextMessage", result)
-
 
     def test_two_functions_independent_scopes(self):
         """Two functions in the same file should each get correct param transformations."""
@@ -214,4 +211,3 @@ class TestASTTransformVisitor(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

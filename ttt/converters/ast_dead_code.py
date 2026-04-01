@@ -9,8 +9,13 @@ from typing import Dict, List, Optional, Set
 try:
     from luaparser import ast as _lua_ast
     from luaparser.astnodes import (
-        Node, Name, LocalAssign, Function, AnonymousFunction,
+        Node,
+        Name,
+        LocalAssign,
+        Function,
+        AnonymousFunction,
     )
+
     _LUAPARSER_AVAILABLE = True
 except ImportError:
     _LUAPARSER_AVAILABLE = False
@@ -19,7 +24,7 @@ except ImportError:
 @dataclass
 class UnusedLocal:
     name: str
-    kind: str           # "variable" or "function"
+    kind: str  # "variable" or "function"
     scope_level: int
     defined_at_line: Optional[int] = None
 
@@ -67,10 +72,14 @@ class _ScopeFrame:
         result = []
         for name, (kind, line) in self.defined.items():
             if name not in self.read:
-                result.append(UnusedLocal(
-                    name=name, kind=kind,
-                    scope_level=self.level, defined_at_line=line,
-                ))
+                result.append(
+                    UnusedLocal(
+                        name=name,
+                        kind=kind,
+                        scope_level=self.level,
+                        defined_at_line=line,
+                    )
+                )
         return result
 
 
@@ -106,7 +115,9 @@ class _UsageTracker:
             if node_type == "LocalFunction":
                 name_node = getattr(item, "name", None)
                 if isinstance(name_node, Name):
-                    self._define(name_node.id, "function", getattr(name_node, "line", None))
+                    self._define(
+                        name_node.id, "function", getattr(name_node, "line", None)
+                    )
                 elif isinstance(name_node, str):
                     self._define(name_node, "function", None)
                 # Push new scope for function body
@@ -136,9 +147,9 @@ class _UsageTracker:
                 for i, target in enumerate(targets):
                     if isinstance(target, Name):
                         val = values[i] if i < len(values) else None
-                        is_fn = (
-                            isinstance(val, (Function, AnonymousFunction))
-                            or (val is not None and val.__class__.__name__ == "LocalFunction")
+                        is_fn = isinstance(val, (Function, AnonymousFunction)) or (
+                            val is not None
+                            and val.__class__.__name__ == "LocalFunction"
                         )
                         kind = "function" if is_fn else "variable"
                         self._define(target.id, kind, getattr(target, "line", None))

@@ -14,7 +14,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
-from ..utils import read_file_safe, find_lua_files, find_xml_files
+from ..utils import read_file_safe, find_lua_files
 from ..scanner import scan_directory, ScanResult
 from ..mappings.tfs03_functions import TFS03_TO_1X
 from ..mappings.tfs04_functions import TFS04_TO_1X
@@ -24,9 +24,11 @@ from ..mappings.tfs04_functions import TFS04_TO_1X
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ScriptTypeCount:
     """Counts per script category."""
+
     actions: int = 0
     movements: int = 0
     talkactions: int = 0
@@ -38,9 +40,16 @@ class ScriptTypeCount:
 
     @property
     def total(self) -> int:
-        return (self.actions + self.movements + self.talkactions +
-                self.creaturescripts + self.globalevents + self.spells +
-                self.npcs + self.other)
+        return (
+            self.actions
+            + self.movements
+            + self.talkactions
+            + self.creaturescripts
+            + self.globalevents
+            + self.spells
+            + self.npcs
+            + self.other
+        )
 
     def as_dict(self) -> Dict[str, int]:
         return {
@@ -59,6 +68,7 @@ class ScriptTypeCount:
 @dataclass
 class ServerStats:
     """Aggregated server statistics."""
+
     root_dir: str = ""
     script_counts: ScriptTypeCount = field(default_factory=ScriptTypeCount)
     total_lua_files: int = 0
@@ -67,9 +77,9 @@ class ServerStats:
     total_code_lines: int = 0  # non-blank, non-comment
     total_functions_defined: int = 0
     function_calls: Counter = field(default_factory=Counter)
-    api_style: Dict[str, int] = field(default_factory=lambda: {
-        "procedural": 0, "oop": 0, "mixed": 0, "unknown": 0
-    })
+    api_style: Dict[str, int] = field(
+        default_factory=lambda: {"procedural": 0, "oop": 0, "mixed": 0, "unknown": 0}
+    )
     version_hints: List[str] = field(default_factory=list)
 
     def top_functions(self, n: int = 20) -> List[Tuple[str, int]]:
@@ -97,12 +107,12 @@ class ServerStats:
 
 # Matches  word(  or  obj:method(
 _FUNC_CALL_RE = re.compile(
-    r'(?<![.\w])([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?::[A-Za-z_]\w*)?)\s*\(',
+    r"(?<![.\w])([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?::[A-Za-z_]\w*)?)\s*\(",
 )
 
 # Matches function definitions
 _FUNC_DEF_RE = re.compile(
-    r'^\s*(?:local\s+)?function\s+',
+    r"^\s*(?:local\s+)?function\s+",
     re.MULTILINE,
 )
 
@@ -110,11 +120,11 @@ _FUNC_DEF_RE = re.compile(
 _OLD_API_CALLS = set(TFS03_TO_1X.keys()) | set(TFS04_TO_1X.keys())
 
 # OOP patterns
-_OOP_PATTERN = re.compile(r'\b\w+:\w+\(')
+_OOP_PATTERN = re.compile(r"\b\w+:\w+\(")
 
 # RevScript pattern
 _REVSCRIPT_PATTERN = re.compile(
-    r'\b(?:Action|MoveEvent|TalkAction|CreatureEvent|GlobalEvent|Spell)\s*\('
+    r"\b(?:Action|MoveEvent|TalkAction|CreatureEvent|GlobalEvent|Spell)\s*\("
 )
 
 
@@ -134,7 +144,7 @@ def _classify_file_style(code: str) -> str:
     has_oop = False
 
     for name in _OLD_API_CALLS:
-        if re.search(r'\b' + re.escape(name) + r'\s*\(', code):
+        if re.search(r"\b" + re.escape(name) + r"\s*\(", code):
             has_old = True
             break
 
@@ -161,11 +171,11 @@ def _extract_function_calls(code: str) -> Counter:
         in_str = None
         for i, ch in enumerate(line):
             if in_str:
-                if ch == in_str and (i == 0 or line[i-1] != '\\'):
+                if ch == in_str and (i == 0 or line[i - 1] != "\\"):
                     in_str = None
             elif ch in ('"', "'"):
                 in_str = ch
-            elif ch == '-' and i + 1 < len(line) and line[i+1] == '-':
+            elif ch == "-" and i + 1 < len(line) and line[i + 1] == "-":
                 comment_pos = i
                 break
 
@@ -176,10 +186,29 @@ def _extract_function_calls(code: str) -> Counter:
         for m in _FUNC_CALL_RE.finditer(code_part):
             name = m.group(1)
             # Skip common Lua built-ins that aren't interesting
-            if name in ("if", "elseif", "while", "for", "return", "not",
-                        "and", "or", "function", "local", "end", "then",
-                        "do", "else", "repeat", "until", "in", "true",
-                        "false", "nil", "print"):
+            if name in (
+                "if",
+                "elseif",
+                "while",
+                "for",
+                "return",
+                "not",
+                "and",
+                "or",
+                "function",
+                "local",
+                "end",
+                "then",
+                "do",
+                "else",
+                "repeat",
+                "until",
+                "in",
+                "true",
+                "false",
+                "nil",
+                "print",
+            ):
                 continue
             calls[name] += 1
 
@@ -189,6 +218,7 @@ def _extract_function_calls(code: str) -> Counter:
 # ---------------------------------------------------------------------------
 # Script-type classification
 # ---------------------------------------------------------------------------
+
 
 def _classify_script(filepath: str, scan: ScanResult) -> str:
     """Classify a Lua file by its type based on directory location."""
@@ -234,17 +264,17 @@ def _classify_script(filepath: str, scan: ScanResult) -> str:
     if code:
         if _REVSCRIPT_PATTERN.search(code):
             # Determine from the RevScript class used
-            if re.search(r'\bAction\s*\(', code):
+            if re.search(r"\bAction\s*\(", code):
                 return "actions"
-            if re.search(r'\bMoveEvent\s*\(', code):
+            if re.search(r"\bMoveEvent\s*\(", code):
                 return "movements"
-            if re.search(r'\bTalkAction\s*\(', code):
+            if re.search(r"\bTalkAction\s*\(", code):
                 return "talkactions"
-            if re.search(r'\bCreatureEvent\s*\(', code):
+            if re.search(r"\bCreatureEvent\s*\(", code):
                 return "creaturescripts"
-            if re.search(r'\bGlobalEvent\s*\(', code):
+            if re.search(r"\bGlobalEvent\s*\(", code):
                 return "globalevents"
-            if re.search(r'\bSpell\s*\(', code):
+            if re.search(r"\bSpell\s*\(", code):
                 return "spells"
 
     return "other"
@@ -253,6 +283,7 @@ def _classify_script(filepath: str, scan: ScanResult) -> str:
 # ---------------------------------------------------------------------------
 # Main collector
 # ---------------------------------------------------------------------------
+
 
 def collect_stats(directory: str) -> ServerStats:
     """Collect full server statistics for a directory."""

@@ -4,7 +4,7 @@ Folder scanner - Detects the structure and script types in a TFS data folder.
 
 import os
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional
 from dataclasses import dataclass, field
 
 logger = logging.getLogger("ttt")
@@ -56,31 +56,45 @@ class ScanResult:
             lines.append(f"  Movements XML: {os.path.basename(self.movements_xml)}")
             if self.movements_dir:
                 count = self._count_lua(self.movements_dir)
-                lines.append(f"    Scripts dir: {self.movements_dir} ({count} lua files)")
+                lines.append(
+                    f"    Scripts dir: {self.movements_dir} ({count} lua files)"
+                )
 
         if self.talkactions_xml:
             lines.append(f"  TalkActions XML: {os.path.basename(self.talkactions_xml)}")
             if self.talkactions_dir:
                 count = self._count_lua(self.talkactions_dir)
-                lines.append(f"    Scripts dir: {self.talkactions_dir} ({count} lua files)")
+                lines.append(
+                    f"    Scripts dir: {self.talkactions_dir} ({count} lua files)"
+                )
 
         if self.creaturescripts_xml:
-            lines.append(f"  CreatureScripts XML: {os.path.basename(self.creaturescripts_xml)}")
+            lines.append(
+                f"  CreatureScripts XML: {os.path.basename(self.creaturescripts_xml)}"
+            )
             if self.creaturescripts_dir:
                 count = self._count_lua(self.creaturescripts_dir)
-                lines.append(f"    Scripts dir: {self.creaturescripts_dir} ({count} lua files)")
+                lines.append(
+                    f"    Scripts dir: {self.creaturescripts_dir} ({count} lua files)"
+                )
 
         if self.globalevents_xml:
-            lines.append(f"  GlobalEvents XML: {os.path.basename(self.globalevents_xml)}")
+            lines.append(
+                f"  GlobalEvents XML: {os.path.basename(self.globalevents_xml)}"
+            )
             if self.globalevents_dir:
                 count = self._count_lua(self.globalevents_dir)
-                lines.append(f"    Scripts dir: {self.globalevents_dir} ({count} lua files)")
+                lines.append(
+                    f"    Scripts dir: {self.globalevents_dir} ({count} lua files)"
+                )
 
         if self.npc_dir:
             lines.append(f"  NPC dir: {self.npc_dir}")
             if self.npc_scripts_dir:
                 count = self._count_lua(self.npc_scripts_dir)
-                lines.append(f"    Scripts dir: {self.npc_scripts_dir} ({count} lua files)")
+                lines.append(
+                    f"    Scripts dir: {self.npc_scripts_dir} ({count} lua files)"
+                )
             lines.append(f"    NPC XML files: {len(self.npc_xml_files)}")
 
         if self.scripts_dir:
@@ -115,30 +129,55 @@ def scan_directory(root_dir: str) -> ScanResult:
                 result.xml_files.append(full)
 
     # XML / scripts por componente
-    _detect_component(result, root_dir, "actions",
-                      ["actions.xml"],
-                      ["scripts", "lib"],
-                      "actions_xml", "actions_dir")
+    _detect_component(
+        result,
+        root_dir,
+        "actions",
+        ["actions.xml"],
+        ["scripts", "lib"],
+        "actions_xml",
+        "actions_dir",
+    )
 
-    _detect_component(result, root_dir, "movements",
-                      ["movements.xml"],
-                      ["scripts", "lib"],
-                      "movements_xml", "movements_dir")
+    _detect_component(
+        result,
+        root_dir,
+        "movements",
+        ["movements.xml"],
+        ["scripts", "lib"],
+        "movements_xml",
+        "movements_dir",
+    )
 
-    _detect_component(result, root_dir, "talkactions",
-                      ["talkactions.xml"],
-                      ["scripts", "lib"],
-                      "talkactions_xml", "talkactions_dir")
+    _detect_component(
+        result,
+        root_dir,
+        "talkactions",
+        ["talkactions.xml"],
+        ["scripts", "lib"],
+        "talkactions_xml",
+        "talkactions_dir",
+    )
 
-    _detect_component(result, root_dir, "creaturescripts",
-                      ["creaturescripts.xml"],
-                      ["scripts", "lib"],
-                      "creaturescripts_xml", "creaturescripts_dir")
+    _detect_component(
+        result,
+        root_dir,
+        "creaturescripts",
+        ["creaturescripts.xml"],
+        ["scripts", "lib"],
+        "creaturescripts_xml",
+        "creaturescripts_dir",
+    )
 
-    _detect_component(result, root_dir, "globalevents",
-                      ["globalevents.xml"],
-                      ["scripts", "lib"],
-                      "globalevents_xml", "globalevents_dir")
+    _detect_component(
+        result,
+        root_dir,
+        "globalevents",
+        ["globalevents.xml"],
+        ["scripts", "lib"],
+        "globalevents_xml",
+        "globalevents_dir",
+    )
 
     _detect_npc_component(result, root_dir)
 
@@ -153,11 +192,15 @@ def scan_directory(root_dir: str) -> ScanResult:
     return result
 
 
-def _detect_component(result: ScanResult, root_dir: str,
-                       component_name: str,
-                       xml_names: List[str],
-                       script_subdirs: List[str],
-                       xml_attr: str, dir_attr: str):
+def _detect_component(
+    result: ScanResult,
+    root_dir: str,
+    component_name: str,
+    xml_names: List[str],
+    script_subdirs: List[str],
+    xml_attr: str,
+    dir_attr: str,
+):
 
     search_paths = [
         os.path.join(root_dir, component_name),
@@ -253,26 +296,46 @@ def _detect_version(result: ScanResult) -> List[str]:
             continue
 
         # API antiga (0.3/0.4)
-        if any(p in content for p in [
-            "doPlayerSendTextMessage", "doPlayerAddItem", "getCreatureName",
-            "getPlayerLevel", "doTeleportThing", "getPlayerStorageValue",
-            "doPlayerSendCancel", "doCreatureAddHealth"
-        ]):
+        if any(
+            p in content
+            for p in [
+                "doPlayerSendTextMessage",
+                "doPlayerAddItem",
+                "getCreatureName",
+                "getPlayerLevel",
+                "doTeleportThing",
+                "getPlayerStorageValue",
+                "doPlayerSendCancel",
+                "doCreatureAddHealth",
+            ]
+        ):
             has_old_api = True
 
         # API nova (1.x)
-        if any(p in content for p in [
-            "player:sendTextMessage", "player:addItem", "player:getLevel",
-            "creature:getHealth", "player:getStorageValue",
-        ]):
+        if any(
+            p in content
+            for p in [
+                "player:sendTextMessage",
+                "player:addItem",
+                "player:getLevel",
+                "creature:getHealth",
+                "player:getStorageValue",
+            ]
+        ):
             has_new_api = True
 
         # RevScript
-        if any(p in content for p in [
-            "Action()", "MoveEvent()", "TalkAction(",
-            "CreatureEvent(", "GlobalEvent(",
-            ":register()"
-        ]):
+        if any(
+            p in content
+            for p in [
+                "Action()",
+                "MoveEvent()",
+                "TalkAction(",
+                "CreatureEvent(",
+                "GlobalEvent(",
+                ":register()",
+            ]
+        ):
             has_revscript = True
 
     if has_old_api and not has_new_api:

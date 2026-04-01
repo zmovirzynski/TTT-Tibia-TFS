@@ -63,7 +63,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("ttt.autoFixFile", async () => runInTerminalForActiveFile("fix")),
     vscode.commands.registerCommand("ttt.setupOnboarding", async () => runSetupOnboarding(context)),
     vscode.commands.registerCommand("ttt.installRuntime", async () => runInstallRuntime(context)),
-    vscode.commands.registerCommand("ttt.createServerApiConfig", async () => createServerApiConfigFile())
+    vscode.commands.registerCommand("ttt.createServerApiConfig", async () => createServerApiConfigFile()),
+    vscode.commands.registerCommand("ttt.migrateServer", async () => runMigrateServer()),
+    vscode.commands.registerCommand("ttt.openDashboard", async () => openLatestDashboard()),
+    vscode.commands.registerCommand("ttt.navigateMarkers", async () => navigateTttMarkers()),
   );
 
   maybePromptFirstRun(context);
@@ -477,6 +480,164 @@ async function createServerApiConfigFile(): Promise<void> {
   const doc = await vscode.workspace.openTextDocument(uri);
   await vscode.window.showTextDocument(doc, { preview: false });
   vscode.window.showInformationMessage("Config de API custom aberta. Edite e salve para atualizar autocomplete/hover.");
+}
+
+async function runMigrateServer(): Promise<void> {
+  const workspace = vscode.workspace.workspaceFolders?.[0];
+  if (!workspace) {
+    vscode.window.showWarningMessage("Open a workspace to run migration.");
+    return;
+  }
+
+  const inputDir = await vscode.window.showOpenDialog({
+    canSelectFolders: true,
+    canSelectFiles: false,
+    canSelectMany: false,
+    openLabel: "Select input directory",
+    defaultUri: workspace.uri,
+  });
+  if (!inputDir || inputDir.length === 0) {
+    return;
+  }
+
+  const sourceVersion = await vscode.window.showQuickPick(
+    ["tfs03", "tfs04", "tfs1x"],
+    { placeHolder: "Source TFS version" }
+  );
+  if (!sourceVersion) {
+    return;
+  }
+
+  const targetVersion = await vscode.window.showQuickPick(
+    ["revscript", "tfs1x"],
+    { placeHolder: "Target TFS version" }
+  );
+  if (!targetVersion) {
+    return;
+  }
+
+  const outputDir = await vscode.window.showOpenDialog({
+    canSelectFolders: true,
+    canSelectFiles: false,
+    canSelectMany: false,
+    openLabel: "Select output directory",
+    defaultUri: workspace.uri,
+  });
+  if (!outputDir || outputDir.length === 0) {
+    return;
+  }
+
+  const execution = await resolveTttExecutionForWorkspace(workspace);
+
+  const terminal = vscode.window.createTerminal("TTT Migrate");
+  terminal.show(true);
+  terminal.sendText(
+    buildTerminalCommand(execution.command, [
+      ...execution.baseArgs,
+      "migrate-server",
+      "-i",
+      inputDir[0].fsPath,
+      "-o",
+      outputDir[0].fsPath,
+      "-f",
+      sourceVersion,
+      "-t",
+      targetVersion,
+    ])
+  );
+}
+
+async function openLatestDashboard(): Promise<void> {
+  const workspace = vscode.workspace.workspaceFolders?.[0];
+  if (!workspace) {
+    vscode.window.showWarningMessage("Open a workspace first.");
+    return;
+  }
+
+  // Search for dashboard.html in the workspace
+  const dashboards = await vscode.workspace.findFiles("**/reports/dashboard.html", null, 5);
+  if (dashboards.length === 0) {
+    vscode.window.showInformationMessage(
+      "No migration dashboard found. Run 'ttt migrate-server' first."
+    );
+    return;
+  }
+
+  // Pick the most recent if multiple found
+  let target = dashboards[0];
+  if (dashboards.length > 1) {
+    const items = dashboards.map((uri) => ({
+      label: vscode.workspace.asRelativePath(uri),
+      uri,
+    }));
+    const picked = await vscode.window.showQuickPick(items, {
+      placeHolder: "Select dashboard to open",
+    });
+    if (!picked) {
+      return;
+    }
+    target = picked.uri;
+  }
+
+  // Open in the default external browser
+  await vscode.env.openExternal(target);
+}
+
+interface TttMarkerItem extends vscode.QuickPickItem {
+  uri: vscode.Uri;
+  lineNumber: number;
+}
+
+async function navigateTttMarkers(): Promise<void> {
+  const workspace = vscode.workspace.workspaceFolders?.[0];
+  if (!workspace) {
+    vscode.window.showWarningMessage("Open a workspace first.");
+    return;
+  }
+
+  // Find all -- TTT: markers across Lua files in the workspace
+  const luaFiles = await vscode.workspace.findFiles("**/*.lua", "**/node_modules/**", 500);
+  const markers: TttMarkerItem[] = [];
+
+  for (const uri of luaFiles) {
+    try {
+      const doc = await vscode.workspace.openTextDocument(uri);
+      for (let i = 0; i < doc.lineCount; i++) {
+        const line = doc.lineAt(i).text;
+        if (line.includes("-- TTT:")) {
+          const markerText = line.trim();
+          markers.push({
+            label: `$(warning) ${vscode.workspace.asRelativePath(uri)}:${i + 1}`,
+            description: markerText,
+            detail: markerText,
+            uri,
+            lineNumber: i,
+          });
+        }
+      }
+    } catch {
+      // Skip unreadable files
+    }
+  }
+
+  if (markers.length === 0) {
+    vscode.window.showInformationMessage("No -- TTT: review markers found in the workspace.");
+    return;
+  }
+
+  const picked = await vscode.window.showQuickPick(markers, {
+    placeHolder: `${markers.length} review marker(s) found — select to navigate`,
+    matchOnDescription: true,
+    matchOnDetail: true,
+  });
+
+  if (picked) {
+    const doc = await vscode.workspace.openTextDocument(picked.uri);
+    const editor = await vscode.window.showTextDocument(doc);
+    const range = new vscode.Range(picked.lineNumber, 0, picked.lineNumber, 0);
+    editor.selection = new vscode.Selection(range.start, range.start);
+    editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+  }
 }
 
 async function maybePromptFirstRun(context: vscode.ExtensionContext): Promise<void> {

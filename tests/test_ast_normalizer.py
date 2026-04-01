@@ -4,7 +4,7 @@ import pytest
 
 luaparser = pytest.importorskip("luaparser", reason="luaparser not installed")
 
-from ttt.converters.ast_normalizer import normalize_ast_structure, structural_similarity
+from ttt.converters.ast_normalizer import normalize_ast_structure, structural_similarity  # noqa: E402
 
 FUNC_A = """
 function onUseSword(player, item, fromPosition, target, toPosition)
@@ -69,7 +69,7 @@ def test_normalize_returns_empty_string_on_parse_error():
 
 
 # --- detect_semantic_duplicates tests ---
-from ttt.analyzer.duplicates import detect_semantic_duplicates, SemanticDuplicate
+from ttt.analyzer.duplicates import detect_semantic_duplicates  # noqa: E402
 
 SWORD_SCRIPT = FUNC_A
 SHIELD_SCRIPT = FUNC_B
@@ -81,14 +81,17 @@ def test_detect_semantic_duplicates_finds_similar_files():
         p1 = os.path.join(tmpdir, "sword.lua")
         p2 = os.path.join(tmpdir, "shield.lua")
         p3 = os.path.join(tmpdir, "login.lua")
-        for path, content in [(p1, SWORD_SCRIPT), (p2, SHIELD_SCRIPT), (p3, LOGIN_SCRIPT)]:
+        for path, content in [
+            (p1, SWORD_SCRIPT),
+            (p2, SHIELD_SCRIPT),
+            (p3, LOGIN_SCRIPT),
+        ]:
             with open(path, "w") as f:
                 f.write(content)
 
         results = detect_semantic_duplicates([p1, p2, p3], threshold=0.80)
         file_pairs = {
-            (os.path.basename(r.file_a), os.path.basename(r.file_b))
-            for r in results
+            (os.path.basename(r.file_a), os.path.basename(r.file_b)) for r in results
         }
         assert ("sword.lua", "shield.lua") in file_pairs
 

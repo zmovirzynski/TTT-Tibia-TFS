@@ -20,7 +20,7 @@ import os
 import re
 import logging
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from ..utils import read_file_safe, write_file_safe
 from ..report import FileReport
@@ -29,7 +29,6 @@ logger = logging.getLogger("ttt")
 
 
 class NpcConverter:
-
     def __init__(self, lua_transformer=None, dry_run: bool = False):
         self.lua_transformer = lua_transformer
         self.dry_run = dry_run
@@ -56,9 +55,13 @@ class NpcConverter:
             parts.append(f"{self.stats['errors']} error(s)")
         return ", ".join(parts) if parts else "No NPCs found"
 
-    def convert_npc_folder(self, npc_dir: str, scripts_dir: Optional[str],
-                           npc_xml_files: List[str],
-                           output_npc_dir: str) -> List[str]:
+    def convert_npc_folder(
+        self,
+        npc_dir: str,
+        scripts_dir: Optional[str],
+        npc_xml_files: List[str],
+        output_npc_dir: str,
+    ) -> List[str]:
         output_files = []
 
         if not scripts_dir:
@@ -69,18 +72,23 @@ class NpcConverter:
                 files = self._convert_single_npc(xml_path, scripts_dir, output_npc_dir)
                 output_files.extend(files)
             except Exception as e:
-                logger.error(f"    Error converting NPC {os.path.basename(xml_path)}: {e}")
+                logger.error(
+                    f"    Error converting NPC {os.path.basename(xml_path)}: {e}"
+                )
                 self.stats["errors"] += 1
-                self._file_reports.append(FileReport(
-                    source_path=xml_path,
-                    error=str(e),
-                    success=False,
-                ))
+                self._file_reports.append(
+                    FileReport(
+                        source_path=xml_path,
+                        error=str(e),
+                        success=False,
+                    )
+                )
 
         return output_files
 
-    def _convert_single_npc(self, xml_path: str, scripts_dir: str,
-                            output_npc_dir: str) -> List[str]:
+    def _convert_single_npc(
+        self, xml_path: str, scripts_dir: str, output_npc_dir: str
+    ) -> List[str]:
         output_files = []
 
         # Parse the NPC XML
@@ -102,19 +110,24 @@ class NpcConverter:
             lua_path = os.path.join(scripts_dir, script_name)
             if not os.path.exists(lua_path):
                 # Try common alternate locations
-                lua_path = self._find_npc_script(scripts_dir, script_name,
-                                                  os.path.dirname(xml_path))
+                lua_path = self._find_npc_script(
+                    scripts_dir, script_name, os.path.dirname(xml_path)
+                )
             if lua_path and os.path.exists(lua_path):
                 files = self._convert_npc_script(lua_path, npc_info, output_npc_dir)
                 output_files.extend(files)
             else:
-                logger.warning(f"    NPC script not found: {script_name} (NPC: {npc_name})")
+                logger.warning(
+                    f"    NPC script not found: {script_name} (NPC: {npc_name})"
+                )
                 self.stats["errors"] += 1
-                self._file_reports.append(FileReport(
-                    source_path=os.path.join(scripts_dir, script_name),
-                    error=f"Script not found: {script_name}",
-                    success=False,
-                ))
+                self._file_reports.append(
+                    FileReport(
+                        source_path=os.path.join(scripts_dir, script_name),
+                        error=f"Script not found: {script_name}",
+                        success=False,
+                    )
+                )
 
         # Copia/atualiza o XML
         if not self.dry_run and output_npc_dir:
@@ -126,8 +139,9 @@ class NpcConverter:
         self.stats["npcs_converted"] += 1
         return output_files
 
-    def _convert_npc_script(self, lua_path: str, npc_info: Dict,
-                            output_npc_dir: str) -> List[str]:
+    def _convert_npc_script(
+        self, lua_path: str, npc_info: Dict, output_npc_dir: str
+    ) -> List[str]:
         lua_code = read_file_safe(lua_path)
         if not lua_code:
             return []
@@ -141,10 +155,18 @@ class NpcConverter:
 
         if self.lua_transformer:
             lua_code = self.lua_transformer.transform(lua_code, script_name)
-            fr.functions_converted = self.lua_transformer.stats.get("functions_converted", 0)
-            fr.signatures_updated = self.lua_transformer.stats.get("signatures_updated", 0)
-            fr.constants_replaced = self.lua_transformer.stats.get("constants_replaced", 0)
-            fr.variables_renamed = self.lua_transformer.stats.get("variables_renamed", 0)
+            fr.functions_converted = self.lua_transformer.stats.get(
+                "functions_converted", 0
+            )
+            fr.signatures_updated = self.lua_transformer.stats.get(
+                "signatures_updated", 0
+            )
+            fr.constants_replaced = self.lua_transformer.stats.get(
+                "constants_replaced", 0
+            )
+            fr.variables_renamed = self.lua_transformer.stats.get(
+                "variables_renamed", 0
+            )
             fr.warnings = list(self.lua_transformer.warnings)
 
         if not lua_code.startswith("-- NPC:"):
@@ -152,7 +174,9 @@ class NpcConverter:
             lua_code = header + lua_code
 
         # Write output
-        out_scripts_dir = os.path.join(output_npc_dir, "scripts") if output_npc_dir else ""
+        out_scripts_dir = (
+            os.path.join(output_npc_dir, "scripts") if output_npc_dir else ""
+        )
         out_path = os.path.join(out_scripts_dir, script_name) if out_scripts_dir else ""
 
         if not self.dry_run and out_path:
@@ -170,13 +194,13 @@ class NpcConverter:
     def _parse_npc_xml(self, xml_content: str, xml_path: str) -> Optional[Dict]:
         try:
             # Clean up XML for common issues
-            clean = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;)', '&amp;', xml_content)
+            clean = re.sub(r"&(?!amp;|lt;|gt;|quot;|apos;)", "&amp;", xml_content)
             root = ET.fromstring(clean)
         except ET.ParseError:
             # Try wrapping in root element
             try:
                 wrapped = f"<root>{xml_content}</root>"
-                wrapped = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;)', '&amp;', wrapped)
+                wrapped = re.sub(r"&(?!amp;|lt;|gt;|quot;|apos;)", "&amp;", wrapped)
                 root = ET.fromstring(wrapped)
                 root = root[0] if len(root) > 0 else root
             except ET.ParseError as e:
@@ -244,7 +268,9 @@ class NpcConverter:
 
         health = npc_info.get("health", {})
         if health:
-            lines.append(f"-- Health: {health.get('now', '?')}/{health.get('max', '?')}")
+            lines.append(
+                f"-- Health: {health.get('now', '?')}/{health.get('max', '?')}"
+            )
 
         walkinterval = npc_info.get("walkinterval")
         if walkinterval:
@@ -253,8 +279,9 @@ class NpcConverter:
         lines.append("")
         return "\n".join(lines) + "\n"
 
-    def _find_npc_script(self, scripts_dir: str, script_name: str,
-                         xml_dir: str) -> Optional[str]:
+    def _find_npc_script(
+        self, scripts_dir: str, script_name: str, xml_dir: str
+    ) -> Optional[str]:
         candidates = [
             os.path.join(scripts_dir, script_name),
             os.path.join(xml_dir, "scripts", script_name),
@@ -263,10 +290,12 @@ class NpcConverter:
 
         # Also try without subdirectory prefix in script_name
         base_name = os.path.basename(script_name)
-        candidates.extend([
-            os.path.join(scripts_dir, base_name),
-            os.path.join(xml_dir, "scripts", base_name),
-        ])
+        candidates.extend(
+            [
+                os.path.join(scripts_dir, base_name),
+                os.path.join(xml_dir, "scripts", base_name),
+            ]
+        )
 
         for c in candidates:
             if os.path.isfile(c):

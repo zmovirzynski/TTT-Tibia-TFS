@@ -9,18 +9,20 @@ Supports:
 
 import json
 import os
-from typing import List, Optional
+from typing import List
 
-from .engine import LintReport, FileLintResult
-from .rules import LintSeverity, LintIssue
+from .engine import LintReport
+from .rules import LintSeverity
 
 
 # ---------------------------------------------------------------------------
 # ANSI color helpers
 # ---------------------------------------------------------------------------
 
+
 class Colors:
     """ANSI color codes for terminal output."""
+
     RESET = "\033[0m"
     BOLD = "\033[1m"
     DIM = "\033[2m"
@@ -80,11 +82,22 @@ def _score_label(score: int) -> str:
 # Text Reporter
 # ---------------------------------------------------------------------------
 
-def format_text(report: LintReport, base_dir: str = "",
-                use_colors: bool = True, verbose: bool = False) -> str:
+
+def format_text(
+    report: LintReport,
+    base_dir: str = "",
+    use_colors: bool = True,
+    verbose: bool = False,
+) -> str:
     """Format lint report as readable text for terminal output."""
     lines: List[str] = []
-    c = Colors if use_colors else type('NoColors', (), {k: '' for k in dir(Colors) if not k.startswith('_')})()
+    c = (
+        Colors
+        if use_colors
+        else type(
+            "NoColors", (), {k: "" for k in dir(Colors) if not k.startswith("_")}
+        )()
+    )
 
     if not report.files:
         lines.append(f"\n{c.DIM}No files to lint.{c.RESET}")
@@ -98,7 +111,11 @@ def format_text(report: LintReport, base_dir: str = "",
             continue
 
         # File path header
-        rel_path = os.path.relpath(file_result.filepath, base_dir) if base_dir else file_result.filepath
+        rel_path = (
+            os.path.relpath(file_result.filepath, base_dir)
+            if base_dir
+            else file_result.filepath
+        )
         lines.append(f"{c.BOLD}{c.WHITE}{rel_path}{c.RESET}")
 
         if file_result.error:
@@ -130,7 +147,9 @@ def format_text(report: LintReport, base_dir: str = "",
         sc = file_result.score
         sc_col = _score_color(sc) if use_colors else ""
         sc_label = _score_label(sc)
-        lines.append(f"\n  {c.BOLD}Score: {sc_col}{sc}/100{c.RESET}  {sc_col}{sc_label}{c.RESET}")
+        lines.append(
+            f"\n  {c.BOLD}Score: {sc_col}{sc}/100{c.RESET}  {sc_col}{sc_label}{c.RESET}"
+        )
         lines.append("")
 
     # Summary
@@ -159,12 +178,16 @@ def format_text(report: LintReport, base_dir: str = "",
     lines.append(f"  Total issues:     {c.BOLD}{report.total_issues}{c.RESET}")
 
     if report.total_fixable > 0:
-        lines.append(f"  Auto-fixable:     {c.GREEN}{report.total_fixable}{c.RESET}"
-                     f"  {c.DIM}(run 'ttt fix' to auto-correct){c.RESET}")
+        lines.append(
+            f"  Auto-fixable:     {c.GREEN}{report.total_fixable}{c.RESET}"
+            f"  {c.DIM}(run 'ttt fix' to auto-correct){c.RESET}"
+        )
 
     lines.append("")
-    lines.append(f"  Average Score:    {grade_col}{c.BOLD}{avg_score:.0f}/100{c.RESET}"
-                 f"  Grade: {grade_col}{c.BOLD}{grade}{c.RESET}")
+    lines.append(
+        f"  Average Score:    {grade_col}{c.BOLD}{avg_score:.0f}/100{c.RESET}"
+        f"  Grade: {grade_col}{c.BOLD}{grade}{c.RESET}"
+    )
     lines.append(f"{'═' * 60}")
     lines.append("")
 
@@ -174,6 +197,7 @@ def format_text(report: LintReport, base_dir: str = "",
 # ---------------------------------------------------------------------------
 # JSON Reporter
 # ---------------------------------------------------------------------------
+
 
 def format_json(report: LintReport, base_dir: str = "") -> str:
     """Format lint report as JSON."""
@@ -194,7 +218,11 @@ def format_json(report: LintReport, base_dir: str = "") -> str:
     }
 
     for file_result in report.files:
-        rel_path = os.path.relpath(file_result.filepath, base_dir) if base_dir else file_result.filepath
+        rel_path = (
+            os.path.relpath(file_result.filepath, base_dir)
+            if base_dir
+            else file_result.filepath
+        )
         file_data = {
             "path": rel_path.replace("\\", "/"),
             "score": file_result.score,
@@ -221,31 +249,32 @@ def format_json(report: LintReport, base_dir: str = "") -> str:
 # HTML Reporter
 # ---------------------------------------------------------------------------
 
+
 def format_html(report: LintReport, base_dir: str = "") -> str:
     """Format lint report as a standalone HTML page."""
     avg_score = report.average_score
     grade = report.overall_grade
 
     html_parts = [
-        '<!DOCTYPE html>',
+        "<!DOCTYPE html>",
         '<html lang="en">',
-        '<head>',
+        "<head>",
         '<meta charset="UTF-8">',
         '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
-        '<title>TTT Lint Report</title>',
-        '<style>',
+        "<title>TTT Lint Report</title>",
+        "<style>",
         _html_css(),
-        '</style>',
-        '</head>',
-        '<body>',
+        "</style>",
+        "</head>",
+        "<body>",
         '<div class="container">',
-        f'<h1>TTT Lint Report</h1>',
-        f'<div class="summary">',
+        "<h1>TTT Lint Report</h1>",
+        '<div class="summary">',
         f'  <div class="score-circle score-{_score_class(avg_score)}">',
         f'    <span class="score-value">{avg_score:.0f}</span>',
         f'    <span class="score-label">Grade {grade}</span>',
-        f'  </div>',
-        f'  <div class="stats">',
+        "  </div>",
+        '  <div class="stats">',
         f'    <div class="stat"><span class="stat-num">{len(report.files)}</span> files scanned</div>',
         f'    <div class="stat"><span class="stat-num">{report.files_with_issues}</span> files with issues</div>',
         f'    <div class="stat"><span class="stat-num">{report.total_issues}</span> total issues</div>',
@@ -253,47 +282,59 @@ def format_html(report: LintReport, base_dir: str = "") -> str:
         f'    <div class="stat warnings"><span class="stat-num">{report.total_warnings}</span> warnings</div>',
         f'    <div class="stat infos"><span class="stat-num">{report.total_infos}</span> info</div>',
         f'    <div class="stat fixable"><span class="stat-num">{report.total_fixable}</span> auto-fixable</div>',
-        f'  </div>',
-        f'</div>',
+        "  </div>",
+        "</div>",
     ]
 
     for file_result in report.files:
         if not file_result.issues:
             continue
 
-        rel_path = os.path.relpath(file_result.filepath, base_dir) if base_dir else file_result.filepath
+        rel_path = (
+            os.path.relpath(file_result.filepath, base_dir)
+            if base_dir
+            else file_result.filepath
+        )
         sc = file_result.score
         sc_class = _score_class(sc)
 
-        html_parts.append(f'<div class="file">')
-        html_parts.append(f'  <div class="file-header">')
-        html_parts.append(f'    <span class="file-name">{_html_escape(rel_path)}</span>')
-        html_parts.append(f'    <span class="file-score score-{sc_class}">{sc}/100</span>')
-        html_parts.append(f'  </div>')
-        html_parts.append(f'  <table class="issues">')
-        html_parts.append(f'    <tr><th>Line</th><th>Severity</th><th>Rule</th><th>Message</th></tr>')
+        html_parts.append('<div class="file">')
+        html_parts.append('  <div class="file-header">')
+        html_parts.append(
+            f'    <span class="file-name">{_html_escape(rel_path)}</span>'
+        )
+        html_parts.append(
+            f'    <span class="file-score score-{sc_class}">{sc}/100</span>'
+        )
+        html_parts.append("  </div>")
+        html_parts.append('  <table class="issues">')
+        html_parts.append(
+            "    <tr><th>Line</th><th>Severity</th><th>Rule</th><th>Message</th></tr>"
+        )
 
         for issue in file_result.issues:
             sev_class = issue.severity.value.lower()
-            fix = ' <span class="fixable">[fixable]</span>' if issue.fixable else ''
+            fix = ' <span class="fixable">[fixable]</span>' if issue.fixable else ""
             html_parts.append(
                 f'    <tr class="issue {sev_class}">'
-                f'<td>{issue.line}</td>'
+                f"<td>{issue.line}</td>"
                 f'<td><span class="badge {sev_class}">{issue.severity.value}</span></td>'
-                f'<td>{_html_escape(issue.rule_id)}</td>'
-                f'<td>{_html_escape(issue.message)}{fix}</td>'
-                f'</tr>'
+                f"<td>{_html_escape(issue.rule_id)}</td>"
+                f"<td>{_html_escape(issue.message)}{fix}</td>"
+                f"</tr>"
             )
 
-        html_parts.append(f'  </table>')
-        html_parts.append(f'</div>')
+        html_parts.append("  </table>")
+        html_parts.append("</div>")
 
-    html_parts.extend([
-        f'<div class="footer">Generated by TTT Linter</div>',
-        '</div>',
-        '</body>',
-        '</html>',
-    ])
+    html_parts.extend(
+        [
+            '<div class="footer">Generated by TTT Linter</div>',
+            "</div>",
+            "</body>",
+            "</html>",
+        ]
+    )
 
     return "\n".join(html_parts)
 
@@ -308,11 +349,12 @@ def _score_class(score: int) -> str:
 
 
 def _html_escape(text: str) -> str:
-    return (text
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;"))
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
 
 
 def _html_css() -> str:
