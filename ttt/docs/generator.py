@@ -210,7 +210,7 @@ class DocsGenerator:
                 val = attribs.get(id_attr)
                 if val:
                     ids.append(f"{id_attr}={val}")
-            id_str = ", ".join(ids)
+            ", ".join(ids)
             name = script.replace(".lua", "") if script else event_type or "movement"
             desc = self._extract_description(xml_dir, script)
 
@@ -311,8 +311,8 @@ class DocsGenerator:
             attribs = dict(elem.attrib)
             script = attribs.pop("script", "")
             event_name = attribs.get("name", "")
-            event_type = attribs.get("type", "")
-            interval = attribs.get("interval", "")
+            attribs.get("type", "")
+            attribs.get("interval", "")
             name = event_name if event_name else (script.replace(".lua", "") if script else "globalevent")
             desc = self._extract_description(xml_dir, script)
 
@@ -347,8 +347,8 @@ class DocsGenerator:
                 attribs = dict(elem.attrib)
                 script = attribs.pop("script", "")
                 spell_name = attribs.get("name", "")
-                mana = attribs.get("mana", "")
-                level = attribs.get("lvl", attribs.get("level", ""))
+                attribs.get("mana", "")
+                attribs.get("lvl", attribs.get("level", ""))
                 name = spell_name if spell_name else (script.replace(".lua", "") if script else tag)
                 desc = self._extract_description(xml_dir, script)
 

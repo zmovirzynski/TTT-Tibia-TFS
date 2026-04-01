@@ -626,7 +626,7 @@ class TestLintConfig(unittest.TestCase):
     def test_find_config_not_found(self):
         tmpdir = tempfile.mkdtemp()
         try:
-            found = LintConfig.find_config(tmpdir)
+            LintConfig.find_config(tmpdir)
             # May or may not be None depending on parent dirs
             # Just ensure it doesn't crash
         finally:
@@ -732,7 +732,7 @@ class TestLintExampleScripts(unittest.TestCase):
         self.assertGreater(len(deprecated), 0, "Should detect deprecated API in healing_potion.lua")
 
         # Should detect deprecated constants (TRUE → true)
-        dep_const = [i for i in result.issues if i.rule_id == "deprecated-constant"]
+        [i for i in result.issues if i.rule_id == "deprecated-constant"]
         # TRUE is mapped to true in constants
         # Check score is below perfect
         self.assertLess(result.score, 90)

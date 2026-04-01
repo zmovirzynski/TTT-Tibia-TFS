@@ -2,11 +2,13 @@
 
 import re
 import logging
-from typing import Dict, List, Optional, Tuple, Set
+from typing import Dict, List, Optional, Tuple
 
 from ..utils import split_lua_args
 from ..mappings.constants import ALL_CONSTANTS
 from ..mappings.signatures import SIGNATURE_MAP, PARAM_RENAME_MAP
+from .explain import ExplainEntry, ExplainReport
+from .rule_confidence import rule_confidence
 
 logger = logging.getLogger("ttt")
 
@@ -22,10 +24,15 @@ class LuaTransformer:
             "constants_replaced": 0,
             "variables_renamed": 0,
         }
+        self.rule_confidences: List[float] = []
+        self.explain: Optional[ExplainReport] = None
+        self._current_file = ""
 
     def transform(self, code: str, filename: str = "") -> str:
         self.warnings = []
         self.stats = {k: 0 for k in self.stats}
+        self.rule_confidences = []
+        self._current_file = filename
 
         code, var_renames = self._transform_signatures(code)
 
@@ -101,7 +108,14 @@ class LuaTransformer:
 
             self.stats["signatures_updated"] += 1
             new_params_str = ", ".join(new_params)
-            return f"{prefix}{event_name}({new_params_str})"
+            new_sig_str = f"{prefix}{event_name}({new_params_str})"
+            self._add_explain(
+                "signature", match.group(0), new_sig_str,
+                rule=event_name,
+                reasoning=f"Callback {event_name}: updated parameter list from "
+                          f"({old_params_str}) to ({new_params_str})",
+            )
+            return new_sig_str
 
         code = pattern.sub(replace_signature, code)
         return code, var_renames
@@ -290,6 +304,24 @@ class LuaTransformer:
             search_start = last_end
             self.stats["functions_converted"] += 1
 
+            # Per-rule confidence scoring
+            conf = rule_confidence(mapping)
+            self.rule_confidences.append(conf)
+
+            # Explain entry for function call
+            original_call = f"{func_name}({args_str})"
+            line_num = code[:call_start].count("\n") + 1
+            mapping_type = mapping.get("custom") or mapping.get("type", "method")
+            method_name = mapping.get("method", mapping.get("custom", ""))
+            self._add_explain(
+                "function", original_call, replacement,
+                rule=func_name,
+                reasoning=f"Procedural → OOP: {func_name} mapped to {method_name} "
+                          f"(type={mapping_type})",
+                line=line_num,
+                confidence=conf,
+            )
+
         result.append(code[last_end:])
         return "".join(result)
 
@@ -433,17 +465,17 @@ class LuaTransformer:
         if custom_type == "item_type_by_name":
             if args:
                 return f"ItemType({args[0].strip()}):getId()"
-            return f"ItemType():getId()"
+            return "ItemType():getId()"
 
         if custom_type == "combat_passthrough":
             args_str = ", ".join(args)
-            note = mapping.get("note", "")
+            mapping.get("note", "")
             return f"{func_name}({args_str})"
 
         if custom_type == "house_lookup":
             if args:
                 return f"House({args[0].strip()})"
-            return f"House()"
+            return "House()"
 
         if custom_type == "npc_self":
             args_str = ", ".join(args)
@@ -484,6 +516,11 @@ class LuaTransformer:
             # Replace whole-word only, outside strings
             code = self._replace_word_outside_strings(code, old_const, new_const)
             self.stats["constants_replaced"] += 1
+            self._add_explain(
+                "constant", old_const, new_const,
+                rule=old_const,
+                reasoning=f"Constant renamed: {old_const} → {new_const}",
+            )
 
         return code
 
@@ -495,7 +532,13 @@ class LuaTransformer:
 
         def replace_pos(match):
             x, y, z = match.group(1), match.group(2), match.group(3)
-            return f"Position({x}, {y}, {z})"
+            result = f"Position({x}, {y}, {z})"
+            self._add_explain(
+                "position", match.group(0), result,
+                rule="position_literal",
+                reasoning="Table-style position → Position() constructor",
+            )
+            return result
 
         code = pattern.sub(replace_pos, code)
 
@@ -508,7 +551,13 @@ class LuaTransformer:
         def replace_pos_stack(match):
             x, y, z = match.group(1), match.group(2), match.group(3)
             stackpos = match.group(4)
-            return f"Position({x}, {y}, {z})"  # stackpos not needed in 1.x Position
+            result = f"Position({x}, {y}, {z})"  # stackpos not needed in 1.x Position
+            self._add_explain(
+                "position", match.group(0), result,
+                rule="position_stackpos",
+                reasoning=f"Position with stackpos={stackpos} — stackpos dropped in 1.x",
+            )
+            return result
 
         code = pattern2.sub(replace_pos_stack, code)
 
@@ -601,3 +650,20 @@ class LuaTransformer:
         if self.warnings:
             parts.append(f"{len(self.warnings)} warning(s)")
         return ", ".join(parts) if parts else "No changes"
+
+    def _add_explain(self, stage: str, original: str, transformed: str,
+                     rule: str, reasoning: str, line: int = 0,
+                     confidence: float = 1.0) -> None:
+        """Record an explain entry if explain mode is enabled."""
+        if self.explain is None:
+            return
+        self.explain.add(ExplainEntry(
+            file=self._current_file,
+            line=line,
+            stage=stage,
+            original=original.strip(),
+            transformed=transformed.strip(),
+            rule=rule,
+            reasoning=reasoning,
+            confidence=confidence,
+        ))

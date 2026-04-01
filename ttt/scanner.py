@@ -4,7 +4,7 @@ Folder scanner - Detects the structure and script types in a TFS data folder.
 
 import os
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional
 from dataclasses import dataclass, field
 
 logger = logging.getLogger("ttt")

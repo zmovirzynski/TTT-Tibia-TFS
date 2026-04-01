@@ -20,7 +20,7 @@ import os
 import re
 import logging
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from ..utils import read_file_safe, write_file_safe
 from ..report import FileReport

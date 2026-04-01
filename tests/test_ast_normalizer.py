@@ -4,7 +4,7 @@ import pytest
 
 luaparser = pytest.importorskip("luaparser", reason="luaparser not installed")
 
-from ttt.converters.ast_normalizer import normalize_ast_structure, structural_similarity
+from ttt.converters.ast_normalizer import normalize_ast_structure, structural_similarity  # noqa: E402
 
 FUNC_A = """
 function onUseSword(player, item, fromPosition, target, toPosition)
@@ -69,7 +69,7 @@ def test_normalize_returns_empty_string_on_parse_error():
 
 
 # --- detect_semantic_duplicates tests ---
-from ttt.analyzer.duplicates import detect_semantic_duplicates, SemanticDuplicate
+from ttt.analyzer.duplicates import detect_semantic_duplicates  # noqa: E402
 
 SWORD_SCRIPT = FUNC_A
 SHIELD_SCRIPT = FUNC_B

@@ -8,13 +8,12 @@ Health Score: HEALTHY (90-100) / WARNING (60-89) / CRITICAL (0-59)
 
 import json
 import os
-import sys
 import logging
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
+from dataclasses import dataclass
+from typing import Dict, List, Optional
 
-from .health_check import run_health_checks, HealthReport, HealthIssue, HEALTH_CHECKS
-from .xml_validator import validate_xml_files, XmlValidationReport, XmlIssue
+from .health_check import run_health_checks, HealthReport, HealthIssue
+from .xml_validator import validate_xml_files, XmlValidationReport
 
 logger = logging.getLogger("ttt")
 

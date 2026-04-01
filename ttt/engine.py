@@ -7,12 +7,14 @@ import re
 import shutil
 import logging
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from .scanner import scan_directory, ScanResult
 from .converters.lua_transformer import LuaTransformer
 from .converters.xml_to_revscript import XmlToRevScriptConverter
 from .converters.npc_converter import NpcConverter
+from .converters.explain import ExplainReport
+from .converters.ast_guidance import GuidanceReport, analyze_converted_code
 from .diff_html import HtmlDiffGenerator, DiffEntry
 from .mappings.tfs03_functions import TFS03_TO_1X
 from .mappings.tfs04_functions import TFS04_TO_1X
@@ -22,7 +24,6 @@ from .utils import (
     write_file_safe,
     ensure_dir,
     relative_path,
-    setup_logging,
 )
 
 # Try to import AST transformer (with fallback for backward compatibility)
@@ -82,6 +83,7 @@ class ConversionEngine:
         verbose: bool = False,
         dry_run: bool = False,
         html_diff: bool = False,
+        explain: bool = False,
     ):
 
         self.source_version = _normalize_version(source_version)
@@ -91,6 +93,9 @@ class ConversionEngine:
         self.verbose = verbose
         self.dry_run = dry_run
         self.html_diff = html_diff
+        self.explain = explain
+        self.explain_report: Optional[ExplainReport] = ExplainReport() if explain else None
+        self.guidance_report = GuidanceReport()
 
         # Select function mapping
         if self.source_version == "tfs03":
@@ -178,6 +183,8 @@ class ConversionEngine:
         transformer = None
         if needs_lua_transform:
             transformer = LuaTransformer(self.function_map, self.source_version)
+            if self.explain_report is not None:
+                transformer.explain = self.explain_report
 
         if needs_xml_to_revscript and self._has_xml_registrations(scan):
             logger.info("[2/5] Converting XML + Lua → RevScript...")
@@ -221,6 +228,19 @@ class ConversionEngine:
 
         if self.html_diff:
             self._generate_html_diff()
+
+        if self.explain_report is not None and self.explain_report.entries:
+            out = self.output_dir or self.input_dir
+            explain_path = self.explain_report.write(out)
+            logger.info(f"  Explain report saved to: {explain_path}")
+
+        if self.guidance_report.entries:
+            out = self.output_dir or self.input_dir
+            guidance_path = os.path.join(out, "ast_guidance.txt")
+            os.makedirs(out, exist_ok=True)
+            with open(guidance_path, "w", encoding="utf-8") as f:
+                f.write(self.guidance_report.to_text())
+            logger.info(f"  AST guidance report saved to: {guidance_path}")
 
         return self.stats
 
@@ -521,6 +541,17 @@ class ConversionEngine:
             fr.unrecognized_calls = self._find_unrecognized_calls(new_content)
             fr.original_content = content
             fr.converted_content = new_content
+
+            # Collect per-rule confidence scores
+            if hasattr(ast_transformer, "rule_confidences"):
+                fr.rule_confidences = list(ast_transformer.rule_confidences)
+            elif hasattr(ast_transformer, "_fallback_transformer") and ast_transformer._fallback_transformer:
+                fr.rule_confidences = list(ast_transformer._fallback_transformer.rule_confidences)
+
+            # AST-assisted guidance analysis
+            analyze_converted_code(
+                new_content, content, rel, self.guidance_report
+            )
 
             if not self.dry_run:
                 out_path = os.path.join(self.output_dir, rel)

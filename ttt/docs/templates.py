@@ -8,6 +8,8 @@ Provides:
   - full CSS embedded in each page
 """
 
+import re
+
 
 # ---------------------------------------------------------------------------
 # CSS (common)
@@ -325,6 +327,3 @@ def _safe_filename(category: str, name: str) -> str:
     """Create a filesystem-safe filename from category + name."""
     safe = re.sub(r'[^\w\-]', '_', f"{category}_{name}")
     return safe[:80]
-
-
-import re

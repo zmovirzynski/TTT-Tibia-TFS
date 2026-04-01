@@ -12,12 +12,12 @@ Handles:
 import json
 import os
 import logging
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 
 from .rules import (
     LintRule, LintIssue, LintSeverity,
-    get_all_rules, get_rules_by_ids, ALL_RULES,
+    get_all_rules, get_rules_by_ids,
 )
 from ..utils import read_file_safe, find_lua_files
 

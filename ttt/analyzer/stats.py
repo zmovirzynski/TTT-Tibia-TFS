@@ -14,7 +14,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
-from ..utils import read_file_safe, find_lua_files, find_xml_files
+from ..utils import read_file_safe, find_lua_files
 from ..scanner import scan_directory, ScanResult
 from ..mappings.tfs03_functions import TFS03_TO_1X
 from ..mappings.tfs04_functions import TFS04_TO_1X

@@ -65,6 +65,18 @@
       {
         "command": "ttt.createServerApiConfig",
         "title": "TTT: Criar/Abrir Config API do Servidor"
+      },
+      {
+        "command": "ttt.migrateServer",
+        "title": "TTT: Run Server Migration"
+      },
+      {
+        "command": "ttt.openDashboard",
+        "title": "TTT: Open Migration Dashboard"
+      },
+      {
+        "command": "ttt.navigateMarkers",
+        "title": "TTT: Navigate Review Markers"
       }
     ],
     "snippets": [
@@ -121,12 +133,15 @@
   },
   "scripts": {
     "build": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "test": "npm run build && mocha out/test/**/*.test.js --timeout 10000"
   },
   "devDependencies": {
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.14.0",
     "@types/vscode": "^1.90.0",
     "@vscode/vsce": "^3.7.1",
+    "mocha": "^10.8.2",
     "typescript": "^5.4.5"
   }
 }

@@ -22,8 +22,7 @@ from dataclasses import dataclass, field
 from ..utils import read_file_safe, write_file_safe, find_lua_files, split_lua_args
 from ..mappings.constants import ALL_CONSTANTS
 from ..mappings.signatures import SIGNATURE_MAP, PARAM_RENAME_MAP
-from ..linter.engine import LintEngine, LintConfig, FileLintResult, LintReport
-from ..linter.rules import LintIssue, LintSeverity
+from ..linter.engine import LintConfig
 
 logger = logging.getLogger("ttt")
 
@@ -263,7 +262,7 @@ def fix_missing_return(code: str) -> Tuple[str, List[FixAction]]:
             line=func_line,
             description=f"Added 'return true' to callback '{func_name}'",
             original="end",
-            replacement=f"    return true\nend",
+            replacement="    return true\nend",
         ))
 
     return code, fixes
@@ -348,7 +347,7 @@ def fix_global_variable_leak(code: str) -> Tuple[str, List[FixAction]]:
 
             # Check if it's a table field assignment (e.g. self.x = ...)
             # or method definition — these are fine as-is
-            rest_of_line = line[m.end():]
+            line[m.end():]
             # Make sure there's no dot/colon before the var in context
             pre_indent = line[:m.start(2)]
             if pre_indent.rstrip().endswith((".",":", "[")):
@@ -586,7 +585,7 @@ def _handle_custom(custom_type: str, func_name: str, args: List[str],
     if custom_type == "item_type_by_name":
         if args:
             return f"ItemType({args[0].strip()}):getId()"
-        return f"ItemType():getId()"
+        return "ItemType():getId()"
 
     if custom_type == "combat_passthrough":
         args_str = ", ".join(args)
@@ -595,7 +594,7 @@ def _handle_custom(custom_type: str, func_name: str, args: List[str],
     if custom_type == "house_lookup":
         if args:
             return f"House({args[0].strip()})"
-        return f"House()"
+        return "House()"
 
     if custom_type == "npc_self":
         args_str = ", ".join(args)
@@ -946,14 +945,13 @@ def format_fix_text(report: FixReport, base_dir: str,
     # ANSI colors
     if use_colors:
         GREEN = "\033[32m"
-        YELLOW = "\033[33m"
         RED = "\033[31m"
         CYAN = "\033[36m"
         DIM = "\033[2m"
         BOLD = "\033[1m"
         RESET = "\033[0m"
     else:
-        GREEN = YELLOW = RED = CYAN = DIM = BOLD = RESET = ""
+        GREEN = RED = CYAN = DIM = BOLD = RESET = ""
 
     for file_result in report.files:
         if file_result.error:

@@ -13,7 +13,6 @@ Checks cover:
 
 import os
 import re
-import xml.etree.ElementTree as ET
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Set, Tuple
@@ -442,7 +441,7 @@ def _check_npc_keywords(directory: str) -> List[HealthIssue]:
 
             for kw, lines in keywords.items():
                 if len(lines) > 1:
-                    lines_str = ", ".join(f"L{l}" for l in lines)
+                    lines_str = ", ".join(f"L{ln}" for ln in lines)
                     issues.append(HealthIssue(
                         severity="warning",
                         check_name="npc-duplicate-keyword",

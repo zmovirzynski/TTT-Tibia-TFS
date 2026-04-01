@@ -16,7 +16,7 @@ import os
 import re
 import logging
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 try:
     from luaparser import ast as lua_ast

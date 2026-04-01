@@ -8,14 +8,12 @@ Detects:
   - Items registered in XML but whose scripts don't use them
 """
 
-import os
 import re
-from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set
 
 from ..utils import read_file_safe, find_lua_files
-from ..scanner import scan_directory, ScanResult
+from ..scanner import scan_directory
 
 
 # ---------------------------------------------------------------------------

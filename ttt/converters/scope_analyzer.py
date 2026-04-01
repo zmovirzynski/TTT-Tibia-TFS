@@ -7,7 +7,7 @@ TFS 1.x format.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 from luaparser import ast
 from luaparser.astnodes import (
     Node,
@@ -18,20 +18,14 @@ from luaparser.astnodes import (
     Name,
     Call,
     Invoke,
-    Index,
-    String,
     Number,
-    TrueExpr,
-    Block,
-    Return,
-    If,
     Chunk,
 )
 
 # Import from existing mappings
 from ..mappings.signatures import SIGNATURE_MAP, PARAM_RENAME_MAP
-from ..mappings.tfs03_functions import TFS03_TO_1X, GAME_FUNCTIONS
-from .ast_utils import get_function_name, get_base_name
+from ..mappings.tfs03_functions import TFS03_TO_1X
+from .ast_utils import get_function_name
 
 
 @dataclass

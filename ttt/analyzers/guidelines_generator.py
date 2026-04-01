@@ -4,7 +4,7 @@ import os
 from datetime import date
 from typing import Dict, List, Optional, TYPE_CHECKING
 
-from .lua_oop_analyzer import LuaFileAnalysis, LuaOopIssue
+from .lua_oop_analyzer import LuaFileAnalysis
 
 if TYPE_CHECKING:
     from ..report import ConversionReport, FileReport

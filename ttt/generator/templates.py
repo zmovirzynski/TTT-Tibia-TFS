@@ -11,8 +11,6 @@ Supports:
   - NPC (basic, shop)
 """
 
-import os
-from typing import Dict, Any
 
 TEMPLATE_TYPES = [
     "action",

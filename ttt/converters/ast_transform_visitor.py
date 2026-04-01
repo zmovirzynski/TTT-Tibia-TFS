@@ -23,12 +23,11 @@ from luaparser.astnodes import (
     Number,
     Table,
     TrueExpr,
-    Chunk,
     ULNotOp,
 )
 
-from .scope_analyzer import ScopeAnalyzer, ScopeInfo, VariableInfo, Scope
-from .ast_utils import get_function_name, get_base_name, get_wrapper_class
+from .scope_analyzer import ScopeInfo, VariableInfo, Scope
+from .ast_utils import get_function_name, get_wrapper_class
 from ..mappings.signatures import SIGNATURE_MAP, PARAM_RENAME_MAP
 from ..mappings.constants import ALL_CONSTANTS
 from ..mappings.tfs03_functions import TFS03_TO_1X
@@ -631,7 +630,7 @@ class ASTTransformVisitor(ast.ASTVisitor):
                 z_val = field_values.get("z", Number(0))
 
                 # Create Position constructor call
-                position_call = Call(func=Name("Position"), args=[x_val, y_val, z_val])
+                Call(func=Name("Position"), args=[x_val, y_val, z_val])
 
                 # --- Node-class mutation: transform table literal into a constructor call.
                 # luaparser serializes Call nodes as "func(args)", which gives us Position(x,y,z).

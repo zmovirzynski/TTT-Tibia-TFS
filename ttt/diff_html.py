@@ -19,10 +19,9 @@ import os
 import json
 import difflib
 import html
-import time
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, field
+from typing import Dict, List
+from dataclasses import dataclass
 
 
 @dataclass
@@ -190,7 +189,7 @@ class HtmlDiffGenerator:
             }
 
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        auto_select = first_changed_id or (f"file-0" if self.entries else "")
+        auto_select = first_changed_id or ("file-0" if self.entries else "")
 
         if self._guidelines_md:
             guidelines_nav = (

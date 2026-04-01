@@ -1,0 +1,34 @@
+# Example Custom Mapping Pack for TTT
+#
+# This file demonstrates how to extend TTT with custom function mappings.
+# Place it in your project and reference it from ttt.project.toml:
+#
+#   [plugins]
+#   mappings = ["./custom/my_mappings.toml"]
+#
+# Each entry maps a legacy function name to its modern replacement.
+# The format follows the same structure as ttt/mappings/tfs03_functions.py.
+
+[manifest]
+name = "example-custom-mappings"
+version = "1.0.0"
+type = "mappings"
+description = "Example custom mapping pack for server-specific functions"
+
+[mappings.getPlayerCustomPoints]
+method = "getCustomPoints"
+obj_type = "player"
+obj_param = 0
+drop_params = [0]
+
+[mappings.setPlayerCustomPoints]
+method = "setCustomPoints"
+obj_type = "player"
+obj_param = 0
+drop_params = [0]
+
+[mappings.getGuildWarStatus]
+method = "getWarStatus"
+obj_type = "guild"
+obj_param = 0
+drop_params = [0]

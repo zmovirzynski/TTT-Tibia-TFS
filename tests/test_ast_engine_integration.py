@@ -7,7 +7,7 @@ import pytest
 
 luaparser = pytest.importorskip("luaparser", reason="luaparser not installed")
 
-from ttt.analyzer.engine import AnalyzeEngine, format_analysis_text
+from ttt.analyzer.engine import AnalyzeEngine, format_analysis_text  # noqa: E402
 
 SWORD_LUA = """
 function onUseSword(player, item, fromPos, target, toPos)

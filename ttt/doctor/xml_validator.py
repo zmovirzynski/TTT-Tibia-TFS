@@ -10,9 +10,8 @@ Validates:
 import os
 import re
 import xml.etree.ElementTree as ET
-from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List
 
 from ..utils import read_file_safe, find_xml_files
 

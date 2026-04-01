@@ -32,7 +32,7 @@ try:
 except ImportError:
     LUAPARSER_AVAILABLE = False
 
-from .scope_analyzer import ScopeAnalyzer, ScopeInfo
+from .scope_analyzer import ScopeAnalyzer
 from .ast_transform_visitor import ASTTransformVisitor
 from ..mappings.signatures import SIGNATURE_MAP
 from .lua_transformer import LuaTransformer

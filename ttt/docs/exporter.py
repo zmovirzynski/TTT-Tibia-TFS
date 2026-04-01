@@ -12,7 +12,7 @@ import os
 import logging
 from typing import Optional
 
-from .generator import DocsReport, DocEntry
+from .generator import DocsReport
 from . import templates as tpl
 
 logger = logging.getLogger("ttt")
@@ -29,7 +29,7 @@ def export_markdown(report: DocsReport, output_dir: str) -> list:
 
     # Index
     index_lines = [
-        f"# Server Documentation",
+        "# Server Documentation",
         "",
         f"Directory: `{report.directory}`",
         "",

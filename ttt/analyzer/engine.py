@@ -7,10 +7,9 @@ Outputs: text, JSON, HTML.
 
 import json
 import os
-import sys
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
 from .stats import collect_stats, ServerStats
 from .dead_code import detect_dead_code, DeadCodeReport
@@ -391,7 +390,7 @@ def format_analysis_text(
         )
 
         dist = cx.distribution
-        lines.append(f"    Distribution:")
+        lines.append("    Distribution:")
         lines.append(f"      {C.GREEN}LOW (1-5):{C.RESET}         {dist['LOW']}")
         lines.append(f"      {C.YELLOW}MEDIUM (6-10):{C.RESET}     {dist['MEDIUM']}")
         lines.append(f"      {C.RED}HIGH (11-20):{C.RESET}      {dist['HIGH']}")
@@ -452,7 +451,7 @@ def format_analysis_json(report: AnalysisReport) -> str:
 
 def format_analysis_html(report: AnalysisReport) -> str:
     """Format analysis report as a standalone HTML page."""
-    data = report.as_dict()
+    report.as_dict()
 
     stats_html = ""
     if report.stats:

@@ -311,7 +311,7 @@ end"""
             f.write(lua_content)
 
         engine = ConversionEngine("tfs03", "tfs1x", self.input_dir, self.output_dir)
-        stats = engine.run()
+        engine.run()
 
         # Check output exists
         out_file = os.path.join(self.output_dir, "scripts", "test.lua")
@@ -528,7 +528,7 @@ class TestHtmlDiff(unittest.TestCase):
 
         lines = gen._compute_diff_lines(original, converted)
 
-        statuses = [l["status"] for l in lines]
+        statuses = [ln["status"] for ln in lines]
         self.assertIn("equal", statuses)
         self.assertIn("change", statuses)
         self.assertEqual(statuses.count("equal"), 2)  # line1 and line3
@@ -541,7 +541,7 @@ class TestHtmlDiff(unittest.TestCase):
         converted = "aaa\nccc\nbbb\n"
 
         lines = gen._compute_diff_lines(original, converted)
-        statuses = [l["status"] for l in lines]
+        statuses = [ln["status"] for ln in lines]
         self.assertIn("add", statuses)
 
     def test_html_generation(self):
@@ -649,7 +649,7 @@ class TestHtmlDiff(unittest.TestCase):
                 "tfs03", "revscript", examples_dir, output_dir,
                 html_diff=True,
             )
-            stats = engine.run()
+            engine.run()
 
             html_path = os.path.join(output_dir, "conversion_diff.html")
             self.assertTrue(os.path.isfile(html_path),
@@ -859,7 +859,7 @@ class TestRegressionCorpus(unittest.TestCase):
     # --- TTT marker count (baseline) ---
     def test_ttt_marker_count(self):
         markers = self.converted.count("-- TTT:")
-        stubs = self.converted.count("-- TTT:STUB:")
+        self.converted.count("-- TTT:STUB:")
         # Establish baseline: we expect markers but within reasonable bounds
         # This test documents the current marker count for regression tracking
         self.assertGreater(markers, 0, "Expected some TTT markers in complex corpus")

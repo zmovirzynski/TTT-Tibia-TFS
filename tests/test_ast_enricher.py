@@ -2,8 +2,8 @@ import pytest
 
 luaparser = pytest.importorskip("luaparser", reason="luaparser not installed")
 
-from ttt.analyzers.ast_enricher import enrich_analysis, ASTMetrics
-from ttt.analyzers.lua_oop_analyzer import LuaFileAnalysis
+from ttt.analyzers.ast_enricher import enrich_analysis  # noqa: E402
+from ttt.analyzers.lua_oop_analyzer import LuaFileAnalysis  # noqa: E402
 
 COMPLEX_LUA = """
 function bigFunc(cid, amount)

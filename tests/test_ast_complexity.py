@@ -3,7 +3,7 @@ import pytest
 
 luaparser = pytest.importorskip("luaparser", reason="luaparser not installed")
 
-from ttt.converters.ast_complexity import compute_file_complexity, FunctionMetrics
+from ttt.converters.ast_complexity import compute_file_complexity  # noqa: E402
 
 SIMPLE_LUA = """
 function onUse(player, item, fromPosition, target, toPosition)

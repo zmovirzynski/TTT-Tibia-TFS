@@ -11,7 +11,6 @@ Covers:
 
 import json
 import os
-import shutil
 import tempfile
 import unittest
 
@@ -627,7 +626,7 @@ class TestFixerConstants(unittest.TestCase):
 
 
 # Need FixAction import at module level for TestFixReport
-from ttt.fixer.auto_fix import FixAction
+from ttt.fixer.auto_fix import FixAction  # noqa: E402
 
 
 if __name__ == "__main__":

@@ -8,16 +8,14 @@ Detects:
   - Movements registered on the same item/action ID
 """
 
-import os
 import re
 import hashlib
-import xml.etree.ElementTree as ET
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Tuple
 
 from ..utils import read_file_safe, find_lua_files, find_xml_files
-from ..scanner import scan_directory, ScanResult
+from ..scanner import scan_directory
 
 
 # ---------------------------------------------------------------------------

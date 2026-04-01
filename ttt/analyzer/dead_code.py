@@ -9,10 +9,8 @@ Detects:
 
 import os
 import re
-import xml.etree.ElementTree as ET
-from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set, Tuple
 
 from ..utils import read_file_safe, find_lua_files, find_xml_files
 from ..scanner import scan_directory, ScanResult

@@ -7,11 +7,10 @@ Detects:
   - Free ranges: gaps in the storage ID space
 """
 
-import os
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set
 
 from ..utils import read_file_safe, find_lua_files
 

@@ -1,4 +1,4 @@
-.PHONY: convert lint fix analyze doctor docs test help
+.PHONY: convert lint fix analyze doctor docs test benchmark help
 
 # Run script conversion using settings from config.toml
 convert:
@@ -26,7 +26,11 @@ docs:
 
 # Run tests
 test:
-	python -m pytest tests/test_ttt.py -v
+	python -m pytest tests/test_ttt.py tests/test_migrator.py tests/test_review.py tests/test_benchmark.py -v
+
+# Run benchmark against example corpus
+benchmark:
+	python run.py benchmark -i examples/tfs03_input -f tfs03 -t revscript --golden examples/tfs1x_output
 
 help:
 	@python run.py --help

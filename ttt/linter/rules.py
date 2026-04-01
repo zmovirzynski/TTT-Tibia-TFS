@@ -7,8 +7,8 @@ Rules return a list of LintIssue objects.
 
 import re
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Set
+from dataclasses import dataclass
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +179,7 @@ class UnusedParameterRule(LintRule):
                         severity=self.severity,
                         rule_id=self.rule_id,
                         message=f"Parameter '{param}' is declared but never used in '{func_name}'",
-                        suggestion=f"Remove unused parameter or use it in the function body",
+                        suggestion="Remove unused parameter or use it in the function body",
                     ))
 
         return issues
@@ -193,15 +193,14 @@ class UnusedParameterRule(LintRule):
         depth = 1
         i = start
         # Keywords that increase depth
-        openers = re.compile(
+        re.compile(
             r'\b(function|if|for|while|repeat|do)\b'
         )
-        closers = re.compile(r'\bend\b')
-        until_closer = re.compile(r'\buntil\b')
+        re.compile(r'\bend\b')
+        re.compile(r'\buntil\b')
 
         in_string = None
         in_long_string = False
-        long_string_close = ""
 
         while i < len(code):
             ch = code[i]
