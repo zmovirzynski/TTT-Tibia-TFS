@@ -10,9 +10,7 @@ logger = logging.getLogger("ttt")
 def setup_logging(verbose: bool = False):
     level = logging.DEBUG if verbose else logging.INFO
     handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter(
-        "[%(levelname)s] %(message)s"
-    ))
+    handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
     root = logging.getLogger("ttt")
     root.setLevel(level)
     root.addHandler(handler)
@@ -53,7 +51,7 @@ def read_file_safe(filepath: str) -> Optional[str]:
             with open(filepath, "r", encoding=enc) as f:
                 content = f.read()
                 # Normalize Windows line endings to Unix
-                return content.replace('\r\n', '\n').replace('\r', '\n')
+                return content.replace("\r\n", "\n").replace("\r", "\n")
         except (UnicodeDecodeError, UnicodeError):
             continue
         except FileNotFoundError:
@@ -87,11 +85,16 @@ def split_lua_args(args_str: str) -> List[str]:
             i += 2
             continue
 
-        if not in_string and ch == "[" and i + 1 < len(args_str) and args_str[i + 1] == "[":
+        if (
+            not in_string
+            and ch == "["
+            and i + 1 < len(args_str)
+            and args_str[i + 1] == "["
+        ):
             # Find closing ]]
             end = args_str.find("]]", i + 2)
             if end != -1:
-                current.append(args_str[i:end + 2])
+                current.append(args_str[i : end + 2])
                 i = end + 2
                 continue
 
@@ -142,7 +145,9 @@ def split_lua_args(args_str: str) -> List[str]:
     return args
 
 
-def extract_function_call(code: str, start: int) -> Optional[Tuple[int, int, str, List[str]]]:
+def extract_function_call(
+    code: str, start: int
+) -> Optional[Tuple[int, int, str, List[str]]]:
     paren_start = code.find("(", start)
     if paren_start == -1:
         return None
@@ -180,7 +185,7 @@ def extract_function_call(code: str, start: int) -> Optional[Tuple[int, int, str
         return None
 
     paren_end = i  # position after closing paren
-    args_str = code[paren_start + 1:paren_end - 1]
+    args_str = code[paren_start + 1 : paren_end - 1]
     args = split_lua_args(args_str)
 
     return (start, paren_end, func_name, args)
@@ -189,7 +194,7 @@ def extract_function_call(code: str, start: int) -> Optional[Tuple[int, int, str
 def camel_to_variable(name: str) -> str:
     for prefix in ("do", "get", "set", "is", "has", "can"):
         if name.startswith(prefix) and len(name) > len(prefix):
-            name = name[len(prefix):]
+            name = name[len(prefix) :]
             break
     if name:
         name = name[0].lower() + name[1:]

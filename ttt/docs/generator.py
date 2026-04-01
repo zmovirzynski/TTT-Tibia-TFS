@@ -27,9 +27,11 @@ logger = logging.getLogger("ttt")
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DocEntry:
     """A single documentation entry."""
+
     category: str  # actions, movements, talkactions, creaturescripts, globalevents, npcs, spells
     name: str
     script: str = ""
@@ -55,6 +57,7 @@ class DocEntry:
 @dataclass
 class DocsReport:
     """Complete documentation report for a server."""
+
     directory: str = ""
     actions: List[DocEntry] = field(default_factory=list)
     movements: List[DocEntry] = field(default_factory=list)
@@ -66,9 +69,15 @@ class DocsReport:
 
     @property
     def total_entries(self) -> int:
-        return (len(self.actions) + len(self.movements) +
-                len(self.talkactions) + len(self.creaturescripts) +
-                len(self.globalevents) + len(self.npcs) + len(self.spells))
+        return (
+            len(self.actions)
+            + len(self.movements)
+            + len(self.talkactions)
+            + len(self.creaturescripts)
+            + len(self.globalevents)
+            + len(self.npcs)
+            + len(self.spells)
+        )
 
     @property
     def categories(self) -> Dict[str, List[DocEntry]]:
@@ -99,6 +108,7 @@ class DocsReport:
 # ---------------------------------------------------------------------------
 # Generator
 # ---------------------------------------------------------------------------
+
 
 class DocsGenerator:
     """Scans a server directory and builds DocsReport."""
@@ -132,8 +142,14 @@ class DocsGenerator:
         for xml_path in xml_files:
             basename = os.path.basename(xml_path).lower()
             # Skip registration XMLs
-            if basename in ("actions.xml", "movements.xml", "talkactions.xml",
-                            "creaturescripts.xml", "globalevents.xml", "spells.xml"):
+            if basename in (
+                "actions.xml",
+                "movements.xml",
+                "talkactions.xml",
+                "creaturescripts.xml",
+                "globalevents.xml",
+                "spells.xml",
+            ):
                 continue
             npc_entry = self._parse_npc_xml(xml_path)
             if npc_entry:
@@ -244,7 +260,11 @@ class DocsGenerator:
             attribs = dict(elem.attrib)
             script = attribs.pop("script", "")
             words = attribs.get("words", "")
-            name = words if words else (script.replace(".lua", "") if script else "talkaction")
+            name = (
+                words
+                if words
+                else (script.replace(".lua", "") if script else "talkaction")
+            )
             desc = self._extract_description(xml_dir, script)
 
             entry = DocEntry(
@@ -278,7 +298,11 @@ class DocsGenerator:
             script = attribs.pop("script", "")
             event_name = attribs.get("name", "")
             event_type = attribs.get("type", "")
-            name = event_name if event_name else event_type or (script.replace(".lua", "") if script else "event")
+            name = (
+                event_name
+                if event_name
+                else event_type or (script.replace(".lua", "") if script else "event")
+            )
             desc = self._extract_description(xml_dir, script)
 
             entry = DocEntry(
@@ -313,7 +337,11 @@ class DocsGenerator:
             event_name = attribs.get("name", "")
             attribs.get("type", "")
             attribs.get("interval", "")
-            name = event_name if event_name else (script.replace(".lua", "") if script else "globalevent")
+            name = (
+                event_name
+                if event_name
+                else (script.replace(".lua", "") if script else "globalevent")
+            )
             desc = self._extract_description(xml_dir, script)
 
             entry = DocEntry(
@@ -349,7 +377,11 @@ class DocsGenerator:
                 spell_name = attribs.get("name", "")
                 attribs.get("mana", "")
                 attribs.get("lvl", attribs.get("level", ""))
-                name = spell_name if spell_name else (script.replace(".lua", "") if script else tag)
+                name = (
+                    spell_name
+                    if spell_name
+                    else (script.replace(".lua", "") if script else tag)
+                )
                 desc = self._extract_description(xml_dir, script)
 
                 entry = DocEntry(
@@ -407,7 +439,9 @@ class DocsGenerator:
             lua_content = self._read_script(xml_dir, script)
             if not lua_content:
                 # Try scripts/ subdir
-                lua_content = self._read_script(xml_dir, os.path.join("scripts", script))
+                lua_content = self._read_script(
+                    xml_dir, os.path.join("scripts", script)
+                )
             if lua_content:
                 keywords = self._extract_npc_keywords(lua_content)
 
@@ -460,11 +494,20 @@ class DocsGenerator:
 
         # Detect registration type
         patterns = [
-            (r'local\s+(\w+)\s*=\s*Action\s*\(\s*\)', "actions"),
-            (r'local\s+(\w+)\s*=\s*MoveEvent\s*\(\s*\)', "movements"),
-            (r'local\s+(\w+)\s*=\s*TalkAction\s*\(\s*["\'](.+?)["\']\s*\)', "talkactions"),
-            (r'local\s+(\w+)\s*=\s*CreatureEvent\s*\(\s*["\'](.+?)["\']\s*\)', "creaturescripts"),
-            (r'local\s+(\w+)\s*=\s*GlobalEvent\s*\(\s*["\'](.+?)["\']\s*\)', "globalevents"),
+            (r"local\s+(\w+)\s*=\s*Action\s*\(\s*\)", "actions"),
+            (r"local\s+(\w+)\s*=\s*MoveEvent\s*\(\s*\)", "movements"),
+            (
+                r'local\s+(\w+)\s*=\s*TalkAction\s*\(\s*["\'](.+?)["\']\s*\)',
+                "talkactions",
+            ),
+            (
+                r'local\s+(\w+)\s*=\s*CreatureEvent\s*\(\s*["\'](.+?)["\']\s*\)',
+                "creaturescripts",
+            ),
+            (
+                r'local\s+(\w+)\s*=\s*GlobalEvent\s*\(\s*["\'](.+?)["\']\s*\)',
+                "globalevents",
+            ),
         ]
 
         desc = self._extract_description_from_content(content)
@@ -476,17 +519,28 @@ class DocsGenerator:
             if m:
                 attribs = {}
                 # Extract IDs for actions/movements
-                for id_pat in [r':id\s*\(\s*(\d+)\s*\)', r':aid\s*\(\s*(\d+)\s*\)',
-                               r':uid\s*\(\s*(\d+)\s*\)']:
+                for id_pat in [
+                    r":id\s*\(\s*(\d+)\s*\)",
+                    r":aid\s*\(\s*(\d+)\s*\)",
+                    r":uid\s*\(\s*(\d+)\s*\)",
+                ]:
                     id_m = re.findall(id_pat, content)
                     if id_m:
-                        id_name = "id" if ":id(" in id_pat else ("aid" if ":aid(" in id_pat else "uid")
+                        id_name = (
+                            "id"
+                            if ":id(" in id_pat
+                            else ("aid" if ":aid(" in id_pat else "uid")
+                        )
                         attribs[id_name] = ", ".join(id_m)
 
                 if category == "talkactions" and m.lastindex and m.lastindex >= 2:
                     name = m.group(2)
                     attribs["words"] = m.group(2)
-                elif category in ("creaturescripts", "globalevents") and m.lastindex and m.lastindex >= 2:
+                elif (
+                    category in ("creaturescripts", "globalevents")
+                    and m.lastindex
+                    and m.lastindex >= 2
+                ):
                     name = m.group(2)
 
                 entry = DocEntry(
@@ -554,12 +608,16 @@ class DocsGenerator:
         """Extract conversation keywords from NPC Lua script."""
         keywords = []
         # Pattern: msgcontains(msg, "keyword")
-        for m in re.finditer(r'msgcontains\s*\(\s*\w+\s*,\s*["\'](.+?)["\']\s*\)', lua_content):
+        for m in re.finditer(
+            r'msgcontains\s*\(\s*\w+\s*,\s*["\'](.+?)["\']\s*\)', lua_content
+        ):
             kw = m.group(1)
             if kw not in keywords:
                 keywords.append(kw)
         # Pattern: msg == "keyword" or msg:lower() == "keyword"
-        for m in re.finditer(r'msg(?::lower\(\))?\s*==\s*["\'](.+?)["\']\s*', lua_content):
+        for m in re.finditer(
+            r'msg(?::lower\(\))?\s*==\s*["\'](.+?)["\']\s*', lua_content
+        ):
             kw = m.group(1)
             if kw not in keywords:
                 keywords.append(kw)

@@ -158,7 +158,9 @@ def mockCreature(
     **_kwargs,
 ) -> MockCreature:
     """Factory helper for mock Creature."""
-    return MockCreature(name=name, health=health, position=position or MockPosition(100, 100, 7))
+    return MockCreature(
+        name=name, health=health, position=position or MockPosition(100, 100, 7)
+    )
 
 
 def mockItem(item_id: int, count: int = 1, uid: int = 0, **_kwargs) -> MockItem:

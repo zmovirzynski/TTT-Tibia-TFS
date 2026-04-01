@@ -9,12 +9,13 @@ import os
 @dataclass
 class ExplainEntry:
     """A single transformation explanation."""
+
     file: str = ""
     line: int = 0
-    stage: str = ""          # signature, variable, function, constant, position
+    stage: str = ""  # signature, variable, function, constant, position
     original: str = ""
     transformed: str = ""
-    rule: str = ""           # mapping key or rule name
+    rule: str = ""  # mapping key or rule name
     reasoning: str = ""
     confidence: float = 1.0
 
@@ -22,6 +23,7 @@ class ExplainEntry:
 @dataclass
 class ExplainReport:
     """Aggregated explain data for a full conversion run."""
+
     entries: List[ExplainEntry] = field(default_factory=list)
 
     def add(self, entry: ExplainEntry) -> None:

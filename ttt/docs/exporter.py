@@ -22,6 +22,7 @@ logger = logging.getLogger("ttt")
 # Markdown exporter
 # ---------------------------------------------------------------------------
 
+
 def export_markdown(report: DocsReport, output_dir: str) -> list:
     """Export documentation as Markdown files. Returns list of written paths."""
     os.makedirs(output_dir, exist_ok=True)
@@ -40,7 +41,11 @@ def export_markdown(report: DocsReport, output_dir: str) -> list:
     ]
     for cat_name, entries in report.categories.items():
         if entries:
-            title = cat_name.replace("scripts", " Scripts").replace("events", " Events").title()
+            title = (
+                cat_name.replace("scripts", " Scripts")
+                .replace("events", " Events")
+                .title()
+            )
             index_lines.append(f"- [{title}]({cat_name}.md) ({len(entries)} entries)")
     index_lines.append("")
 
@@ -52,7 +57,9 @@ def export_markdown(report: DocsReport, output_dir: str) -> list:
     for cat_name, entries in report.categories.items():
         if not entries:
             continue
-        title = cat_name.replace("scripts", " Scripts").replace("events", " Events").title()
+        title = (
+            cat_name.replace("scripts", " Scripts").replace("events", " Events").title()
+        )
         lines = [f"# {title}", "", f"{len(entries)} entries", ""]
 
         # Table header
@@ -127,6 +134,7 @@ def _md_esc(text: str) -> str:
 # HTML exporter
 # ---------------------------------------------------------------------------
 
+
 def export_html(report: DocsReport, output_dir: str) -> list:
     """Export documentation as static HTML site. Returns list of written paths."""
     os.makedirs(output_dir, exist_ok=True)
@@ -159,6 +167,7 @@ def export_html(report: DocsReport, output_dir: str) -> list:
 # JSON exporter
 # ---------------------------------------------------------------------------
 
+
 def export_json(report: DocsReport, output_path: Optional[str] = None) -> str:
     """Export documentation as JSON. Returns JSON string. If output_path, also writes file."""
     data = report.as_dict()
@@ -172,6 +181,7 @@ def export_json(report: DocsReport, output_path: Optional[str] = None) -> str:
 # ---------------------------------------------------------------------------
 # Markdown single-string (for terminal output)
 # ---------------------------------------------------------------------------
+
 
 def format_docs_text(report: DocsReport, no_color: bool = False) -> str:
     """Format docs report as colored text for terminal display."""
@@ -194,12 +204,20 @@ def format_docs_text(report: DocsReport, no_color: bool = False) -> str:
     for cat_name, entries in report.categories.items():
         if not entries:
             continue
-        title = cat_name.replace("scripts", " Scripts").replace("events", " Events").title()
+        title = (
+            cat_name.replace("scripts", " Scripts").replace("events", " Events").title()
+        )
         lines.append(f"  {C.BOLD}{C.BLUE}{title}{C.RESET} ({len(entries)})")
         lines.append(f"  {'-' * 58}")
         for entry in entries:
-            desc_part = f"  {C.DIM}{entry.description[:60]}{C.RESET}" if entry.description else ""
-            lines.append(f"    {C.GREEN}{entry.name:<30s}{C.RESET} {entry.script}{desc_part}")
+            desc_part = (
+                f"  {C.DIM}{entry.description[:60]}{C.RESET}"
+                if entry.description
+                else ""
+            )
+            lines.append(
+                f"    {C.GREEN}{entry.name:<30s}{C.RESET} {entry.script}{desc_part}"
+            )
         lines.append("")
 
     return "\n".join(lines)
@@ -221,6 +239,7 @@ class _Colors:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _write(path: str, content: str):
     """Write content to file."""

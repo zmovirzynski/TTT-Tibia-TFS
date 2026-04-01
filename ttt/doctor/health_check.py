@@ -25,10 +25,12 @@ from ..mappings.signatures import SIGNATURE_MAP
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class HealthIssue:
     """A single issue found by a health check."""
-    severity: str   # "error", "warning"
+
+    severity: str  # "error", "warning"
     check_name: str  # e.g. "syntax-error", "broken-xml-ref"
     filepath: str
     line: int = 0
@@ -47,6 +49,7 @@ class HealthIssue:
 @dataclass
 class HealthReport:
     """Aggregated health check results."""
+
     issues: List[HealthIssue] = field(default_factory=list)
     total_checks_run: int = 0
     total_files_scanned: int = 0
@@ -86,16 +89,17 @@ class HealthReport:
 _SYNTAX_PATTERNS = [
     # Unmatched blocks — we count openers/closers
     # Mismatched quotes are harder; we just look for obviously broken patterns
-    (r'(?:^|\s)function\s+\w+\s*\([^)]*$', "Possible unterminated function declaration"),
-    (r'then\s*$\n\s*$\n\s*end\b', None),  # skip — valid
+    (
+        r"(?:^|\s)function\s+\w+\s*\([^)]*$",
+        "Possible unterminated function declaration",
+    ),
+    (r"then\s*$\n\s*$\n\s*end\b", None),  # skip — valid
 ]
 
 # We use a bracket/block-matching approach for real syntax checks
-_BLOCK_OPENERS = re.compile(
-    r'\b(?:function|if|for|while|repeat)\b', re.MULTILINE
-)
-_BLOCK_CLOSERS_END = re.compile(r'\bend\b', re.MULTILINE)
-_BLOCK_CLOSERS_UNTIL = re.compile(r'\buntil\b', re.MULTILINE)
+_BLOCK_OPENERS = re.compile(r"\b(?:function|if|for|while|repeat)\b", re.MULTILINE)
+_BLOCK_CLOSERS_END = re.compile(r"\bend\b", re.MULTILINE)
+_BLOCK_CLOSERS_UNTIL = re.compile(r"\buntil\b", re.MULTILINE)
 
 
 def _check_lua_syntax(directory: str) -> List[HealthIssue]:
@@ -119,31 +123,37 @@ def _check_lua_syntax(directory: str) -> List[HealthIssue]:
 
         if openers > closers:
             diff = openers - closers
-            issues.append(HealthIssue(
-                severity="error",
-                check_name="syntax-error",
-                filepath=filepath,
-                message=f"Missing {diff} 'end' statement(s) — {openers} blocks opened, {closers} closed",
-            ))
+            issues.append(
+                HealthIssue(
+                    severity="error",
+                    check_name="syntax-error",
+                    filepath=filepath,
+                    message=f"Missing {diff} 'end' statement(s) — {openers} blocks opened, {closers} closed",
+                )
+            )
         elif closers > openers:
             diff = closers - openers
-            issues.append(HealthIssue(
-                severity="error",
-                check_name="syntax-error",
-                filepath=filepath,
-                message=f"Extra {diff} 'end' statement(s) — {openers} blocks opened, {closers} closed",
-            ))
+            issues.append(
+                HealthIssue(
+                    severity="error",
+                    check_name="syntax-error",
+                    filepath=filepath,
+                    message=f"Extra {diff} 'end' statement(s) — {openers} blocks opened, {closers} closed",
+                )
+            )
 
         # Check parentheses balance
         parens_open = cleaned.count("(")
         parens_close = cleaned.count(")")
         if parens_open != parens_close:
-            issues.append(HealthIssue(
-                severity="error",
-                check_name="syntax-error",
-                filepath=filepath,
-                message=f"Unbalanced parentheses: {parens_open} '(' vs {parens_close} ')'",
-            ))
+            issues.append(
+                HealthIssue(
+                    severity="error",
+                    check_name="syntax-error",
+                    filepath=filepath,
+                    message=f"Unbalanced parentheses: {parens_open} '(' vs {parens_close} ')'",
+                )
+            )
 
     return issues
 
@@ -155,36 +165,36 @@ def _strip_comments_and_strings(code: str) -> str:
     length = len(code)
     while i < length:
         # Long comment: --[[ ... ]]
-        if code[i:i+4] == '--[[':
-            end = code.find(']]', i + 4)
+        if code[i : i + 4] == "--[[":
+            end = code.find("]]", i + 4)
             if end == -1:
                 break
             i = end + 2
             continue
         # Long comment: --[=[ ... ]=]
-        if code[i:i+3] == '--[' and i + 3 < length and code[i+3] == '=':
+        if code[i : i + 3] == "--[" and i + 3 < length and code[i + 3] == "=":
             j = i + 3
-            while j < length and code[j] == '=':
+            while j < length and code[j] == "=":
                 j += 1
-            if j < length and code[j] == '[':
+            if j < length and code[j] == "[":
                 eq_count = j - i - 3
-                close_tag = ']' + '=' * eq_count + ']'
+                close_tag = "]" + "=" * eq_count + "]"
                 end = code.find(close_tag, j + 1)
                 if end == -1:
                     break
                 i = end + len(close_tag)
                 continue
         # Single-line comment
-        if code[i:i+2] == '--':
-            nl = code.find('\n', i)
+        if code[i : i + 2] == "--":
+            nl = code.find("\n", i)
             if nl == -1:
                 break
-            result.append('\n')
+            result.append("\n")
             i = nl + 1
             continue
         # Long string [[ ... ]]
-        if code[i:i+2] == '[[' and (i == 0 or code[i-1] not in ('-',)):
-            end = code.find(']]', i + 2)
+        if code[i : i + 2] == "[[" and (i == 0 or code[i - 1] not in ("-",)):
+            end = code.find("]]", i + 2)
             if end != -1:
                 i = end + 2
                 continue
@@ -193,7 +203,7 @@ def _strip_comments_and_strings(code: str) -> str:
             quote = code[i]
             i += 1
             while i < length:
-                if code[i] == '\\':
+                if code[i] == "\\":
                     i += 2
                     continue
                 if code[i] == quote:
@@ -203,12 +213,13 @@ def _strip_comments_and_strings(code: str) -> str:
             continue
         result.append(code[i])
         i += 1
-    return ''.join(result)
+    return "".join(result)
 
 
 # ---------------------------------------------------------------------------
 # Check: Broken XML references
 # ---------------------------------------------------------------------------
+
 
 def _check_broken_xml_refs(directory: str) -> List[HealthIssue]:
     """Check for XML entries that reference non-existent scripts."""
@@ -235,13 +246,15 @@ def _check_broken_xml_refs(directory: str) -> List[HealthIssue]:
                 ]
                 found = any(os.path.isfile(c) for c in candidates)
                 if not found:
-                    issues.append(HealthIssue(
-                        severity="error",
-                        check_name="broken-xml-ref",
-                        filepath=xml_path,
-                        line=i,
-                        message=f"Script '{script_ref}' not found",
-                    ))
+                    issues.append(
+                        HealthIssue(
+                            severity="error",
+                            check_name="broken-xml-ref",
+                            filepath=xml_path,
+                            line=i,
+                            message=f"Script '{script_ref}' not found",
+                        )
+                    )
 
     return issues
 
@@ -250,8 +263,10 @@ def _check_broken_xml_refs(directory: str) -> List[HealthIssue]:
 # Check: Conflicting item IDs (actions/movements)
 # ---------------------------------------------------------------------------
 
-def _extract_registrations(xml_path: str, tag: str, id_attrs: List[str]
-                            ) -> List[Tuple[str, str, int, str]]:
+
+def _extract_registrations(
+    xml_path: str, tag: str, id_attrs: List[str]
+) -> List[Tuple[str, str, int, str]]:
     """Extract (attr_name, id_value, line, script) tuples from XML."""
     results = []
     content = read_file_safe(xml_path)
@@ -289,15 +304,19 @@ def _check_conflicting_ids(directory: str) -> List[HealthIssue]:
         basename = os.path.basename(xml_path).lower()
 
         if "actions" in basename or "action" in basename:
-            regs = _extract_registrations(xml_path, "action",
-                                           ["itemid", "fromid", "actionid", "uniqueid"])
+            regs = _extract_registrations(
+                xml_path, "action", ["itemid", "fromid", "actionid", "uniqueid"]
+            )
             for attr, val, line, script in regs:
                 key = f"action-{attr}:{val}"
                 registry[key].append((xml_path, line, script))
 
         if "movements" in basename or "movement" in basename:
-            regs = _extract_registrations(xml_path, "movevent",
-                                           ["itemid", "fromid", "actionid", "uniqueid", "tileitem"])
+            regs = _extract_registrations(
+                xml_path,
+                "movevent",
+                ["itemid", "fromid", "actionid", "uniqueid", "tileitem"],
+            )
             for attr, val, line, script in regs:
                 key = f"movement-{attr}:{val}"
                 registry[key].append((xml_path, line, script))
@@ -309,13 +328,15 @@ def _check_conflicting_ids(directory: str) -> List[HealthIssue]:
                 f"{os.path.basename(p)}:L{ln}" for p, ln, _ in entries
             )
             for xml_path, line, script in entries:
-                issues.append(HealthIssue(
-                    severity="error",
-                    check_name="conflicting-id",
-                    filepath=xml_path,
-                    line=line,
-                    message=f"Duplicate {reg_type} ID {id_val} — also in: {files_str}",
-                ))
+                issues.append(
+                    HealthIssue(
+                        severity="error",
+                        check_name="conflicting-id",
+                        filepath=xml_path,
+                        line=line,
+                        message=f"Duplicate {reg_type} ID {id_val} — also in: {files_str}",
+                    )
+                )
 
     return issues
 
@@ -323,6 +344,7 @@ def _check_conflicting_ids(directory: str) -> List[HealthIssue]:
 # ---------------------------------------------------------------------------
 # Check: Duplicate event registrations
 # ---------------------------------------------------------------------------
+
 
 def _check_duplicate_events(directory: str) -> List[HealthIssue]:
     """Check for duplicate event names in creaturescripts and talkactions."""
@@ -369,35 +391,41 @@ def _check_duplicate_events(directory: str) -> List[HealthIssue]:
     for word, entries in keywords.items():
         if len(entries) > 1:
             for xml_path, line, script in entries:
-                issues.append(HealthIssue(
-                    severity="error",
-                    check_name="duplicate-event",
-                    filepath=xml_path,
-                    line=line,
-                    message=f"Duplicate talkaction keyword '{word}'",
-                ))
+                issues.append(
+                    HealthIssue(
+                        severity="error",
+                        check_name="duplicate-event",
+                        filepath=xml_path,
+                        line=line,
+                        message=f"Duplicate talkaction keyword '{word}'",
+                    )
+                )
 
     for name, entries in event_names.items():
         if len(entries) > 1:
             for xml_path, line in entries:
-                issues.append(HealthIssue(
-                    severity="warning",
-                    check_name="duplicate-event",
-                    filepath=xml_path,
-                    line=line,
-                    message=f"Duplicate creature event name '{name}'",
-                ))
+                issues.append(
+                    HealthIssue(
+                        severity="warning",
+                        check_name="duplicate-event",
+                        filepath=xml_path,
+                        line=line,
+                        message=f"Duplicate creature event name '{name}'",
+                    )
+                )
 
     for name, entries in global_names.items():
         if len(entries) > 1:
             for xml_path, line in entries:
-                issues.append(HealthIssue(
-                    severity="warning",
-                    check_name="duplicate-event",
-                    filepath=xml_path,
-                    line=line,
-                    message=f"Duplicate global event name '{name}'",
-                ))
+                issues.append(
+                    HealthIssue(
+                        severity="warning",
+                        check_name="duplicate-event",
+                        filepath=xml_path,
+                        line=line,
+                        message=f"Duplicate global event name '{name}'",
+                    )
+                )
 
     return issues
 
@@ -405,6 +433,7 @@ def _check_duplicate_events(directory: str) -> List[HealthIssue]:
 # ---------------------------------------------------------------------------
 # Check: NPC keyword duplicates
 # ---------------------------------------------------------------------------
+
 
 def _check_npc_keywords(directory: str) -> List[HealthIssue]:
     """Check for duplicate keywords in NPC scripts."""
@@ -423,8 +452,7 @@ def _check_npc_keywords(directory: str) -> List[HealthIssue]:
 
     # Pattern to find msgcontains or keywords
     keyword_pattern = re.compile(
-        r'msgcontains\s*\(\s*msg\s*,\s*["\']([^"\']+)["\']\s*\)',
-        re.IGNORECASE
+        r'msgcontains\s*\(\s*msg\s*,\s*["\']([^"\']+)["\']\s*\)', re.IGNORECASE
     )
 
     for npc_dir in npc_dirs:
@@ -442,13 +470,15 @@ def _check_npc_keywords(directory: str) -> List[HealthIssue]:
             for kw, lines in keywords.items():
                 if len(lines) > 1:
                     lines_str = ", ".join(f"L{ln}" for ln in lines)
-                    issues.append(HealthIssue(
-                        severity="warning",
-                        check_name="npc-duplicate-keyword",
-                        filepath=filepath,
-                        line=lines[0],
-                        message=f"NPC keyword '{kw}' handled multiple times ({lines_str})",
-                    ))
+                    issues.append(
+                        HealthIssue(
+                            severity="warning",
+                            check_name="npc-duplicate-keyword",
+                            filepath=filepath,
+                            line=lines[0],
+                            message=f"NPC keyword '{kw}' handled multiple times ({lines_str})",
+                        )
+                    )
 
     return issues
 
@@ -456,6 +486,7 @@ def _check_npc_keywords(directory: str) -> List[HealthIssue]:
 # ---------------------------------------------------------------------------
 # Check: Invalid callback signatures
 # ---------------------------------------------------------------------------
+
 
 def _check_callback_signatures(directory: str) -> List[HealthIssue]:
     """Check for callbacks with wrong number of parameters."""
@@ -477,8 +508,7 @@ def _check_callback_signatures(directory: str) -> List[HealthIssue]:
         callback_info[cb_name] = (min_p, max_p)
 
     func_pattern = re.compile(
-        r'function\s+(?:\w+[.:])?(\w+)\s*\(([^)]*)\)',
-        re.MULTILINE
+        r"function\s+(?:\w+[.:])?(\w+)\s*\(([^)]*)\)", re.MULTILINE
     )
 
     for filepath in lua_files:
@@ -502,25 +532,29 @@ def _check_callback_signatures(directory: str) -> List[HealthIssue]:
 
             if len(params) < min_p:
                 # Find line number
-                line_num = code[:m.start()].count("\n") + 1
-                issues.append(HealthIssue(
-                    severity="warning",
-                    check_name="invalid-callback",
-                    filepath=filepath,
-                    line=line_num,
-                    message=f"Callback '{func_name}' has {len(params)} params, "
-                            f"expected at least {min_p}",
-                ))
+                line_num = code[: m.start()].count("\n") + 1
+                issues.append(
+                    HealthIssue(
+                        severity="warning",
+                        check_name="invalid-callback",
+                        filepath=filepath,
+                        line=line_num,
+                        message=f"Callback '{func_name}' has {len(params)} params, "
+                        f"expected at least {min_p}",
+                    )
+                )
             elif len(params) > max_p:
-                line_num = code[:m.start()].count("\n") + 1
-                issues.append(HealthIssue(
-                    severity="warning",
-                    check_name="invalid-callback",
-                    filepath=filepath,
-                    line=line_num,
-                    message=f"Callback '{func_name}' has {len(params)} params, "
-                            f"expected at most {max_p}",
-                ))
+                line_num = code[: m.start()].count("\n") + 1
+                issues.append(
+                    HealthIssue(
+                        severity="warning",
+                        check_name="invalid-callback",
+                        filepath=filepath,
+                        line=line_num,
+                        message=f"Callback '{func_name}' has {len(params)} params, "
+                        f"expected at most {max_p}",
+                    )
+                )
 
     return issues
 
@@ -532,17 +566,25 @@ def _check_callback_signatures(directory: str) -> List[HealthIssue]:
 # Each check: (name, description, function)
 HEALTH_CHECKS: List[Tuple[str, str, Callable[[str], List[HealthIssue]]]] = [
     ("syntax-error", "Lua syntax errors (block/bracket mismatch)", _check_lua_syntax),
-    ("broken-xml-ref", "XML references to non-existent scripts", _check_broken_xml_refs),
-    ("conflicting-id", "Duplicate item IDs in actions/movements", _check_conflicting_ids),
+    (
+        "broken-xml-ref",
+        "XML references to non-existent scripts",
+        _check_broken_xml_refs,
+    ),
+    (
+        "conflicting-id",
+        "Duplicate item IDs in actions/movements",
+        _check_conflicting_ids,
+    ),
     ("duplicate-event", "Duplicate event registrations", _check_duplicate_events),
     ("npc-duplicate-keyword", "NPC keyword duplicates", _check_npc_keywords),
     ("invalid-callback", "Invalid callback signatures", _check_callback_signatures),
 ]
 
 
-def run_health_checks(directory: str,
-                       enabled_checks: Optional[Set[str]] = None
-                       ) -> HealthReport:
+def run_health_checks(
+    directory: str, enabled_checks: Optional[Set[str]] = None
+) -> HealthReport:
     """Run all (or selected) health checks on a server directory."""
     report = HealthReport()
 
@@ -559,10 +601,12 @@ def run_health_checks(directory: str,
         # Count each file as one check per check type
         report.total_checks_run += report.total_files_scanned
 
-    report.issues.sort(key=lambda i: (
-        0 if i.severity == "error" else 1,
-        i.filepath,
-        i.line,
-    ))
+    report.issues.sort(
+        key=lambda i: (
+            0 if i.severity == "error" else 1,
+            i.filepath,
+            i.line,
+        )
+    )
 
     return report

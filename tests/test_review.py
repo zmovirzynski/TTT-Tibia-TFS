@@ -20,51 +20,97 @@ class TestCategorizeMarker:
     """Tests for the categorize_marker() function."""
 
     def test_stub_marker(self):
-        assert categorize_marker("STUB: doCreateItemEx -- needs custom lib") == ReviewCategory.CUSTOM_FUNCTION
+        assert (
+            categorize_marker("STUB: doCreateItemEx -- needs custom lib")
+            == ReviewCategory.CUSTOM_FUNCTION
+        )
 
     def test_removed_marker(self):
-        assert categorize_marker("doSendAnimatedText removed in TFS 1.x. No direct equivalent.") == ReviewCategory.UNSUPPORTED_LEGACY
+        assert (
+            categorize_marker(
+                "doSendAnimatedText removed in TFS 1.x. No direct equivalent."
+            )
+            == ReviewCategory.UNSUPPORTED_LEGACY
+        )
 
     def test_no_equivalent_marker(self):
-        assert categorize_marker("No direct equivalent in TFS 1.x") == ReviewCategory.UNSUPPORTED_LEGACY
+        assert (
+            categorize_marker("No direct equivalent in TFS 1.x")
+            == ReviewCategory.UNSUPPORTED_LEGACY
+        )
 
     def test_deprecated_marker(self):
-        assert categorize_marker("This function is deprecated") == ReviewCategory.UNSUPPORTED_LEGACY
+        assert (
+            categorize_marker("This function is deprecated")
+            == ReviewCategory.UNSUPPORTED_LEGACY
+        )
 
     def test_auto_chained_marker(self):
-        assert categorize_marker("Returns Vocation object, auto-chained :getId()") == ReviewCategory.OBJECT_UNWRAPPING
+        assert (
+            categorize_marker("Returns Vocation object, auto-chained :getId()")
+            == ReviewCategory.OBJECT_UNWRAPPING
+        )
 
     def test_use_marker(self):
         # Contains :getId() → object unwrapping takes priority
-        assert categorize_marker("Use player:getVocation():getId() to check vocation type") == ReviewCategory.OBJECT_UNWRAPPING
+        assert (
+            categorize_marker("Use player:getVocation():getId() to check vocation type")
+            == ReviewCategory.OBJECT_UNWRAPPING
+        )
 
     def test_use_simple_marker(self):
-        assert categorize_marker("Use player:setStorageValue() instead") == ReviewCategory.API_REPLACEMENT
+        assert (
+            categorize_marker("Use player:setStorageValue() instead")
+            == ReviewCategory.API_REPLACEMENT
+        )
 
     def test_in_1x_marker(self):
         # Contains :getTemplePosition() → object unwrapping
-        assert categorize_marker("In 1.x use player:getTown():getTemplePosition()") == ReviewCategory.OBJECT_UNWRAPPING
+        assert (
+            categorize_marker("In 1.x use player:getTown():getTemplePosition()")
+            == ReviewCategory.OBJECT_UNWRAPPING
+        )
 
     def test_in_1x_simple_marker(self):
-        assert categorize_marker("In 1.x use Combat object for area damage") == ReviewCategory.API_REPLACEMENT
+        assert (
+            categorize_marker("In 1.x use Combat object for area damage")
+            == ReviewCategory.API_REPLACEMENT
+        )
 
     def test_combat_object_marker(self):
-        assert categorize_marker("Use Combat object API in 1.x") == ReviewCategory.API_REPLACEMENT
+        assert (
+            categorize_marker("Use Combat object API in 1.x")
+            == ReviewCategory.API_REPLACEMENT
+        )
 
     def test_review_marker(self):
-        assert categorize_marker("Review this conversion for correctness") == ReviewCategory.CONFIDENCE_RISK
+        assert (
+            categorize_marker("Review this conversion for correctness")
+            == ReviewCategory.CONFIDENCE_RISK
+        )
 
     def test_verify_marker(self):
-        assert categorize_marker("Verify the parameter order") == ReviewCategory.CONFIDENCE_RISK
+        assert (
+            categorize_marker("Verify the parameter order")
+            == ReviewCategory.CONFIDENCE_RISK
+        )
 
     def test_function_body_not_found(self):
-        assert categorize_marker("Function body not found") == ReviewCategory.CUSTOM_FUNCTION
+        assert (
+            categorize_marker("Function body not found")
+            == ReviewCategory.CUSTOM_FUNCTION
+        )
 
     def test_general_fallback(self):
-        assert categorize_marker("Some unknown marker text xyz") == ReviewCategory.GENERAL
+        assert (
+            categorize_marker("Some unknown marker text xyz") == ReviewCategory.GENERAL
+        )
 
     def test_condition_system_marker(self):
-        assert categorize_marker("In 1.x, feeding uses condition system.") == ReviewCategory.API_REPLACEMENT
+        assert (
+            categorize_marker("In 1.x, feeding uses condition system.")
+            == ReviewCategory.API_REPLACEMENT
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -77,7 +123,8 @@ class TestReviewFinding:
 
     def test_short_text_strips_prefix(self):
         f = ReviewFinding(
-            file="test.lua", line_number=1,
+            file="test.lua",
+            line_number=1,
             marker_text="  -- TTT: Use foo:bar()",
             category=ReviewCategory.API_REPLACEMENT,
         )
@@ -85,7 +132,8 @@ class TestReviewFinding:
 
     def test_short_text_strips_stub_prefix(self):
         f = ReviewFinding(
-            file="test.lua", line_number=1,
+            file="test.lua",
+            line_number=1,
             marker_text="-- TTT:STUB: doFoo -- needs lib",
             category=ReviewCategory.CUSTOM_FUNCTION,
         )
@@ -93,7 +141,8 @@ class TestReviewFinding:
 
     def test_short_text_no_prefix(self):
         f = ReviewFinding(
-            file="test.lua", line_number=1,
+            file="test.lua",
+            line_number=1,
             marker_text="plain text",
             category=ReviewCategory.GENERAL,
         )
@@ -114,11 +163,27 @@ class TestReviewReport:
             scanned_dir="/tmp/out",
             total_files_scanned=5,
             findings=[
-                ReviewFinding("a.lua", 10, "-- TTT: Use foo", ReviewCategory.API_REPLACEMENT),
-                ReviewFinding("a.lua", 20, "-- TTT: Review bar", ReviewCategory.CONFIDENCE_RISK),
-                ReviewFinding("b.lua", 5, "-- TTT: removed in 1.x", ReviewCategory.UNSUPPORTED_LEGACY),
-                ReviewFinding("a.lua", 30, "-- TTT:STUB: baz", ReviewCategory.CUSTOM_FUNCTION),
-                ReviewFinding("c.lua", 1, "-- TTT: auto-chained :getId()", ReviewCategory.OBJECT_UNWRAPPING),
+                ReviewFinding(
+                    "a.lua", 10, "-- TTT: Use foo", ReviewCategory.API_REPLACEMENT
+                ),
+                ReviewFinding(
+                    "a.lua", 20, "-- TTT: Review bar", ReviewCategory.CONFIDENCE_RISK
+                ),
+                ReviewFinding(
+                    "b.lua",
+                    5,
+                    "-- TTT: removed in 1.x",
+                    ReviewCategory.UNSUPPORTED_LEGACY,
+                ),
+                ReviewFinding(
+                    "a.lua", 30, "-- TTT:STUB: baz", ReviewCategory.CUSTOM_FUNCTION
+                ),
+                ReviewFinding(
+                    "c.lua",
+                    1,
+                    "-- TTT: auto-chained :getId()",
+                    ReviewCategory.OBJECT_UNWRAPPING,
+                ),
             ],
         )
 
@@ -189,11 +254,15 @@ class TestReviewScanner:
         return path
 
     def test_scan_single_file(self, tmp_path):
-        lua = self._write_lua(str(tmp_path), "test.lua", """\
+        lua = self._write_lua(
+            str(tmp_path),
+            "test.lua",
+            """\
             local x = 1
             player:setVocation(2) -- TTT: Use player:getVocation():getId()
             local y = 2
-        """)
+        """,
+        )
         scanner = ReviewScanner()
         report = scanner.scan(lua)
         assert report.total_files_scanned == 1
@@ -202,13 +271,21 @@ class TestReviewScanner:
         assert report.findings[0].line_number == 2
 
     def test_scan_directory(self, tmp_path):
-        self._write_lua(str(tmp_path), "a.lua", """\
+        self._write_lua(
+            str(tmp_path),
+            "a.lua",
+            """\
             -- TTT: Use foo
             -- TTT: removed in 1.x
-        """)
-        self._write_lua(str(tmp_path), "b.lua", """\
+        """,
+        )
+        self._write_lua(
+            str(tmp_path),
+            "b.lua",
+            """\
             -- TTT:STUB: bar -- custom
-        """)
+        """,
+        )
         scanner = ReviewScanner()
         report = scanner.scan(str(tmp_path))
         assert report.total_files_scanned == 2
@@ -221,10 +298,14 @@ class TestReviewScanner:
         assert report.total_markers == 0
 
     def test_scan_no_markers(self, tmp_path):
-        self._write_lua(str(tmp_path), "clean.lua", """\
+        self._write_lua(
+            str(tmp_path),
+            "clean.lua",
+            """\
             local x = 1
             print("hello")
-        """)
+        """,
+        )
         scanner = ReviewScanner()
         report = scanner.scan(str(tmp_path))
         assert report.total_files_scanned == 1
@@ -241,21 +322,29 @@ class TestReviewScanner:
     def test_scan_with_relative_paths(self, tmp_path):
         sub = tmp_path / "scripts"
         sub.mkdir()
-        self._write_lua(str(sub), "action.lua", """\
+        self._write_lua(
+            str(sub),
+            "action.lua",
+            """\
             -- TTT: Use foo
-        """)
+        """,
+        )
         scanner = ReviewScanner()
         report = scanner.scan_with_relative_paths(str(tmp_path))
         assert report.findings[0].file == os.path.join("scripts", "action.lua")
 
     def test_context_lines(self, tmp_path):
-        self._write_lua(str(tmp_path), "ctx.lua", """\
+        self._write_lua(
+            str(tmp_path),
+            "ctx.lua",
+            """\
             line1
             line2
             line3 -- TTT: marker here
             line4
             line5
-        """)
+        """,
+        )
         scanner = ReviewScanner(context_lines=1)
         report = scanner.scan(str(tmp_path))
         snippet = report.findings[0].snippet
@@ -292,8 +381,12 @@ class TestFormatReviewText:
             scanned_dir="/tmp",
             total_files_scanned=2,
             findings=[
-                ReviewFinding("a.lua", 1, "-- TTT: Use foo", ReviewCategory.API_REPLACEMENT),
-                ReviewFinding("b.lua", 2, "-- TTT: removed", ReviewCategory.UNSUPPORTED_LEGACY),
+                ReviewFinding(
+                    "a.lua", 1, "-- TTT: Use foo", ReviewCategory.API_REPLACEMENT
+                ),
+                ReviewFinding(
+                    "b.lua", 2, "-- TTT: removed", ReviewCategory.UNSUPPORTED_LEGACY
+                ),
             ],
         )
         text = format_review_text(r)
@@ -323,7 +416,9 @@ class TestFormatReviewJson:
             scanned_dir="/tmp",
             total_files_scanned=1,
             findings=[
-                ReviewFinding("a.lua", 5, "-- TTT: Use bar", ReviewCategory.API_REPLACEMENT),
+                ReviewFinding(
+                    "a.lua", 5, "-- TTT: Use bar", ReviewCategory.API_REPLACEMENT
+                ),
             ],
         )
         data = json.loads(format_review_json(r))
@@ -346,7 +441,12 @@ class TestFormatReviewHtml:
             scanned_dir="/tmp/out",
             total_files_scanned=2,
             findings=[
-                ReviewFinding("x.lua", 3, "-- TTT: Use Combat object", ReviewCategory.API_REPLACEMENT),
+                ReviewFinding(
+                    "x.lua",
+                    3,
+                    "-- TTT: Use Combat object",
+                    ReviewCategory.API_REPLACEMENT,
+                ),
             ],
         )
         html = format_review_html(r)
@@ -382,7 +482,8 @@ class TestReviewIntegration:
         scripts.mkdir()
 
         with open(scripts / "heal.lua", "w") as f:
-            f.write(textwrap.dedent("""\
+            f.write(
+                textwrap.dedent("""\
                 function onUse(player, item, fromPosition, target, toPosition, isHotkey)
                     local voc = player:getVocation():getId() -- TTT: Returns Vocation object, auto-chained :getId() for numeric ID
                     if voc == 1 then
@@ -390,24 +491,29 @@ class TestReviewIntegration:
                     end
                     return true
                 end
-            """))
+            """)
+            )
 
         with open(scripts / "teleport.lua", "w") as f:
-            f.write(textwrap.dedent("""\
+            f.write(
+                textwrap.dedent("""\
                 function onUse(player, item, fromPosition, target, toPosition, isHotkey)
                     player:teleportTo(Position(100, 200, 7)) -- TTT: Use player:getTown():getTemplePosition() for temple TP
                     doSendAnimatedText(pos, "woo") -- TTT: doSendAnimatedText removed in TFS 1.x. No direct equivalent.
                     return true
                 end
-            """))
+            """)
+            )
 
         with open(scripts / "combat.lua", "w") as f:
-            f.write(textwrap.dedent("""\
+            f.write(
+                textwrap.dedent("""\
                 function onUse(player, item, fromPosition, target, toPosition, isHotkey)
                     doCombat(cid, combat, var) -- TTT:STUB: doCombat -- needs custom lib: Game.combat
                     return true
                 end
-            """))
+            """)
+            )
 
         return tmp_path
 

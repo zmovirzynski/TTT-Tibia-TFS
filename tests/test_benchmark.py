@@ -92,8 +92,10 @@ class TestCorpusEntry:
 
     def test_custom_versions(self):
         e = CorpusEntry(
-            name="test", input_dir="/tmp/input",
-            source_version="tfs04", target_version="tfs1x",
+            name="test",
+            input_dir="/tmp/input",
+            source_version="tfs04",
+            target_version="tfs1x",
         )
         assert e.source_version == "tfs04"
         assert e.target_version == "tfs1x"
@@ -108,8 +110,9 @@ class TestGoldenComparison:
         assert g.diff_lines == 0
 
     def test_mismatch(self):
-        g = GoldenComparison("a.lua", False, diff_lines=10,
-                             expected_lines=50, actual_lines=55)
+        g = GoldenComparison(
+            "a.lua", False, diff_lines=10, expected_lines=50, actual_lines=55
+        )
         assert g.match is False
         assert g.diff_lines == 10
 
@@ -141,7 +144,7 @@ class TestBenchmarkEngine:
             }
         for name in scripts:
             xml_content += f'  <action itemid="1234" script="{name}"/>\n'
-        xml_content += '</actions>'
+        xml_content += "</actions>"
 
         with open(input_dir / "actions" / "actions.xml", "w") as f:
             f.write(xml_content)
@@ -166,8 +169,10 @@ class TestBenchmarkEngine:
     def test_basic_conversion(self, tmp_path):
         input_dir, _ = self._make_corpus(tmp_path)
         entry = CorpusEntry(
-            name="basic", input_dir=input_dir,
-            source_version="tfs03", target_version="revscript",
+            name="basic",
+            input_dir=input_dir,
+            source_version="tfs03",
+            target_version="revscript",
         )
         engine = BenchmarkEngine()
         result = engine.run(entry)
@@ -178,7 +183,8 @@ class TestBenchmarkEngine:
 
     def test_invalid_input_dir(self, tmp_path):
         entry = CorpusEntry(
-            name="missing", input_dir=str(tmp_path / "nonexistent"),
+            name="missing",
+            input_dir=str(tmp_path / "nonexistent"),
         )
         engine = BenchmarkEngine()
         result = engine.run(entry)
@@ -215,21 +221,27 @@ class TestBenchmarkEngine:
         entry = CorpusEntry(name="golden_prep", input_dir=input_dir)
         engine = BenchmarkEngine()
         import tempfile
+
         with tempfile.TemporaryDirectory() as out_dir:
             from ttt.engine import ConversionEngine
+
             ce = ConversionEngine(
-                source_version="tfs03", target_version="revscript",
-                input_dir=input_dir, output_dir=out_dir,
+                source_version="tfs03",
+                target_version="revscript",
+                input_dir=input_dir,
+                output_dir=out_dir,
             )
             ce.run()
             # Copy output as golden
             golden_dir = tmp_path / "golden"
             import shutil
+
             shutil.copytree(out_dir, str(golden_dir))
 
         # Now run benchmark with golden comparison
         entry = CorpusEntry(
-            name="golden_test", input_dir=input_dir,
+            name="golden_test",
+            input_dir=input_dir,
             golden_dir=str(golden_dir),
         )
         result = engine.run(entry)
@@ -250,10 +262,14 @@ class TestBenchmarkEngine:
             "diff.lua": "-- This is completely different expected output\n",
         }
         input_dir, golden_dir = self._make_corpus(
-            tmp_path, scripts=scripts, golden_scripts=golden_scripts,
+            tmp_path,
+            scripts=scripts,
+            golden_scripts=golden_scripts,
         )
         entry = CorpusEntry(
-            name="mismatch", input_dir=input_dir, golden_dir=golden_dir,
+            name="mismatch",
+            input_dir=input_dir,
+            golden_dir=golden_dir,
         )
         engine = BenchmarkEngine()
         result = engine.run(entry)

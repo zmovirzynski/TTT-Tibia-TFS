@@ -23,8 +23,10 @@ from xml.etree import ElementTree
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 class NPCData:
     """Parsed NPC data from XML + Lua."""
+
     def __init__(self, name: str = "", file: str = ""):
         self.name = name
         self.file = file
@@ -40,16 +42,16 @@ class NPCData:
         self.parameters: Dict[str, str] = {}
 
         # Lua-level data
-        self.keywords: List[str] = []          # keyword strings handled
-        self.responses: Dict[str, str] = {}     # keyword -> response text
+        self.keywords: List[str] = []  # keyword strings handled
+        self.responses: Dict[str, str] = {}  # keyword -> response text
         self.has_greet = False
         self.has_farewell = False
         self.has_shop_module = False
         self.has_focus_module = False
         self.has_travel_module = False
-        self.callback_keywords: List[str] = []   # from creatureSayCallback
+        self.callback_keywords: List[str] = []  # from creatureSayCallback
         self.modules: List[str] = []
-        self.graph: Dict[str, List[str]] = {}   # keyword -> list of referenced keywords
+        self.graph: Dict[str, List[str]] = {}  # keyword -> list of referenced keywords
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -72,6 +74,7 @@ class NPCData:
 # ---------------------------------------------------------------------------
 # Analyzer
 # ---------------------------------------------------------------------------
+
 
 class NPCConversationAnalyzer:
     def __init__(self, npc_dir: str, items_xml: str = None):
@@ -164,7 +167,7 @@ class NPCConversationAnalyzer:
 
         # Extract keywords from greet message ({keyword} patterns)
         if npc.greet_message:
-            for m in re.finditer(r'\{(\w+)\}', npc.greet_message):
+            for m in re.finditer(r"\{(\w+)\}", npc.greet_message):
                 kw = m.group(1).lower()
                 if kw not in npc.keywords:
                     npc.keywords.append(kw)
@@ -177,11 +180,13 @@ class NPCConversationAnalyzer:
         for entry in value.split(";"):
             parts = entry.strip().split(",")
             if len(parts) >= 3:
-                items.append({
-                    "id": parts[0].strip(),
-                    "name": parts[1].strip(),
-                    "price": parts[2].strip(),
-                })
+                items.append(
+                    {
+                        "id": parts[0].strip(),
+                        "name": parts[1].strip(),
+                        "price": parts[2].strip(),
+                    }
+                )
         return items
 
     # ------------------------------------------------------------------
@@ -208,9 +213,9 @@ class NPCConversationAnalyzer:
             npc.modules.append("TravelModule")
 
         # Detect greet/farewell from setMessage
-        if re.search(r'setMessage\s*\(\s*MESSAGE_GREET', code):
+        if re.search(r"setMessage\s*\(\s*MESSAGE_GREET", code):
             npc.has_greet = True
-        if re.search(r'setMessage\s*\(\s*MESSAGE_FAREWELL', code):
+        if re.search(r"setMessage\s*\(\s*MESSAGE_FAREWELL", code):
             npc.has_farewell = True
 
         # Detect greet from message_greet parameter
@@ -219,8 +224,7 @@ class NPCConversationAnalyzer:
 
         # Parse msgcontains keywords from callback
         for match in re.finditer(
-            r'msgcontains\s*\(\s*msg\s*,\s*["\']([^"\']+)["\']',
-            code, re.IGNORECASE
+            r'msgcontains\s*\(\s*msg\s*,\s*["\']([^"\']+)["\']', code, re.IGNORECASE
         ):
             kw = match.group(1).lower()
             if kw not in npc.keywords:
@@ -230,7 +234,8 @@ class NPCConversationAnalyzer:
         # Parse addKeyword patterns
         for match in re.finditer(
             r'(?:keywordHandler|npcHandler)\s*:\s*addKeyword\s*\(\s*["\']([^"\']+)["\']',
-            code, re.IGNORECASE
+            code,
+            re.IGNORECASE,
         ):
             kw = match.group(1).lower()
             if kw not in npc.keywords:
@@ -245,11 +250,12 @@ class NPCConversationAnalyzer:
     def _extract_responses(self, npc: NPCData, code: str) -> None:
         """Extract keyword -> response mappings from msgcontains + selfSay."""
         # Pattern: msgcontains(msg, "keyword") ... selfSay("response", ...)
-        blocks = re.split(r'(?=if\s+msgcontains)', code)
+        blocks = re.split(r"(?=if\s+msgcontains)", code)
         for block in blocks:
             kw_match = re.search(
                 r'msgcontains\s*\(\s*msg\s*,\s*["\']([^"\']+)["\']',
-                block, re.IGNORECASE
+                block,
+                re.IGNORECASE,
             )
             if not kw_match:
                 continue
@@ -257,8 +263,7 @@ class NPCConversationAnalyzer:
 
             # Find selfSay in same block
             say_match = re.search(
-                r'selfSay\s*\(\s*["\']([^"\']+)["\']',
-                block, re.IGNORECASE
+                r'selfSay\s*\(\s*["\']([^"\']+)["\']', block, re.IGNORECASE
             )
             if say_match:
                 npc.responses[kw] = say_match.group(1)
@@ -273,7 +278,7 @@ class NPCConversationAnalyzer:
             referenced = []
             response = npc.responses.get(kw, "")
             # Check for {keyword} references in responses
-            for m in re.finditer(r'\{(\w+)\}', response):
+            for m in re.finditer(r"\{(\w+)\}", response):
                 ref = m.group(1).lower()
                 if ref in npc.keywords and ref != kw:
                     referenced.append(ref)
@@ -430,13 +435,17 @@ class NPCConversationAnalyzer:
         """Generate a Mermaid diagram of conversation flows."""
         lines = ["```mermaid", "graph TD"]
         for npc in self.npcs:
-            prefix = re.sub(r'[^a-zA-Z0-9_]', '_', npc.name) if npc.name else os.path.splitext(os.path.basename(npc.file))[0]
+            prefix = (
+                re.sub(r"[^a-zA-Z0-9_]", "_", npc.name)
+                if npc.name
+                else os.path.splitext(os.path.basename(npc.file))[0]
+            )
             lines.append(f"    subgraph {prefix}")
-            lines.append(f"        {prefix}_greet((\"{npc.name or prefix}: Greet\"))")
+            lines.append(f'        {prefix}_greet(("{npc.name or prefix}: Greet"))')
 
             for kw in npc.keywords:
                 node_id = f"{prefix}_{kw}"
-                lines.append(f"        {node_id}[\"{kw}\"]")
+                lines.append(f'        {node_id}["{kw}"]')
 
             # Edges from greet to keywords
             for kw in npc.graph.get("greet", []):
@@ -488,12 +497,20 @@ class NPCConversationAnalyzer:
             fname = os.path.basename(npc.file)
             lines.append(f"  NPC: {npc.name or fname}")
             lines.append(f"  File: {fname}")
-            lines.append(f"  Keywords: {', '.join(npc.keywords) if npc.keywords else '(none)'}")
-            lines.append(f"  Modules: {', '.join(npc.modules) if npc.modules else '(none)'}")
+            lines.append(
+                f"  Keywords: {', '.join(npc.keywords) if npc.keywords else '(none)'}"
+            )
+            lines.append(
+                f"  Modules: {', '.join(npc.modules) if npc.modules else '(none)'}"
+            )
 
             greet_info = report["greet_farewell"].get(npc.file, {})
-            lines.append(f"    {'OK' if greet_info.get('greet') else 'MISSING'} Greet handler")
-            lines.append(f"    {'OK' if greet_info.get('farewell') else 'MISSING'} Farewell handler")
+            lines.append(
+                f"    {'OK' if greet_info.get('greet') else 'MISSING'} Greet handler"
+            )
+            lines.append(
+                f"    {'OK' if greet_info.get('farewell') else 'MISSING'} Farewell handler"
+            )
 
             dups = report["duplicate_keywords"].get(npc.file, {})
             if dups.get("duplicates"):
@@ -519,7 +536,9 @@ class NPCConversationAnalyzer:
             shop = report["shop_items"].get(npc.file, {})
             if shop.get("invalid_items"):
                 for item in shop["invalid_items"]:
-                    lines.append(f"    WARN Invalid shop item: {item.get('name', item.get('id', '?'))}")
+                    lines.append(
+                        f"    WARN Invalid shop item: {item.get('name', item.get('id', '?'))}"
+                    )
             elif shop.get("total_items", 0) > 0:
                 lines.append(f"    OK All {shop['total_items']} shop items valid")
 
@@ -533,9 +552,12 @@ class NPCConversationAnalyzer:
 if __name__ == "__main__":
     import argparse
     import json as _json
+
     parser = argparse.ArgumentParser(description="NPC Conversation Analyzer")
     parser.add_argument("npc_dir", help="Directory containing NPC scripts")
-    parser.add_argument("--items-xml", help="Path to items.xml for shop validation", default=None)
+    parser.add_argument(
+        "--items-xml", help="Path to items.xml for shop validation", default=None
+    )
     parser.add_argument("--graph", help="Save conversation graph to file", default=None)
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     args = parser.parse_args()

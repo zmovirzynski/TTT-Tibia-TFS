@@ -705,7 +705,9 @@ class ScopeAnalyzer(ast.ASTVisitor):
         if isinstance(node, LocalAssign):
             if hasattr(node, "targets") and hasattr(node, "values"):
                 for target, value in zip(node.targets, node.values or []):
-                    if isinstance(target, Name) and isinstance(value, (Function, AnonymousFunction)):
+                    if isinstance(target, Name) and isinstance(
+                        value, (Function, AnonymousFunction)
+                    ):
                         # Store function name for later use
                         self._current_function_name = target.id
 
@@ -713,7 +715,9 @@ class ScopeAnalyzer(ast.ASTVisitor):
         elif isinstance(node, Assign):
             if hasattr(node, "targets") and hasattr(node, "values"):
                 for target, value in zip(node.targets, node.values or []):
-                    if isinstance(target, Name) and isinstance(value, (Function, AnonymousFunction)):
+                    if isinstance(target, Name) and isinstance(
+                        value, (Function, AnonymousFunction)
+                    ):
                         self._current_function_name = target.id
 
     def generic_visit(self, node: Node) -> None:

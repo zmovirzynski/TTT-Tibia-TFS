@@ -9,6 +9,7 @@ from typing import Dict, List
 
 class ReviewCategory(enum.Enum):
     """Category for grouping review findings."""
+
     API_REPLACEMENT = "api-replacement"
     OBJECT_UNWRAPPING = "object-unwrapping"
     UNSUPPORTED_LEGACY = "unsupported-legacy"
@@ -44,7 +45,7 @@ class ReviewFinding:
         text = self.marker_text
         for prefix in ("-- TTT:STUB:", "-- TTT:"):
             if text.strip().startswith(prefix):
-                return text.strip()[len(prefix):].strip()
+                return text.strip()[len(prefix) :].strip()
         return text.strip()
 
 
@@ -83,11 +84,13 @@ class ReviewReport:
             cats = {}
             for f in findings:
                 cats[f.category.value] = cats.get(f.category.value, 0) + 1
-            result.append({
-                "file": path,
-                "count": len(findings),
-                "categories": cats,
-            })
+            result.append(
+                {
+                    "file": path,
+                    "count": len(findings),
+                    "categories": cats,
+                }
+            )
         return result
 
     def to_dict(self) -> Dict:
@@ -107,8 +110,7 @@ class ReviewReport:
                 for f in self.findings
             ],
             "by_category": {
-                cat.value: len(items)
-                for cat, items in self.by_category().items()
+                cat.value: len(items) for cat, items in self.by_category().items()
             },
             "top_blockers": self.top_blockers(),
         }

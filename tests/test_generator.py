@@ -2,9 +2,11 @@ import os
 import sys
 import unittest
 import tempfile
+
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ttt.generator import generate_script, TEMPLATE_TYPES
+
 
 class TestScriptGenerator(unittest.TestCase):
     def test_generate_all_templates(self):
@@ -14,7 +16,7 @@ class TestScriptGenerator(unittest.TestCase):
                     script_type=script_type,
                     name="test_script",
                     output_format=fmt,
-                    params=["param1", "param2"]
+                    params=["param1", "param2"],
                 )
                 self.assertIsInstance(script, str)
                 self.assertTrue(len(script) > 0)
@@ -27,7 +29,7 @@ class TestScriptGenerator(unittest.TestCase):
             script_type="action",
             name="healing_potion",
             output_format="revscript",
-            params=["cid", "item"]
+            params=["cid", "item"],
         )
         with tempfile.TemporaryDirectory() as tmpdir:
             out_path = os.path.join(tmpdir, f"healing_potion.{ext}")
@@ -38,6 +40,7 @@ class TestScriptGenerator(unittest.TestCase):
                 content = f.read()
             self.assertIn("healing_potion", content)
             self.assertIn("cid", content)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

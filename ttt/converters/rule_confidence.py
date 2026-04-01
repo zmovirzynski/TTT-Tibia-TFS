@@ -22,9 +22,15 @@ def rule_confidence(mapping: Dict) -> float:
     if mapping.get("custom"):
         custom = mapping["custom"]
         # Some custom types are very safe
-        safe_customs = {"type_check", "vocation_check", "item_type_getter",
-                        "item_type_by_name", "house_lookup", "npc_get_self",
-                        "npc_method_self"}
+        safe_customs = {
+            "type_check",
+            "vocation_check",
+            "item_type_getter",
+            "item_type_by_name",
+            "house_lookup",
+            "npc_get_self",
+            "npc_method_self",
+        }
         if custom in safe_customs:
             return 0.85
         # Passthrough customs are lower confidence

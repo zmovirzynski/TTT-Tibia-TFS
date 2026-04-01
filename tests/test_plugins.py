@@ -91,41 +91,53 @@ class TestLoadMappingPack:
     def test_raises_on_missing_manifest_name(self):
         pytest.importorskip("tomllib")
         with tempfile.TemporaryDirectory() as td:
-            path = _write_file(td, "bad.toml", """\
+            path = _write_file(
+                td,
+                "bad.toml",
+                """\
             [manifest]
             type = "mappings"
 
             [mappings.foo]
             method = "bar"
-            """)
+            """,
+            )
             with pytest.raises(PluginError, match="must include 'name'"):
                 load_mapping_pack(path)
 
     def test_raises_on_wrong_type(self):
         pytest.importorskip("tomllib")
         with tempfile.TemporaryDirectory() as td:
-            path = _write_file(td, "bad.toml", """\
+            path = _write_file(
+                td,
+                "bad.toml",
+                """\
             [manifest]
             name = "test"
             type = "rules"
 
             [mappings.foo]
             method = "bar"
-            """)
+            """,
+            )
             with pytest.raises(PluginError, match="expected type 'mappings'"):
                 load_mapping_pack(path)
 
     def test_raises_on_missing_method_key(self):
         pytest.importorskip("tomllib")
         with tempfile.TemporaryDirectory() as td:
-            path = _write_file(td, "bad.toml", """\
+            path = _write_file(
+                td,
+                "bad.toml",
+                """\
             [manifest]
             name = "test"
             type = "mappings"
 
             [mappings.foo]
             obj_type = "player"
-            """)
+            """,
+            )
             with pytest.raises(PluginError, match="missing required 'method'"):
                 load_mapping_pack(path)
 
@@ -141,7 +153,9 @@ class TestLoadMappingPack:
         pytest.importorskip("tomllib")
         example_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "plugins", "custom_mappings.toml",
+            "examples",
+            "plugins",
+            "custom_mappings.toml",
         )
         if not os.path.exists(example_path):
             pytest.skip("Example mapping pack not found")
@@ -165,6 +179,7 @@ class TestLoadRulePack:
             assert "test-check" in result
             # Verify it's a proper LintRule subclass
             from ttt.linter.rules import LintRule
+
             assert issubclass(result["test-check"], LintRule)
 
     def test_raises_on_missing_file(self):
@@ -173,27 +188,38 @@ class TestLoadRulePack:
 
     def test_raises_on_missing_rules_dict(self):
         with tempfile.TemporaryDirectory() as td:
-            path = _write_file(td, "bad.py", """\
+            path = _write_file(
+                td,
+                "bad.py",
+                """\
             # No RULES dict
             x = 42
-            """)
+            """,
+            )
             with pytest.raises(PluginError, match="must define a RULES dict"):
                 load_rule_pack(path)
 
     def test_raises_on_non_lint_rule_class(self):
         with tempfile.TemporaryDirectory() as td:
-            path = _write_file(td, "bad.py", """\
+            path = _write_file(
+                td,
+                "bad.py",
+                """\
             class Fake:
                 rule_id = "fake"
 
             RULES = {"fake": Fake}
-            """)
+            """,
+            )
             with pytest.raises(PluginError, match="must be a LintRule subclass"):
                 load_rule_pack(path)
 
     def test_raises_on_rule_id_mismatch(self):
         with tempfile.TemporaryDirectory() as td:
-            path = _write_file(td, "bad.py", """\
+            path = _write_file(
+                td,
+                "bad.py",
+                """\
             from ttt.linter.rules import LintRule, LintIssue, LintSeverity
 
             class MyRule(LintRule):
@@ -205,7 +231,8 @@ class TestLoadRulePack:
                     return []
 
             RULES = {"wrong-id": MyRule}
-            """)
+            """,
+            )
             with pytest.raises(PluginError, match="does not match dict key"):
                 load_rule_pack(path)
 
@@ -213,7 +240,9 @@ class TestLoadRulePack:
         """Load the bundled example rule pack from examples/plugins/."""
         example_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "plugins", "custom_rules.py",
+            "examples",
+            "plugins",
+            "custom_rules.py",
         )
         if not os.path.exists(example_path):
             pytest.skip("Example rule pack not found")
@@ -224,7 +253,9 @@ class TestLoadRulePack:
         """Verify the example rule actually works."""
         example_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "plugins", "custom_rules.py",
+            "examples",
+            "plugins",
+            "custom_rules.py",
         )
         if not os.path.exists(example_path):
             pytest.skip("Example rule pack not found")

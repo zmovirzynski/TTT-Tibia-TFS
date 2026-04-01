@@ -35,7 +35,9 @@ class LuaFormatConfig:
             indent_style=data.get("indentStyle", "spaces"),
             indent_size=int(data.get("indentSize", 4)),
             space_around_operators=bool(data.get("spaceAroundOperators", True)),
-            blank_lines_between_functions=int(data.get("blankLinesBetweenFunctions", 1)),
+            blank_lines_between_functions=int(
+                data.get("blankLinesBetweenFunctions", 1)
+            ),
             align_table_fields=bool(data.get("alignTableFields", True)),
             trailing_commas=bool(data.get("trailingCommas", True)),
             trim_trailing_whitespace=bool(data.get("trimTrailingWhitespace", True)),
@@ -112,7 +114,9 @@ class LuaFormatter:
             text = "\n".join(line.rstrip() for line in text.split("\n"))
 
         if self.config.space_around_operators:
-            text = "\n".join(self._format_operators_line(line) for line in text.split("\n"))
+            text = "\n".join(
+                self._format_operators_line(line) for line in text.split("\n")
+            )
 
         text = self._format_indentation(text)
         text = self._format_table_blocks(text)
@@ -156,7 +160,9 @@ class LuaFormatter:
         if not self.config.ignore_patterns:
             return False
         norm = relpath.replace("\\", "/")
-        return any(fnmatch.fnmatch(norm, pattern) for pattern in self.config.ignore_patterns)
+        return any(
+            fnmatch.fnmatch(norm, pattern) for pattern in self.config.ignore_patterns
+        )
 
     def _format_indentation(self, text: str) -> str:
         lines = text.split("\n")
@@ -170,7 +176,9 @@ class LuaFormatter:
                 formatted.append("")
                 continue
 
-            dedent_before = 1 if re.match(r"^(end|until|else\b|elseif\b)", stripped) else 0
+            dedent_before = (
+                1 if re.match(r"^(end|until|else\b|elseif\b)", stripped) else 0
+            )
             indent_level = max(0, indent_level - dedent_before)
 
             formatted.append(f"{self.config.indent_unit * indent_level}{stripped}")
@@ -246,9 +254,9 @@ class LuaFormatter:
                 i = j
                 continue
 
-            block = out[start:end + 1]
+            block = out[start : end + 1]
             formatted_block = self._format_single_table_block(block)
-            out[start:end + 1] = formatted_block
+            out[start : end + 1] = formatted_block
             i = start + len(formatted_block)
 
         return "\n".join(out)
@@ -264,7 +272,9 @@ class LuaFormatter:
             stripped = block_lines[idx].strip()
             if not stripped or stripped.startswith("--") or "=" not in stripped:
                 continue
-            match = re.match(r"^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$", block_lines[idx])
+            match = re.match(
+                r"^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$", block_lines[idx]
+            )
             if not match:
                 continue
             key = match.group(2)
@@ -279,7 +289,11 @@ class LuaFormatter:
             value_code, value_comment = _split_comment_part(value)
             value_code = value_code.strip()
 
-            if self.config.trailing_commas and value_code and not value_code.endswith(","):
+            if (
+                self.config.trailing_commas
+                and value_code
+                and not value_code.endswith(",")
+            ):
                 value_code = f"{value_code},"
 
             if self.config.align_table_fields:

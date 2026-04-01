@@ -31,9 +31,11 @@ logger = logging.getLogger("ttt")
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FixAction:
     """A single fix applied to the code."""
+
     rule_id: str
     line: int
     description: str
@@ -44,6 +46,7 @@ class FixAction:
 @dataclass
 class FileFixResult:
     """Result of fixing a single file."""
+
     filepath: str
     original_code: str = ""
     fixed_code: str = ""
@@ -66,17 +69,21 @@ class FileFixResult:
         orig = self.original_code.splitlines(keepends=True)
         fixed = self.fixed_code.splitlines(keepends=True)
         name = os.path.basename(self.filepath) if self.filepath else "code"
-        return list(difflib.unified_diff(
-            orig, fixed,
-            fromfile=f"a/{name}",
-            tofile=f"b/{name}",
-            lineterm="",
-        ))
+        return list(
+            difflib.unified_diff(
+                orig,
+                fixed,
+                fromfile=f"a/{name}",
+                tofile=f"b/{name}",
+                lineterm="",
+            )
+        )
 
 
 @dataclass
 class FixReport:
     """Aggregated fix report for all files."""
+
     files: List[FileFixResult] = field(default_factory=list)
     target_path: str = ""
 
@@ -110,6 +117,7 @@ class FixReport:
 # Individual fix functions
 # ---------------------------------------------------------------------------
 
+
 def fix_deprecated_api(code: str) -> Tuple[str, List[FixAction]]:
     """Replace deprecated TFS 0.3/0.4 procedural API calls with OOP equivalents."""
     from ..mappings.tfs03_functions import TFS03_TO_1X
@@ -131,7 +139,7 @@ def fix_deprecated_api(code: str) -> Tuple[str, List[FixAction]]:
         mapping = all_funcs[func_name]
         escaped = re.escape(func_name)
         pattern = re.compile(
-            r'(?<![.\w:])' + escaped + r'\s*\(',
+            r"(?<![.\w:])" + escaped + r"\s*\(",
             re.MULTILINE,
         )
 
@@ -159,22 +167,24 @@ def fix_deprecated_api(code: str) -> Tuple[str, List[FixAction]]:
                 search_start = match.end()
                 continue
 
-            args_str = code[paren_start + 1:paren_end]
+            args_str = code[paren_start + 1 : paren_end]
             args = split_lua_args(args_str)
 
             replacement = _generate_oop_replacement(func_name, args, mapping)
 
             if replacement and replacement != f"{func_name}({args_str})":
                 line_num = code[:call_start].count("\n") + 1
-                orig_text = code[call_start:paren_end + 1]
+                orig_text = code[call_start : paren_end + 1]
 
-                fixes.append(FixAction(
-                    rule_id="deprecated-api",
-                    line=line_num,
-                    description=f"{func_name}() -> {replacement}",
-                    original=orig_text,
-                    replacement=replacement,
-                ))
+                fixes.append(
+                    FixAction(
+                        rule_id="deprecated-api",
+                        line=line_num,
+                        description=f"{func_name}() -> {replacement}",
+                        original=orig_text,
+                        replacement=replacement,
+                    )
+                )
 
                 result_parts.append(code[last_end:call_start])
                 result_parts.append(replacement)
@@ -193,22 +203,42 @@ def fix_deprecated_api(code: str) -> Tuple[str, List[FixAction]]:
 def fix_missing_return(code: str) -> Tuple[str, List[FixAction]]:
     """Add 'return true' to callback functions that don't have a return statement."""
     CALLBACKS = {
-        "onUse", "onStepIn", "onStepOut", "onEquip", "onDeEquip",
-        "onSay", "onLogin", "onLogout", "onDeath", "onKill",
-        "onPrepareDeath", "onHealthChange", "onManaChange",
-        "onTextEdit", "onThink", "onModalWindow", "onAddItem",
-        "onRemoveItem", "onLook", "onTradeRequest", "onTradeAccept",
-        "onCastSpell", "onTargetCreature", "onMoveCreature",
+        "onUse",
+        "onStepIn",
+        "onStepOut",
+        "onEquip",
+        "onDeEquip",
+        "onSay",
+        "onLogin",
+        "onLogout",
+        "onDeath",
+        "onKill",
+        "onPrepareDeath",
+        "onHealthChange",
+        "onManaChange",
+        "onTextEdit",
+        "onThink",
+        "onModalWindow",
+        "onAddItem",
+        "onRemoveItem",
+        "onLook",
+        "onTradeRequest",
+        "onTradeAccept",
+        "onCastSpell",
+        "onTargetCreature",
+        "onMoveCreature",
     }
 
     func_pattern = re.compile(
-        r'function\s+(?:\w+[.:])?(\w+)\s*\([^)]*\)',
+        r"function\s+(?:\w+[.:])?(\w+)\s*\([^)]*\)",
         re.MULTILINE,
     )
 
     fixes: List[FixAction] = []
     # We need to work backwards to avoid offset shifts
-    matches_to_fix: List[Tuple[int, str, int]] = []  # (end_pos_of_end_keyword, func_name, func_line)
+    matches_to_fix: List[
+        Tuple[int, str, int]
+    ] = []  # (end_pos_of_end_keyword, func_name, func_line)
 
     for match in func_pattern.finditer(code):
         func_name = match.group(1)
@@ -225,10 +255,10 @@ def fix_missing_return(code: str) -> Tuple[str, List[FixAction]]:
         body = code[func_start:end_pos]
 
         # Check if there's any return statement
-        if re.search(r'\breturn\b', body):
+        if re.search(r"\breturn\b", body):
             continue
 
-        func_line = code[:match.start()].count("\n") + 1
+        func_line = code[: match.start()].count("\n") + 1
         matches_to_fix.append((end_pos, func_name, func_line))
 
     # Apply fixes in reverse order (bottom-up) to preserve positions
@@ -257,13 +287,15 @@ def fix_missing_return(code: str) -> Tuple[str, List[FixAction]]:
         insertion = f"{inner_indent}return true\n"
         code = code[:end_pos] + insertion + code[end_pos:]
 
-        fixes.append(FixAction(
-            rule_id="missing-return",
-            line=func_line,
-            description=f"Added 'return true' to callback '{func_name}'",
-            original="end",
-            replacement="    return true\nend",
-        ))
+        fixes.append(
+            FixAction(
+                rule_id="missing-return",
+                line=func_line,
+                description=f"Added 'return true' to callback '{func_name}'",
+                original="end",
+                replacement="    return true\nend",
+            )
+        )
 
     return code, fixes
 
@@ -272,31 +304,77 @@ def fix_global_variable_leak(code: str) -> Tuple[str, List[FixAction]]:
     """Add 'local' keyword before variable assignments that lack it."""
     KNOWN_GLOBALS = {
         # Lua builtins
-        "print", "type", "tostring", "tonumber", "pairs", "ipairs",
-        "table", "string", "math", "os", "io", "error", "assert",
-        "pcall", "xpcall", "require", "dofile", "loadfile", "load",
-        "setmetatable", "getmetatable", "rawget", "rawset", "rawequal",
-        "select", "unpack", "next", "coroutine", "debug",
+        "print",
+        "type",
+        "tostring",
+        "tonumber",
+        "pairs",
+        "ipairs",
+        "table",
+        "string",
+        "math",
+        "os",
+        "io",
+        "error",
+        "assert",
+        "pcall",
+        "xpcall",
+        "require",
+        "dofile",
+        "loadfile",
+        "load",
+        "setmetatable",
+        "getmetatable",
+        "rawget",
+        "rawset",
+        "rawequal",
+        "select",
+        "unpack",
+        "next",
+        "coroutine",
+        "debug",
         # TFS globals
-        "Game", "Player", "Creature", "Item", "Position", "Tile",
-        "Monster", "Npc", "Town", "House", "Guild", "Group",
-        "Vocation", "Condition", "Combat", "Container", "Spell",
-        "Action", "MoveEvent", "TalkAction", "CreatureEvent",
-        "GlobalEvent", "Weapon", "Party", "ModalWindow",
-        "db", "result", "configManager",
+        "Game",
+        "Player",
+        "Creature",
+        "Item",
+        "Position",
+        "Tile",
+        "Monster",
+        "Npc",
+        "Town",
+        "House",
+        "Guild",
+        "Group",
+        "Vocation",
+        "Condition",
+        "Combat",
+        "Container",
+        "Spell",
+        "Action",
+        "MoveEvent",
+        "TalkAction",
+        "CreatureEvent",
+        "GlobalEvent",
+        "Weapon",
+        "Party",
+        "ModalWindow",
+        "db",
+        "result",
+        "configManager",
     }
 
     # Collect all local declarations and function params to know what's already local
     local_vars: Set[str] = set()
     # local x = ...
-    for m in re.finditer(r'\blocal\s+(\w+)', code):
+    for m in re.finditer(r"\blocal\s+(\w+)", code):
         local_vars.add(m.group(1))
     # function params
-    for m in re.finditer(r'function\s+\w*\s*\(([^)]*)\)', code):
+    for m in re.finditer(r"function\s+\w*\s*\(([^)]*)\)", code):
         params = [p.strip() for p in m.group(1).split(",") if p.strip()]
         local_vars.update(params)
     # for loop vars
-    for m in re.finditer(r'\bfor\s+(\w+)', code):
+    for m in re.finditer(r"\bfor\s+(\w+)", code):
         local_vars.add(m.group(1))
 
     fixes: List[FixAction] = []
@@ -322,50 +400,56 @@ def fix_global_variable_leak(code: str) -> Tuple[str, List[FixAction]]:
             continue
 
         # Skip return, end, if, for, while, etc.
-        if re.match(r'^(return|end|if|elseif|else|for|while|repeat|until|do)\b', stripped):
+        if re.match(
+            r"^(return|end|if|elseif|else|for|while|repeat|until|do)\b", stripped
+        ):
             new_lines.append(line)
             continue
 
         # Match: varname = expr (but not == ~= <= >= comparisons)
-        m = re.match(r'^(\s*)(\w+)\s*=\s*(?!=)', line)
+        m = re.match(r"^(\s*)(\w+)\s*=\s*(?!=)", line)
         if m:
             indent = m.group(1)
             var_name = m.group(2)
 
             # Skip known globals, already-local vars, uppercase constants
-            if (var_name in KNOWN_GLOBALS or
-                    var_name in local_vars or
-                    var_name.isupper() or
-                    var_name.startswith("ITEM_") or
-                    var_name.startswith("CONST_") or
-                    var_name.startswith("MESSAGE_") or
-                    var_name.startswith("TALKTYPE_") or
-                    var_name.startswith("COMBAT_") or
-                    var_name.startswith("CONDITION_")):
+            if (
+                var_name in KNOWN_GLOBALS
+                or var_name in local_vars
+                or var_name.isupper()
+                or var_name.startswith("ITEM_")
+                or var_name.startswith("CONST_")
+                or var_name.startswith("MESSAGE_")
+                or var_name.startswith("TALKTYPE_")
+                or var_name.startswith("COMBAT_")
+                or var_name.startswith("CONDITION_")
+            ):
                 new_lines.append(line)
                 continue
 
             # Check if it's a table field assignment (e.g. self.x = ...)
             # or method definition — these are fine as-is
-            line[m.end():]
+            line[m.end() :]
             # Make sure there's no dot/colon before the var in context
-            pre_indent = line[:m.start(2)]
-            if pre_indent.rstrip().endswith((".",":", "[")):
+            pre_indent = line[: m.start(2)]
+            if pre_indent.rstrip().endswith((".", ":", "[")):
                 new_lines.append(line)
                 continue
 
             # Add 'local'
-            new_line = f"{indent}local {var_name}" + line[m.end(2):]
+            new_line = f"{indent}local {var_name}" + line[m.end(2) :]
             new_lines.append(new_line)
             local_vars.add(var_name)  # track so we don't double-fix
 
-            fixes.append(FixAction(
-                rule_id="global-variable-leak",
-                line=i + 1,
-                description=f"Added 'local' before '{var_name}'",
-                original=line.strip(),
-                replacement=new_line.strip(),
-            ))
+            fixes.append(
+                FixAction(
+                    rule_id="global-variable-leak",
+                    line=i + 1,
+                    description=f"Added 'local' before '{var_name}'",
+                    original=line.strip(),
+                    replacement=new_line.strip(),
+                )
+            )
         else:
             new_lines.append(line)
 
@@ -392,15 +476,17 @@ def fix_deprecated_constants(code: str) -> Tuple[str, List[FixAction]]:
                 continue
             if old_const in line:
                 # Verify it's a whole-word match
-                pattern = re.compile(r'\b' + re.escape(old_const) + r'\b')
+                pattern = re.compile(r"\b" + re.escape(old_const) + r"\b")
                 if pattern.search(line):
-                    fixes.append(FixAction(
-                        rule_id="deprecated-constant",
-                        line=i + 1,
-                        description=f"{old_const} -> {new_const}",
-                        original=old_const,
-                        replacement=new_const,
-                    ))
+                    fixes.append(
+                        FixAction(
+                            rule_id="deprecated-constant",
+                            line=i + 1,
+                            description=f"{old_const} -> {new_const}",
+                            original=old_const,
+                            replacement=new_const,
+                        )
+                    )
 
         # Apply the replacement (whole-word, outside strings)
         code = _replace_word_outside_strings(code, old_const, new_const)
@@ -411,9 +497,9 @@ def fix_deprecated_constants(code: str) -> Tuple[str, List[FixAction]]:
 def fix_invalid_callback_signature(code: str) -> Tuple[str, List[FixAction]]:
     """Update callback signatures to match the expected TFS 1.x parameter lists."""
     func_pattern = re.compile(
-        r'(function\s+(?:\w+[.:])?)'   # prefix
-        r'(\w+)'                         # event name
-        r'\s*\(([^)]*)\)',               # (params)
+        r"(function\s+(?:\w+[.:])?)"  # prefix
+        r"(\w+)"  # event name
+        r"\s*\(([^)]*)\)",  # (params)
         re.MULTILINE,
     )
 
@@ -453,16 +539,18 @@ def fix_invalid_callback_signature(code: str) -> Tuple[str, List[FixAction]]:
             if i < len(new_params) and old_p != new_params[i]:
                 var_renames[old_p] = new_params[i]
 
-        func_line = code[:match.start()].count("\n") + 1
+        func_line = code[: match.start()].count("\n") + 1
         new_params_str = ", ".join(new_params)
 
-        fixes.append(FixAction(
-            rule_id="invalid-callback-signature",
-            line=func_line,
-            description=f"{event_name}({old_params_str}) -> {event_name}({new_params_str})",
-            original=f"{prefix}{event_name}({old_params_str})",
-            replacement=f"{prefix}{event_name}({new_params_str})",
-        ))
+        fixes.append(
+            FixAction(
+                rule_id="invalid-callback-signature",
+                line=func_line,
+                description=f"{event_name}({old_params_str}) -> {event_name}({new_params_str})",
+                original=f"{prefix}{event_name}({old_params_str})",
+                replacement=f"{prefix}{event_name}({new_params_str})",
+            )
+        )
 
         return f"{prefix}{event_name}({new_params_str})"
 
@@ -479,8 +567,10 @@ def fix_invalid_callback_signature(code: str) -> Tuple[str, List[FixAction]]:
 # Helpers (reused from LuaTransformer patterns)
 # ---------------------------------------------------------------------------
 
-def _generate_oop_replacement(func_name: str, args: List[str],
-                               mapping: Dict) -> Optional[str]:
+
+def _generate_oop_replacement(
+    func_name: str, args: List[str], mapping: Dict
+) -> Optional[str]:
     """Generate the OOP replacement for a deprecated function call."""
     method = mapping.get("method")
     obj_type = mapping.get("obj_type")
@@ -515,8 +605,7 @@ def _generate_oop_replacement(func_name: str, args: List[str],
     return f"{func_name}({args_str})"
 
 
-def _resolve_object_var(arg: str, obj_type: str,
-                        wrapper: Optional[str] = None) -> str:
+def _resolve_object_var(arg: str, obj_type: str, wrapper: Optional[str] = None) -> str:
     """Resolve argument to its OOP object variable name."""
     renamed = PARAM_RENAME_MAP.get(arg)
     if renamed:
@@ -556,8 +645,9 @@ def _resolve_object_var(arg: str, obj_type: str,
     return arg
 
 
-def _handle_custom(custom_type: str, func_name: str, args: List[str],
-                   mapping: Dict) -> Optional[str]:
+def _handle_custom(
+    custom_type: str, func_name: str, args: List[str], mapping: Dict
+) -> Optional[str]:
     """Handle custom mapping types."""
     if custom_type == "type_check":
         cls = mapping.get("custom_class", "Creature")
@@ -692,15 +782,16 @@ def _replace_word_outside_strings(text: str, old: str, new: str) -> str:
         if ch == "[" and i + 1 < len(text) and text[i + 1] == "[":
             end = text.find("]]", i + 2)
             if end != -1:
-                result_parts.append(text[i:end + 2])
+                result_parts.append(text[i : end + 2])
                 i = end + 2
                 continue
 
-        if text[i:i + len(old)] == old:
-            before_ok = (i == 0 or not (text[i - 1].isalnum() or text[i - 1] == "_"))
+        if text[i : i + len(old)] == old:
+            before_ok = i == 0 or not (text[i - 1].isalnum() or text[i - 1] == "_")
             after_pos = i + len(old)
-            after_ok = (after_pos >= len(text) or
-                        not (text[after_pos].isalnum() or text[after_pos] == "_"))
+            after_ok = after_pos >= len(text) or not (
+                text[after_pos].isalnum() or text[after_pos] == "_"
+            )
             if before_ok and after_ok:
                 result_parts.append(new)
                 i += len(old)
@@ -787,7 +878,7 @@ def _find_function_end(code: str, start: int) -> Optional[int]:
         ch = code[i]
 
         # Skip comments
-        if not in_string and code[i:i + 2] == "--":
+        if not in_string and code[i : i + 2] == "--":
             nl = code.find("\n", i)
             if nl == -1:
                 break
@@ -813,14 +904,14 @@ def _find_function_end(code: str, start: int) -> Optional[int]:
         rest = code[i:]
 
         # Block openers
-        m = re.match(r'\b(function|if|for|while|do|repeat)\b', rest)
+        m = re.match(r"\b(function|if|for|while|do|repeat)\b", rest)
         if m:
             depth += 1
             i += m.end()
             continue
 
         # Block closers
-        m = re.match(r'\b(end|until)\b', rest)
+        m = re.match(r"\b(end|until)\b", rest)
         if m:
             depth -= 1
             if depth == 0:
@@ -853,10 +944,13 @@ FIXABLE_RULES = {fixer_id for fixer_id, _ in FIXERS}
 class FixEngine:
     """Main fix engine that applies auto-corrections to Lua scripts."""
 
-    def __init__(self, config: Optional[LintConfig] = None,
-                 dry_run: bool = False,
-                 create_backup: bool = True,
-                 enabled_fixes: Optional[List[str]] = None):
+    def __init__(
+        self,
+        config: Optional[LintConfig] = None,
+        dry_run: bool = False,
+        create_backup: bool = True,
+        enabled_fixes: Optional[List[str]] = None,
+    ):
         self.config = config or LintConfig()
         self.dry_run = dry_run
         self.create_backup = create_backup
@@ -925,8 +1019,10 @@ class FixEngine:
             report.files.append(result)
 
             if result.changed:
-                logger.debug(f"  {os.path.relpath(filepath, directory)}: "
-                             f"{result.fix_count} fixes applied")
+                logger.debug(
+                    f"  {os.path.relpath(filepath, directory)}: "
+                    f"{result.fix_count} fixes applied"
+                )
             else:
                 logger.debug(f"  {os.path.relpath(filepath, directory)}: no changes")
 
@@ -937,8 +1033,10 @@ class FixEngine:
 # Report formatters
 # ---------------------------------------------------------------------------
 
-def format_fix_text(report: FixReport, base_dir: str,
-                    use_colors: bool = True, show_diff: bool = False) -> str:
+
+def format_fix_text(
+    report: FixReport, base_dir: str, use_colors: bool = True, show_diff: bool = False
+) -> str:
     """Format fix report as human-readable text."""
     lines: List[str] = []
 

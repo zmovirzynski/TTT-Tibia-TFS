@@ -35,7 +35,9 @@ def _to_report(result: unittest.TestResult) -> TestRunReport:
     )
 
 
-def run_tests(test_path: str, pattern: str = "test*.py", verbosity: int = 2) -> TestRunReport:
+def run_tests(
+    test_path: str, pattern: str = "test*.py", verbosity: int = 2
+) -> TestRunReport:
     """Executa testes para diretório ou arquivo e devolve relatório resumido."""
     loader = unittest.TestLoader()
     abs_path = os.path.abspath(test_path)
@@ -74,11 +76,15 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="TTT Test Runner")
-    parser.add_argument("path", nargs="?", default="tests", help="Diretório ou arquivo de testes")
+    parser.add_argument(
+        "path", nargs="?", default="tests", help="Diretório ou arquivo de testes"
+    )
     parser.add_argument("--pattern", default="test*.py", help="Padrão de descoberta")
     parser.add_argument("--quiet", action="store_true", help="Saída resumida")
     args = parser.parse_args()
 
-    report = run_tests(args.path, pattern=args.pattern, verbosity=1 if args.quiet else 2)
+    report = run_tests(
+        args.path, pattern=args.pattern, verbosity=1 if args.quiet else 2
+    )
     print(format_test_report(report))
     raise SystemExit(report.return_code)

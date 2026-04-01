@@ -20,9 +20,11 @@ from ..utils import read_file_safe, find_lua_files
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FunctionComplexity:
     """Complexity metrics for a single function."""
+
     name: str
     filepath: str
     start_line: int
@@ -47,6 +49,7 @@ class FunctionComplexity:
 @dataclass
 class FileComplexity:
     """Complexity metrics for a whole file."""
+
     filepath: str
     functions: List[FunctionComplexity] = field(default_factory=list)
     total_lines: int = 0
@@ -79,6 +82,7 @@ class FileComplexity:
 @dataclass
 class ComplexityReport:
     """Aggregated complexity analysis for all files."""
+
     files: List[FileComplexity] = field(default_factory=list)
     total_functions: int = 0
     total_scripts_scanned: int = 0
@@ -128,17 +132,28 @@ class ComplexityReport:
             "overall_rating": self.overall_rating,
             "distribution": self.distribution,
             "complex_functions": [
-                {"name": f.name, "filepath": f.filepath, "line": f.start_line,
-                 "cyclomatic": f.cyclomatic, "max_nesting": f.max_nesting,
-                 "lines": f.lines_of_code, "rating": f.rating,
-                 "suggestion": f.suggestion}
+                {
+                    "name": f.name,
+                    "filepath": f.filepath,
+                    "line": f.start_line,
+                    "cyclomatic": f.cyclomatic,
+                    "max_nesting": f.max_nesting,
+                    "lines": f.lines_of_code,
+                    "rating": f.rating,
+                    "suggestion": f.suggestion,
+                }
                 for f in self.complex_functions(10)
             ],
             "files": [
-                {"filepath": fc.filepath, "total_lines": fc.total_lines,
-                 "code_lines": fc.code_lines, "functions": len(fc.functions),
-                 "avg_cyclomatic": round(fc.avg_cyclomatic, 2),
-                 "max_cyclomatic": fc.max_cyclomatic, "rating": fc.rating}
+                {
+                    "filepath": fc.filepath,
+                    "total_lines": fc.total_lines,
+                    "code_lines": fc.code_lines,
+                    "functions": len(fc.functions),
+                    "avg_cyclomatic": round(fc.avg_cyclomatic, 2),
+                    "max_cyclomatic": fc.max_cyclomatic,
+                    "rating": fc.rating,
+                }
                 for fc in self.files
             ],
         }
@@ -149,20 +164,18 @@ class ComplexityReport:
 # ---------------------------------------------------------------------------
 
 # Lua keywords that increase cyclomatic complexity
-_BRANCH_KEYWORDS = re.compile(
-    r'\b(if|elseif|while|for|repeat|and|or)\b'
-)
+_BRANCH_KEYWORDS = re.compile(r"\b(if|elseif|while|for|repeat|and|or)\b")
 
 # Function definition
 _FUNC_DEF_RE = re.compile(
-    r'^\s*(?:local\s+)?function\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?::[A-Za-z_]\w*)?)\s*\(',
+    r"^\s*(?:local\s+)?function\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?::[A-Za-z_]\w*)?)\s*\(",
     re.MULTILINE,
 )
 
 # Nesting keywords
-_NESTING_OPEN = re.compile(r'\b(if|while|for|repeat|function)\b')
-_NESTING_CLOSE_END = re.compile(r'\bend\b')
-_NESTING_CLOSE_UNTIL = re.compile(r'\buntil\b')
+_NESTING_OPEN = re.compile(r"\b(if|while|for|repeat|function)\b")
+_NESTING_CLOSE_END = re.compile(r"\bend\b")
+_NESTING_CLOSE_UNTIL = re.compile(r"\buntil\b")
 
 
 def _is_in_string_or_comment(line: str, pos: int) -> bool:
@@ -172,11 +185,11 @@ def _is_in_string_or_comment(line: str, pos: int) -> bool:
     while i < pos and i < len(line):
         ch = line[i]
         if in_str:
-            if ch == in_str and (i == 0 or line[i-1] != '\\'):
+            if ch == in_str and (i == 0 or line[i - 1] != "\\"):
                 in_str = None
         elif ch in ('"', "'"):
             in_str = ch
-        elif ch == '-' and i + 1 < len(line) and line[i+1] == '-':
+        elif ch == "-" and i + 1 < len(line) and line[i + 1] == "-":
             return True  # rest of line is comment
         i += 1
     return in_str is not None
@@ -227,19 +240,19 @@ def _find_function_end(lines: List[str], start_idx: int) -> int:
             continue
 
         # Count block openers
-        for m in re.finditer(r'\b(function|if|while|for|repeat|do)\b', stripped):
+        for m in re.finditer(r"\b(function|if|while|for|repeat|do)\b", stripped):
             if not _is_in_string_or_comment(stripped, m.start()):
                 kw = m.group(1)
                 # 'do' after 'for ... do' is already counted by 'for'
                 if kw == "do":
                     # Only count standalone 'do' blocks (rare)
-                    before = stripped[:m.start()].strip()
-                    if not re.search(r'\b(for|while)\b', before):
+                    before = stripped[: m.start()].strip()
+                    if not re.search(r"\b(for|while)\b", before):
                         depth += 1
                 else:
                     depth += 1
 
-        for m in re.finditer(r'\bend\b', stripped):
+        for m in re.finditer(r"\bend\b", stripped):
             if not _is_in_string_or_comment(stripped, m.start()):
                 depth -= 1
                 if depth <= 0:
@@ -278,20 +291,18 @@ def analyze_file_complexity(filepath: str, code: str) -> FileComplexity:
 
     # Count code lines (non-blank, non-comment)
     fc.code_lines = sum(
-        1 for ln in lines
-        if ln.strip() and not ln.strip().startswith("--")
+        1 for ln in lines if ln.strip() and not ln.strip().startswith("--")
     )
 
     # Find all function definitions
     for m in _FUNC_DEF_RE.finditer(code):
         func_name = m.group(1)
-        start_line = code[:m.start()].count("\n")  # 0-based index
+        start_line = code[: m.start()].count("\n")  # 0-based index
         end_line = _find_function_end(lines, start_line)
 
-        func_lines = lines[start_line:end_line + 1]
+        func_lines = lines[start_line : end_line + 1]
         code_line_count = sum(
-            1 for ln in func_lines
-            if ln.strip() and not ln.strip().startswith("--")
+            1 for ln in func_lines if ln.strip() and not ln.strip().startswith("--")
         )
 
         # Cyclomatic: 1 base + count of branches
@@ -322,6 +333,7 @@ def analyze_file_complexity(filepath: str, code: str) -> FileComplexity:
 # ---------------------------------------------------------------------------
 # Main analyzer
 # ---------------------------------------------------------------------------
+
 
 def analyze_complexity(directory: str) -> ComplexityReport:
     """Analyze complexity for all Lua files in a directory."""

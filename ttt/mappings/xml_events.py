@@ -6,10 +6,10 @@ ACTION_REGISTRATION = {
     "class": "Action",
     "event_method": "onUse",
     "id_methods": {
-        "itemid": "id",         # action:id(1234)
-        "fromid": "id",         # action:id(1234, 5678)  (range)
-        "actionid": "aid",      # action:aid(1234)
-        "uniqueid": "uid",      # action:uid(1234)
+        "itemid": "id",  # action:id(1234)
+        "fromid": "id",  # action:id(1234, 5678)  (range)
+        "actionid": "aid",  # action:aid(1234)
+        "uniqueid": "uid",  # action:uid(1234)
     },
     "extra_attrs": {
         "allowfaruse": "allowFarUse",
@@ -20,11 +20,11 @@ ACTION_REGISTRATION = {
 # Movements → MoveEvent()
 
 MOVEMENT_TYPES = {
-    "StepIn":    "onStepIn",
-    "StepOut":   "onStepOut",
-    "Equip":     "onEquip",
-    "DeEquip":   "onDeEquip",
-    "AddItem":   "onAddItem",
+    "StepIn": "onStepIn",
+    "StepOut": "onStepOut",
+    "Equip": "onEquip",
+    "DeEquip": "onDeEquip",
+    "AddItem": "onAddItem",
     "RemoveItem": "onRemoveItem",
 }
 
@@ -49,38 +49,38 @@ TALKACTION_REGISTRATION = {
     "id_methods": {},
     "extra_attrs": {
         "separator": "separator",
-        "access": "access",         # old attr
+        "access": "access",  # old attr
     },
 }
 
 # CreatureScripts → CreatureEvent()
 
 CREATUREEVENT_TYPES = {
-    "login":          "onLogin",
-    "logout":         "onLogout",
-    "death":          "onDeath",
-    "kill":           "onKill",
-    "preparedeath":   "onPrepareDeath",
-    "advance":        "onAdvance",
-    "textedit":       "onTextEdit",
-    "healthchange":   "onHealthChange",
-    "manachange":     "onManaChange",
-    "statschange":    "onStatsChange",
-    "think":          "onThink",
-    "modalwindow":    "onModalWindow",
+    "login": "onLogin",
+    "logout": "onLogout",
+    "death": "onDeath",
+    "kill": "onKill",
+    "preparedeath": "onPrepareDeath",
+    "advance": "onAdvance",
+    "textedit": "onTextEdit",
+    "healthchange": "onHealthChange",
+    "manachange": "onManaChange",
+    "statschange": "onStatsChange",
+    "think": "onThink",
+    "modalwindow": "onModalWindow",
     "extendedopcode": "onExtendedOpcode",
-    "traderequest":   "onTradeRequest",
-    "tradeaccept":    "onTradeAccept",
-    "moveitem":       "onMoveItem",
-    "look":           "onLook",
-    "spawn":          "onSpawn",
-    "attack":         "onAttack",
-    "combat":         "onCombat",
-    "hitspell":       "onHitSpell",
-    "move":           "onMove",
-    "push":           "onPush",
-    "talk":           "onTalk",
-    "target":         "onTarget",
+    "traderequest": "onTradeRequest",
+    "tradeaccept": "onTradeAccept",
+    "moveitem": "onMoveItem",
+    "look": "onLook",
+    "spawn": "onSpawn",
+    "attack": "onAttack",
+    "combat": "onCombat",
+    "hitspell": "onHitSpell",
+    "move": "onMove",
+    "push": "onPush",
+    "talk": "onTalk",
+    "target": "onTarget",
 }
 
 CREATUREEVENT_REGISTRATION = {
@@ -93,12 +93,12 @@ CREATUREEVENT_REGISTRATION = {
 # GlobalEvents → GlobalEvent()
 
 GLOBALEVENT_TYPES = {
-    "start":    "onStartup",
-    "startup":  "onStartup",
+    "start": "onStartup",
+    "startup": "onStartup",
     "shutdown": "onShutdown",
-    "record":   "onRecord",
-    "timer":    "onTime",
-    "time":     "onTime",
+    "record": "onRecord",
+    "timer": "onTime",
+    "time": "onTime",
 }
 
 GLOBALEVENT_REGISTRATION = {

@@ -312,7 +312,9 @@ Examples:
         """,
     )
 
-    parser.add_argument("path", nargs="?", default=None, help="File or directory to lint")
+    parser.add_argument(
+        "path", nargs="?", default=None, help="File or directory to lint"
+    )
     parser.add_argument(
         "--format",
         choices=["text", "json", "html"],
@@ -585,31 +587,21 @@ Examples:
   ttt format ./data/scripts --check
   ttt format script.lua --indent-style tabs
   ttt format ./data/scripts --config .tttformat.json
-        """
+        """,
     )
 
-    parser.add_argument(
-        "path",
-        help="File or directory to format"
-    )
+    parser.add_argument("path", help="File or directory to format")
     parser.add_argument(
         "--check",
         action="store_true",
-        help="Check formatting without writing files (exit 1 if changes needed)"
+        help="Check formatting without writing files (exit 1 if changes needed)",
+    )
+    parser.add_argument("--config", help="Path to .tttformat.json configuration file")
+    parser.add_argument(
+        "--indent-style", choices=["spaces", "tabs"], help="Override indentation style"
     )
     parser.add_argument(
-        "--config",
-        help="Path to .tttformat.json configuration file"
-    )
-    parser.add_argument(
-        "--indent-style",
-        choices=["spaces", "tabs"],
-        help="Override indentation style"
-    )
-    parser.add_argument(
-        "--indent-size",
-        type=int,
-        help="Override indentation size (for spaces mode)"
+        "--indent-size", type=int, help="Override indentation size (for spaces mode)"
     )
 
     args = parser.parse_args(sys.argv[2:])
@@ -623,7 +615,9 @@ Examples:
     if args.config:
         config = LuaFormatConfig.load(os.path.abspath(args.config))
     else:
-        config_start = target_path if os.path.isdir(target_path) else os.path.dirname(target_path)
+        config_start = (
+            target_path if os.path.isdir(target_path) else os.path.dirname(target_path)
+        )
         config_path = LuaFormatConfig.find_config(config_start)
         config = LuaFormatConfig.load(config_path) if config_path else LuaFormatConfig()
 
@@ -670,24 +664,22 @@ Examples:
   ttt test ./tests --pattern test_*.py
   ttt test tests/test_ttt.py
   ttt test ./tests --quiet
-        """
+        """,
     )
 
     parser.add_argument(
         "path",
         nargs="?",
         default="tests",
-        help="Test directory or single test file (default: ./tests)"
+        help="Test directory or single test file (default: ./tests)",
     )
     parser.add_argument(
         "--pattern",
         default="test*.py",
-        help="Discovery pattern for test files (default: test*.py)"
+        help="Discovery pattern for test files (default: test*.py)",
     )
     parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Reduce unittest verbosity"
+        "--quiet", action="store_true", help="Reduce unittest verbosity"
     )
 
     args = parser.parse_args(sys.argv[2:])
@@ -740,7 +732,8 @@ Valid conversions:
     cfg_target = convert_cfg.get("to", "")
 
     parser.add_argument(
-        "-i", "--input",
+        "-i",
+        "--input",
         required=not bool(cfg_input),
         default=cfg_input or None,
         help="Input directory containing TFS scripts",
@@ -771,7 +764,8 @@ Valid conversions:
         help="Target TFS version",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         default=convert_cfg.get("verbose", False),
         help="Enable verbose logging",
@@ -994,7 +988,8 @@ Examples:
         "--no-color", action="store_true", help="Disable colored output"
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         default=doctor_cfg.get("verbose", False),
         help="Show verbose output",
@@ -1101,7 +1096,8 @@ Examples:
         help="Output format (default: text)",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default=docs_cfg.get("output") or None,
         help="Output directory (for md/html) or file (for json)",
     )
@@ -1109,7 +1105,8 @@ Examples:
         "--no-color", action="store_true", help="Disable colored output"
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         default=docs_cfg.get("verbose", False),
         help="Show verbose output",
@@ -1408,14 +1405,16 @@ Examples:
         help="Project name (defaults to directory name)",
     )
     parser.add_argument(
-        "-f", "--from",
+        "-f",
+        "--from",
         dest="source",
         default="tfs03",
         choices=["tfs03", "tfs036", "tfs04", "tfs1x"],
         help="Source TFS version (default: tfs03)",
     )
     parser.add_argument(
-        "-t", "--to",
+        "-t",
+        "--to",
         dest="target",
         default="revscript",
         choices=["tfs1x", "revscript"],
@@ -1510,13 +1509,15 @@ Examples:
     )
 
     parser.add_argument(
-        "-i", "--input",
+        "-i",
+        "--input",
         required=False,
         default="",
         help="Input corpus directory containing source scripts",
     )
     parser.add_argument(
-        "-f", "--from",
+        "-f",
+        "--from",
         dest="source",
         required=False,
         default="",
@@ -1524,7 +1525,8 @@ Examples:
         help="Source TFS version",
     )
     parser.add_argument(
-        "-t", "--to",
+        "-t",
+        "--to",
         dest="target",
         required=False,
         default="",
@@ -1547,7 +1549,8 @@ Examples:
         help="Output results as JSON",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         help="Write results to file instead of stdout",
     )
     parser.add_argument(
@@ -1673,7 +1676,8 @@ Examples:
         help="Output format (default: text)",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         help="Write report to file instead of stdout",
     )
     parser.add_argument(
@@ -1740,18 +1744,21 @@ Examples:
     cfg_target = migrate_cfg.get("to", "")
 
     parser.add_argument(
-        "-i", "--input",
+        "-i",
+        "--input",
         required=not bool(cfg_input),
         default=cfg_input or None,
         help="Input directory containing TFS server scripts",
     )
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         default=migrate_cfg.get("output", ""),
         help="Output directory for migrated results",
     )
     parser.add_argument(
-        "-f", "--from",
+        "-f",
+        "--from",
         dest="source",
         required=not bool(cfg_source),
         default=cfg_source or None,
@@ -1759,7 +1766,8 @@ Examples:
         help="Source TFS version",
     )
     parser.add_argument(
-        "-t", "--to",
+        "-t",
+        "--to",
         dest="target",
         required=not bool(cfg_target),
         default=cfg_target or None,
@@ -1791,7 +1799,8 @@ Examples:
         help="Skip specific steps (e.g. --skip docs analyze)",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         default=migrate_cfg.get("verbose", False),
         help="Enable verbose logging",
@@ -1856,6 +1865,7 @@ Examples:
 
     if args.json:
         import json as _json
+
         print(_json.dumps(report.to_dict(), indent=2))
     else:
         print(format_migration_summary(report))

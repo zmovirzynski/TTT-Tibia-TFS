@@ -20,9 +20,11 @@ from ..scanner import scan_directory
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ItemReference:
     """A reference to an item ID in code or XML."""
+
     item_id: int
     filepath: str
     line: int
@@ -33,6 +35,7 @@ class ItemReference:
 @dataclass
 class ItemUsageReport:
     """Aggregated item usage analysis."""
+
     all_references: List[ItemReference] = field(default_factory=list)
     lua_only_ids: Set[int] = field(default_factory=set)
     xml_only_ids: Set[int] = field(default_factory=set)
@@ -65,19 +68,21 @@ class ItemUsageReport:
 # Patterns for item IDs in Lua code
 _LUA_ITEM_PATTERNS = [
     # addItem(itemId, count) / player:addItem(1234, 1)
-    re.compile(r'\baddItem\s*\(\s*(\d{3,5})', re.IGNORECASE),
+    re.compile(r"\baddItem\s*\(\s*(\d{3,5})", re.IGNORECASE),
     # doPlayerAddItem(cid, 1234, ...) / doCreateItem(1234, ...)
-    re.compile(r'\b(?:doPlayerAddItem|doCreateItem|doCreateItemEx)\s*\([^,]*,\s*(\d{3,5})'),
+    re.compile(
+        r"\b(?:doPlayerAddItem|doCreateItem|doCreateItemEx)\s*\([^,]*,\s*(\d{3,5})"
+    ),
     # Item(1234)
-    re.compile(r'\bItem\s*\(\s*(\d{3,5})'),
+    re.compile(r"\bItem\s*\(\s*(\d{3,5})"),
     # removeItem / doRemoveItem  (item.uid is not an item ID)
     # item:getId() == 1234
-    re.compile(r':getId\s*\(\s*\)\s*[=~<>]+\s*(\d{3,5})'),
+    re.compile(r":getId\s*\(\s*\)\s*[=~<>]+\s*(\d{3,5})"),
     # action:id(1234) / movement:id(1234)
-    re.compile(r':id\s*\(\s*(\d{3,5})'),
+    re.compile(r":id\s*\(\s*(\d{3,5})"),
     # getItemIdByName results compared
-    re.compile(r'itemid\s*==?\s*(\d{3,5})', re.IGNORECASE),
-    re.compile(r'item\.itemid\s*==?\s*(\d{3,5})', re.IGNORECASE),
+    re.compile(r"itemid\s*==?\s*(\d{3,5})", re.IGNORECASE),
+    re.compile(r"item\.itemid\s*==?\s*(\d{3,5})", re.IGNORECASE),
 ]
 
 # XML patterns
@@ -105,13 +110,15 @@ def _extract_lua_item_ids(filepath: str, code: str) -> List[ItemReference]:
                 # Skip very low IDs (likely not item IDs)
                 if item_id < 100:
                     continue
-                refs.append(ItemReference(
-                    item_id=item_id,
-                    filepath=filepath,
-                    line=line_num,
-                    source="lua",
-                    context=m.group(0).strip()[:60],
-                ))
+                refs.append(
+                    ItemReference(
+                        item_id=item_id,
+                        filepath=filepath,
+                        line=line_num,
+                        source="lua",
+                        context=m.group(0).strip()[:60],
+                    )
+                )
 
     return refs
 
@@ -133,13 +140,15 @@ def _extract_xml_item_ids(xml_path: str) -> List[ItemReference]:
                     if id_str and id_str.isdigit():
                         item_id = int(id_str)
                         if item_id >= 100:
-                            refs.append(ItemReference(
-                                item_id=item_id,
-                                filepath=xml_path,
-                                line=line_num,
-                                source="xml",
-                                context=f"{pattern.pattern[:30]}",
-                            ))
+                            refs.append(
+                                ItemReference(
+                                    item_id=item_id,
+                                    filepath=xml_path,
+                                    line=line_num,
+                                    source="xml",
+                                    context=f"{pattern.pattern[:30]}",
+                                )
+                            )
 
     return refs
 
@@ -147,6 +156,7 @@ def _extract_xml_item_ids(xml_path: str) -> List[ItemReference]:
 # ---------------------------------------------------------------------------
 # Main scanner
 # ---------------------------------------------------------------------------
+
 
 def scan_item_usage(directory: str) -> ItemUsageReport:
     """Scan all files for item ID usage."""
@@ -169,8 +179,13 @@ def scan_item_usage(directory: str) -> ItemUsageReport:
         lua_ids.update(r.item_id for r in refs)
 
     # XML registration files
-    for xml_attr in ("actions_xml", "movements_xml", "talkactions_xml",
-                     "creaturescripts_xml", "globalevents_xml"):
+    for xml_attr in (
+        "actions_xml",
+        "movements_xml",
+        "talkactions_xml",
+        "creaturescripts_xml",
+        "globalevents_xml",
+    ):
         xml_path = getattr(scan, xml_attr, None)
         if xml_path:
             refs = _extract_xml_item_ids(xml_path)

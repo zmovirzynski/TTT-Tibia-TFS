@@ -12,7 +12,11 @@ def _assert_or_unittest(test_case, condition: bool, message: str):
 
 def assertPlayerHasLevel(player, min_level: int, test_case: Optional[object] = None):
     """Valida se player atende ao nível mínimo."""
-    level = player.getLevel() if hasattr(player, "getLevel") else getattr(player, "level", None)
+    level = (
+        player.getLevel()
+        if hasattr(player, "getLevel")
+        else getattr(player, "level", None)
+    )
     _assert_or_unittest(
         test_case,
         level is not None and level >= min_level,
@@ -28,7 +32,11 @@ def assertCreatureAlive(creature, test_case: Optional[object] = None):
         health = getattr(creature, "health", None)
         alive = health is not None and health > 0
 
-    name = creature.getName() if hasattr(creature, "getName") else getattr(creature, "name", "unknown")
+    name = (
+        creature.getName()
+        if hasattr(creature, "getName")
+        else getattr(creature, "name", "unknown")
+    )
     _assert_or_unittest(test_case, alive, f"Creature {name} is dead")
 
 

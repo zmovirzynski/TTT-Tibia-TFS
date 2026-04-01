@@ -159,7 +159,9 @@ class TestMigrationRunReport(unittest.TestCase):
     def test_report_with_steps(self):
         r = MigrationRunReport(
             steps=[
-                StepResult(name="convert", status=StepStatus.SUCCESS, duration_seconds=1.0),
+                StepResult(
+                    name="convert", status=StepStatus.SUCCESS, duration_seconds=1.0
+                ),
                 StepResult(name="fix", status=StepStatus.SUCCESS, duration_seconds=0.5),
                 StepResult(name="analyze", status=StepStatus.FAILED, error="boom"),
             ]
@@ -181,7 +183,9 @@ class TestMigrationRunReport(unittest.TestCase):
             source_version="tfs03",
             target_version="revscript",
             steps=[
-                StepResult(name="convert", status=StepStatus.SUCCESS, duration_seconds=2.3),
+                StepResult(
+                    name="convert", status=StepStatus.SUCCESS, duration_seconds=2.3
+                ),
             ],
         )
         d = r.to_dict()
@@ -202,12 +206,22 @@ class TestMigrationRunReport(unittest.TestCase):
                 StepResult(
                     name="convert",
                     status=StepStatus.SUCCESS,
-                    outputs={"stats": {"lua_files_processed": 5, "xml_files_processed": 3, "warnings": 2}},
+                    outputs={
+                        "stats": {
+                            "lua_files_processed": 5,
+                            "xml_files_processed": 3,
+                            "warnings": 2,
+                        }
+                    },
                 ),
                 StepResult(
                     name="doctor",
                     status=StepStatus.SUCCESS,
-                    outputs={"health_score": 85, "health_rating": "WARNING", "total_issues": 4},
+                    outputs={
+                        "health_score": 85,
+                        "health_rating": "WARNING",
+                        "total_issues": 4,
+                    },
                 ),
             ]
         )
@@ -444,10 +458,18 @@ class TestFormatMigrationSummary(unittest.TestCase):
             source_version="tfs03",
             target_version="revscript",
             steps=[
-                StepResult(name="convert", status=StepStatus.SUCCESS,
-                           duration_seconds=1.5, summary="10 files converted"),
-                StepResult(name="fix", status=StepStatus.FAILED,
-                           duration_seconds=0.3, error="something broke"),
+                StepResult(
+                    name="convert",
+                    status=StepStatus.SUCCESS,
+                    duration_seconds=1.5,
+                    summary="10 files converted",
+                ),
+                StepResult(
+                    name="fix",
+                    status=StepStatus.FAILED,
+                    duration_seconds=0.3,
+                    error="something broke",
+                ),
             ],
         )
         text = format_migration_summary(report)
@@ -490,12 +512,19 @@ class TestFormatMigrationSummary(unittest.TestCase):
                 StepResult(
                     name="convert",
                     status=StepStatus.SUCCESS,
-                    outputs={"stats": {"lua_files_processed": 5, "xml_files_processed": 3}, "ttt_markers": 2},
+                    outputs={
+                        "stats": {"lua_files_processed": 5, "xml_files_processed": 3},
+                        "ttt_markers": 2,
+                    },
                 ),
                 StepResult(
                     name="doctor",
                     status=StepStatus.SUCCESS,
-                    outputs={"health_score": 90, "health_rating": "HEALTHY", "total_issues": 1},
+                    outputs={
+                        "health_score": 90,
+                        "health_rating": "HEALTHY",
+                        "total_issues": 1,
+                    },
                 ),
             ],
         )
@@ -528,8 +557,12 @@ class TestFormatMigrationMarkdown(unittest.TestCase):
             source_version="tfs03",
             target_version="revscript",
             steps=[
-                StepResult(name="convert", status=StepStatus.SUCCESS,
-                           duration_seconds=1.0, summary="5 files converted"),
+                StepResult(
+                    name="convert",
+                    status=StepStatus.SUCCESS,
+                    duration_seconds=1.0,
+                    summary="5 files converted",
+                ),
             ],
         )
         md = format_migration_markdown(report)
@@ -545,12 +578,19 @@ class TestFormatMigrationMarkdown(unittest.TestCase):
                 StepResult(
                     name="convert",
                     status=StepStatus.SUCCESS,
-                    outputs={"stats": {"lua_files_processed": 3, "xml_files_processed": 2}, "ttt_markers": 1},
+                    outputs={
+                        "stats": {"lua_files_processed": 3, "xml_files_processed": 2},
+                        "ttt_markers": 1,
+                    },
                 ),
                 StepResult(
                     name="doctor",
                     status=StepStatus.SUCCESS,
-                    outputs={"health_score": 85, "health_rating": "WARNING", "total_issues": 2},
+                    outputs={
+                        "health_score": 85,
+                        "health_rating": "WARNING",
+                        "total_issues": 2,
+                    },
                 ),
                 StepResult(
                     name="fix",
@@ -567,7 +607,10 @@ class TestFormatMigrationMarkdown(unittest.TestCase):
 
     def test_markdown_artifacts(self):
         report = MigrationRunReport(
-            artifacts={"docs_dir": "/out/docs", "conversion_report": "/out/conversion_report.txt"},
+            artifacts={
+                "docs_dir": "/out/docs",
+                "conversion_report": "/out/conversion_report.txt",
+            },
         )
         md = format_migration_markdown(report)
         self.assertIn("## Artifacts", md)
@@ -626,12 +669,12 @@ class TestMigratorIntegration(unittest.TestCase):
         self.assertTrue(os.path.isdir(cfg.backup_dir))
 
         # Reports should be written
-        self.assertTrue(os.path.isfile(
-            os.path.join(cfg.reports_dir, "migration_summary.md")
-        ))
-        self.assertTrue(os.path.isfile(
-            os.path.join(cfg.reports_dir, "migration_report.json")
-        ))
+        self.assertTrue(
+            os.path.isfile(os.path.join(cfg.reports_dir, "migration_summary.md"))
+        )
+        self.assertTrue(
+            os.path.isfile(os.path.join(cfg.reports_dir, "migration_report.json"))
+        )
 
         # JSON report should be valid and round-trippable
         json_path = os.path.join(cfg.reports_dir, "migration_report.json")

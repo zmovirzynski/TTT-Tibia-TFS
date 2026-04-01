@@ -149,9 +149,7 @@ def load_rule_pack(path: str) -> Dict[str, type]:
                 f"does not match dict key '{rule_id}'"
             )
 
-    logger.info(
-        f"  Loaded rule pack '{module_name}' ({len(rules)} rules)"
-    )
+    logger.info(f"  Loaded rule pack '{module_name}' ({len(rules)} rules)")
     return rules
 
 

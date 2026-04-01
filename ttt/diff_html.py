@@ -27,6 +27,7 @@ from dataclasses import dataclass
 @dataclass
 class DiffEntry:
     """Entrada de diff de um arquivo."""
+
     filename: str
     source_path: str = ""
     original: str = ""
@@ -40,8 +41,9 @@ class DiffEntry:
 class HtmlDiffGenerator:
     """Monta a página HTML standalone com diff lado a lado."""
 
-    def __init__(self, source_version: str, target_version: str,
-                 input_dir: str, output_dir: str):
+    def __init__(
+        self, source_version: str, target_version: str, input_dir: str, output_dir: str
+    ):
         self.source_version = source_version
         self.target_version = target_version
         self.input_dir = input_dir
@@ -77,43 +79,59 @@ class HtmlDiffGenerator:
         for tag, i1, i2, j1, j2 in matcher.get_opcodes():
             if tag == "equal":
                 for i, j in zip(range(i1, i2), range(j1, j2)):
-                    result.append({
-                        "status": "equal",
-                        "left_num": i + 1,
-                        "left_line": orig_lines[i],
-                        "right_num": j + 1,
-                        "right_line": conv_lines[j],
-                    })
+                    result.append(
+                        {
+                            "status": "equal",
+                            "left_num": i + 1,
+                            "left_line": orig_lines[i],
+                            "right_num": j + 1,
+                            "right_line": conv_lines[j],
+                        }
+                    )
             elif tag == "replace":
                 max_len = max(i2 - i1, j2 - j1)
                 for k in range(max_len):
                     left_idx = i1 + k if k < (i2 - i1) else None
                     right_idx = j1 + k if k < (j2 - j1) else None
-                    result.append({
-                        "status": "change",
-                        "left_num": (left_idx + 1) if left_idx is not None else None,
-                        "left_line": orig_lines[left_idx] if left_idx is not None else None,
-                        "right_num": (right_idx + 1) if right_idx is not None else None,
-                        "right_line": conv_lines[right_idx] if right_idx is not None else None,
-                    })
+                    result.append(
+                        {
+                            "status": "change",
+                            "left_num": (left_idx + 1)
+                            if left_idx is not None
+                            else None,
+                            "left_line": orig_lines[left_idx]
+                            if left_idx is not None
+                            else None,
+                            "right_num": (right_idx + 1)
+                            if right_idx is not None
+                            else None,
+                            "right_line": conv_lines[right_idx]
+                            if right_idx is not None
+                            else None,
+                        }
+                    )
             elif tag == "delete":
                 for i in range(i1, i2):
-                    result.append({
-                        "status": "remove",
-                        "left_num": i + 1,
-                        "left_line": orig_lines[i],
-                        "right_num": None,
-                        "right_line": None,
-                    })
+                    result.append(
+                        {
+                            "status": "remove",
+                            "left_num": i + 1,
+                            "left_line": orig_lines[i],
+                            "right_num": None,
+                            "right_line": None,
+                        }
+                    )
             elif tag == "insert":
                 for j in range(j1, j2):
-                    result.append({
-                        "status": "add",
-                        "left_num": None,
-                        "left_line": None,
-                        "right_num": j + 1,
-                        "right_line": conv_lines[j],
-                    })
+                    result.append(
+                        {
+                            "status": "add",
+                            "left_num": None,
+                            "left_line": None,
+                            "right_num": j + 1,
+                            "right_line": conv_lines[j],
+                        }
+                    )
 
         return result
 
@@ -133,8 +151,15 @@ class HtmlDiffGenerator:
             if s == "equal":
                 result.append(["e", dl["left_num"], dl["right_num"], dl["left_line"]])
             elif s == "change":
-                result.append(["c", dl["left_num"], dl["left_line"] or "",
-                                dl["right_num"], dl["right_line"] or ""])
+                result.append(
+                    [
+                        "c",
+                        dl["left_num"],
+                        dl["left_line"] or "",
+                        dl["right_num"],
+                        dl["right_line"] or "",
+                    ]
+                )
             elif s == "remove":
                 result.append(["r", dl["left_num"], dl["left_line"] or ""])
             else:  # add
@@ -166,16 +191,20 @@ class HtmlDiffGenerator:
             nav_items_html.append(
                 f'<a href="#{file_id}" class="nav-item" data-id="{file_id}"'
                 f' data-changed="{str(has_changes).lower()}"'
-                f' onclick="return selectFile(\'{file_id}\')">'
+                f" onclick=\"return selectFile('{file_id}')\">"
                 f'<span class="nav-type {_esc(entry.file_type)}">{_esc(type_label)}</span>'
                 f'<span class="nav-name">{_esc(entry.filename)}</span>'
                 f'<span class="nav-badge {badge_class}">{badge_text}</span>'
-                f'</a>'
+                f"</a>"
             )
 
-            compact_diff = self._compact_diff(
-                self._compute_diff_lines(entry.original, entry.converted)
-            ) if has_changes else None
+            compact_diff = (
+                self._compact_diff(
+                    self._compute_diff_lines(entry.original, entry.converted)
+                )
+                if has_changes
+                else None
+            )
 
             file_data[file_id] = {
                 "fn": entry.filename,
@@ -198,7 +227,7 @@ class HtmlDiffGenerator:
                 ' onclick="return selectGuide()">'
                 '<span class="nav-type" style="background:#1a2a3a;color:#58a6ff">LLM</span>'
                 '<span class="nav-name">LLM Refactoring Guide</span>'
-                '</a>'
+                "</a>"
             )
             guidelines_data = json.dumps(
                 _render_guidelines_html(self._guidelines_md), ensure_ascii=False
@@ -227,14 +256,15 @@ class HtmlDiffGenerator:
 
 # ── Markdown → HTML (for guidelines section) ──────────────────────────────
 
+
 def _render_guidelines_html(md: str) -> str:
     """Render Markdown guidelines to an HTML string."""
     parts = [
         '<div class="guidelines-section" id="llm-refactor-guide">',
         '<div class="guidelines-header">',
-        '<h2>LLM Refactoring Guide</h2>',
-        '<p>Per-file analysis and prompts for AI-assisted OOP conversion</p>',
-        '</div>',
+        "<h2>LLM Refactoring Guide</h2>",
+        "<p>Per-file analysis and prompts for AI-assisted OOP conversion</p>",
+        "</div>",
         '<div class="guidelines-body">',
     ]
     in_ul = False
@@ -286,6 +316,7 @@ def _render_guidelines_html(md: str) -> str:
 
 def _md_inline(text: str) -> str:
     import re as _re
+
     text = html.escape(text)
     text = _re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = _re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
@@ -298,7 +329,7 @@ def _esc(text: str) -> str:
 
 # ── HTML Template ──────────────────────────────────────────────────────────
 
-_HTML_TEMPLATE = '''<!DOCTYPE html>
+_HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -623,4 +654,4 @@ function filterNav(mode, btn) {{
 }})();
 </script>
 </body>
-</html>'''
+</html>"""

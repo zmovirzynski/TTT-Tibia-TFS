@@ -41,7 +41,9 @@ def format_benchmark_text(results: List[BenchmarkResult]) -> str:
                 status = "MATCH" if g.match else f"DIFF ({g.diff_lines} lines)"
                 lines.append(f"    {g.file:<40s} {status}")
             rate = r.golden_match_rate * 100
-            lines.append(f"  Match rate: {rate:.1f}% ({r.golden_matches}/{len(r.golden_comparisons)})")
+            lines.append(
+                f"  Match rate: {rate:.1f}% ({r.golden_matches}/{len(r.golden_comparisons)})"
+            )
 
         status = "PASS" if r.success else "FAIL"
         lines.append(f"  Status: {status}")

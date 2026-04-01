@@ -112,7 +112,6 @@ PLAYER_GETTERS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "getPlayerPosition": {
         "method": "getPosition",
         "obj_type": "player",
@@ -152,7 +151,6 @@ PLAYER_GETTERS = {
         "drop_params": [0],
         "note": "-- TTT: Use player:getTown():getTemplePosition()",
     },
-
     "getCreatureHealth": {
         "method": "getHealth",
         "obj_type": "creature",
@@ -189,7 +187,6 @@ PLAYER_GETTERS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "getPlayerFreeCap": {
         "method": "getFreeCapacity",
         "obj_type": "player",
@@ -202,7 +199,6 @@ PLAYER_GETTERS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "getPlayerSkill": {
         "method": "getSkillLevel",
         "obj_type": "player",
@@ -221,7 +217,6 @@ PLAYER_GETTERS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "getPlayerItemCount": {
         "method": "getItemCount",
         "obj_type": "player",
@@ -234,7 +229,6 @@ PLAYER_GETTERS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "getPlayerStorageValue": {
         "method": "getStorageValue",
         "obj_type": "player",
@@ -255,7 +249,6 @@ PLAYER_GETTERS = {
         "static": True,
         "static_class": "Game",
     },
-
     "getPlayerPremiumDays": {
         "method": "getPremiumDays",
         "obj_type": "player",
@@ -268,7 +261,6 @@ PLAYER_GETTERS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "getPlayerBalance": {
         "method": "getBankBalance",
         "obj_type": "player",
@@ -281,7 +273,6 @@ PLAYER_GETTERS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "getCreatureOutfit": {
         "method": "getOutfit",
         "obj_type": "creature",
@@ -294,7 +285,6 @@ PLAYER_GETTERS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "getCreatureLookDir": {
         "method": "getDirection",
         "obj_type": "creature",
@@ -319,7 +309,6 @@ PLAYER_GETTERS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "getCreatureTarget": {
         "method": "getTarget",
         "obj_type": "creature",
@@ -338,7 +327,6 @@ PLAYER_GETTERS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "hasCondition": {
         "method": "hasCondition",
         "obj_type": "creature",
@@ -357,7 +345,6 @@ PLAYER_GETTERS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "getPlayerFood": {
         "method": "getCondition(CONDITION_REGENERATION)",
         "obj_type": "player",
@@ -365,7 +352,6 @@ PLAYER_GETTERS = {
         "drop_params": [0],
         "note": "-- TTT: In 1.x use player:getCondition(CONDITION_REGENERATION):getTicks() / 1000",
     },
-
     "getItemName": {
         "method": "getName",
         "obj_type": "item_type",
@@ -401,7 +387,6 @@ PLAYER_GETTERS = {
         "drop_params": [0],
         "wrapper": "Item",
     },
-
     "isPlayer": {
         "method": None,
         "obj_type": "player",
@@ -501,7 +486,6 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doPlayerAddItem": {
         "method": "addItem",
         "obj_type": "player",
@@ -526,7 +510,6 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doCreatureAddHealth": {
         "method": "addHealth",
         "obj_type": "creature",
@@ -557,7 +540,6 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doPlayerAddExperience": {
         "method": "addExperience",
         "obj_type": "player",
@@ -570,7 +552,6 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doPlayerSetStorageValue": {
         "method": "setStorageValue",
         "obj_type": "player",
@@ -597,7 +578,6 @@ PLAYER_ACTIONS = {
         "static": True,
         "static_class": "Game",
     },
-
     "doPlayerAddPremiumDays": {
         "method": "addPremiumDays",
         "obj_type": "player",
@@ -610,7 +590,6 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doPlayerSetBalance": {
         "method": "setBankBalance",
         "obj_type": "player",
@@ -654,7 +633,6 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doPlayerAddOutfit": {
         "method": "addOutfit",
         "obj_type": "player",
@@ -685,7 +663,6 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doPlayerSetTown": {
         "method": "setTown",
         "obj_type": "player",
@@ -711,7 +688,6 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doTeleportThing": {
         "method": "teleportTo",
         "obj_type": "creature",
@@ -724,7 +700,6 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doCreatureSay": {
         "method": "say",
         "obj_type": "creature",
@@ -785,7 +760,6 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doAddCondition": {
         "method": "addCondition",
         "obj_type": "creature",
@@ -798,7 +772,6 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doTargetCombatHealth": {
         "method": None,
         "obj_type": "combat",
@@ -847,7 +820,6 @@ PLAYER_ACTIONS = {
         "note": "-- TTT: Use Combat object API in 1.x",
         "custom": "combat_passthrough",
     },
-
     "doPlayerSendOutfitWindow": {
         "method": "sendOutfitWindow",
         "obj_type": "player",
@@ -860,7 +832,6 @@ PLAYER_ACTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doPlayerFeed": {
         "method": "feed",
         "obj_type": "player",
@@ -868,7 +839,6 @@ PLAYER_ACTIONS = {
         "drop_params": [0],
         "note": "-- TTT: In 1.x, feeding uses condition system. Review this conversion.",
     },
-
     "getPlayerParty": {
         "method": "getParty",
         "obj_type": "player",
@@ -1054,7 +1024,6 @@ GAME_FUNCTIONS = {
         "static_class": "Creature",
         "note": "-- TTT: Review - may need Game.getPlayers() + iterating",
     },
-
     "doSendMagicEffect": {
         "method": "sendMagicEffect",
         "obj_type": "position",
@@ -1076,7 +1045,6 @@ GAME_FUNCTIONS = {
         "drop_params": [],
         "note": "-- TTT: doSendAnimatedText removed in TFS 1.x. No direct equivalent. Options: creature:say(text, TALKTYPE_MONSTER_SAY), position:sendMagicEffect(CONST_ME_*), or remove entirely.",
     },
-
     "getTileItemById": {
         "method": "getItemById",
         "obj_type": "tile",
@@ -1127,7 +1095,6 @@ GAME_FUNCTIONS = {
         "drop_params": [0],
         "wrapper": "Tile",
     },
-
     "getHouseByPlayerGUID": {
         "method": "getHouse",
         "obj_type": "game",
@@ -1178,7 +1145,6 @@ GAME_FUNCTIONS = {
         "drop_params": [0],
         "wrapper": "House",
     },
-
     "db.executeQuery": {
         "method": "query",
         "obj_type": "db",
@@ -1203,14 +1169,12 @@ GAME_FUNCTIONS = {
         "static": True,
         "static_class": "db",
     },
-
     "getDistanceBetween": {
         "method": "getDistance",
         "obj_type": "position",
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "doPlayerSetGroupId": {
         "method": "setGroup",
         "obj_type": "player",
@@ -1255,7 +1219,6 @@ GAME_FUNCTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     "selfSay": {
         "method": "say",
         "obj_type": "npc",
@@ -1355,9 +1318,7 @@ GAME_FUNCTIONS = {
         "obj_param": 0,
         "drop_params": [0],
     },
-
     # --- New mappings: investigation-findings-2026-03-24 ---
-
     "getItemNameById": {
         "method": "getName",
         "obj_type": "item",

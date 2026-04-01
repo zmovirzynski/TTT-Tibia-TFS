@@ -205,15 +205,21 @@ class MigrationOrchestrator:
         has_diff = self.config.html_diff
         if hasattr(engine, "report") and engine.report:
             for fr in engine.report.file_reports:
-                rel = os.path.relpath(fr.source_path, self.config.input_dir) if self.config.input_dir else os.path.basename(fr.source_path)
-                self.report.file_entries.append(FileEntry(
-                    path=rel,
-                    file_type=fr.file_type or fr.conversion_type or "",
-                    changes=fr.total_changes,
-                    ttt_markers=fr.ttt_warnings,
-                    confidence=fr.confidence_label,
-                    has_diff=has_diff,
-                ))
+                rel = (
+                    os.path.relpath(fr.source_path, self.config.input_dir)
+                    if self.config.input_dir
+                    else os.path.basename(fr.source_path)
+                )
+                self.report.file_entries.append(
+                    FileEntry(
+                        path=rel,
+                        file_type=fr.file_type or fr.conversion_type or "",
+                        changes=fr.total_changes,
+                        ttt_markers=fr.ttt_warnings,
+                        confidence=fr.confidence_label,
+                        has_diff=has_diff,
+                    )
+                )
 
         # Track conversion report artifact
         if not self.config.dry_run and self.config.output_dir:
@@ -379,6 +385,7 @@ class MigrationOrchestrator:
         # HTML Dashboard
         try:
             from ..dashboard import generate_dashboard
+
             dash_path = os.path.join(reports_dir, "dashboard.html")
             generate_dashboard(self.report, dash_path)
             self.report.artifacts["dashboard_html"] = dash_path
@@ -434,7 +441,9 @@ def format_migration_summary(report: MigrationRunReport) -> str:
         markers = convert_step.outputs.get("ttt_markers", 0)
         lines.append(f"  -- TTT: markers:     {markers}")
     if report.health_score is not None:
-        lines.append(f"  Health score:        {report.health_score}/100 ({report.health_rating})")
+        lines.append(
+            f"  Health score:        {report.health_score}/100 ({report.health_rating})"
+        )
     if report.doctor_issues:
         lines.append(f"  Doctor issues:       {report.doctor_issues}")
     fix_step = report.get_step("fix")
@@ -501,17 +510,25 @@ def format_migration_markdown(report: MigrationRunReport) -> str:
         markers = convert_step.outputs.get("ttt_markers", 0)
         lines.append(f"- **`-- TTT:` markers:** {markers}")
     if report.artifacts.get("review_report_html"):
-        lines.append(f"- **Review report:** [`review_report.html`]({report.artifacts['review_report_html']})")
+        lines.append(
+            f"- **Review report:** [`review_report.html`]({report.artifacts['review_report_html']})"
+        )
     if report.health_score is not None:
-        lines.append(f"- **Health score:** {report.health_score}/100 ({report.health_rating})")
+        lines.append(
+            f"- **Health score:** {report.health_score}/100 ({report.health_rating})"
+        )
     if report.doctor_issues:
         lines.append(f"- **Doctor issues:** {report.doctor_issues}")
     fix_step = report.get_step("fix")
     if fix_step and fix_step.ok:
-        lines.append(f"- **Auto-fixes applied:** {fix_step.outputs.get('total_fixes', 0)}")
+        lines.append(
+            f"- **Auto-fixes applied:** {fix_step.outputs.get('total_fixes', 0)}"
+        )
     docs_step = report.get_step("docs")
     if docs_step and docs_step.ok:
-        lines.append(f"- **Documentation entries:** {docs_step.outputs.get('total_entries', 0)}")
+        lines.append(
+            f"- **Documentation entries:** {docs_step.outputs.get('total_entries', 0)}"
+        )
     lines.append("")
 
     # Step details

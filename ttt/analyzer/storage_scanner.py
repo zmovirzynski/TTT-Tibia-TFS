@@ -19,19 +19,22 @@ from ..utils import read_file_safe, find_lua_files
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class StorageUsage:
     """A single usage of a storage ID in a script."""
+
     filepath: str
     line: int
     storage_id: int
-    context: str   # "get", "set", or the full matched line snippet
+    context: str  # "get", "set", or the full matched line snippet
     line_text: str = ""
 
 
 @dataclass
 class StorageConflict:
     """A storage ID used in multiple unrelated scripts."""
+
     storage_id: int
     usages: List[StorageUsage]
 
@@ -43,6 +46,7 @@ class StorageConflict:
 @dataclass
 class StorageRange:
     """A free range in the storage ID space."""
+
     start: int
     end: int
 
@@ -54,6 +58,7 @@ class StorageRange:
 @dataclass
 class StorageReport:
     """Aggregated storage analysis."""
+
     all_usages: List[StorageUsage] = field(default_factory=list)
     conflicts: List[StorageConflict] = field(default_factory=list)
     free_ranges: List[StorageRange] = field(default_factory=list)
@@ -73,9 +78,14 @@ class StorageReport:
             "min_id": self.min_id,
             "max_id": self.max_id,
             "conflicts": [
-                {"storage_id": c.storage_id, "file_count": c.file_count,
-                 "usages": [{"file": u.filepath, "line": u.line, "context": u.context}
-                            for u in c.usages]}
+                {
+                    "storage_id": c.storage_id,
+                    "file_count": c.file_count,
+                    "usages": [
+                        {"file": u.filepath, "line": u.line, "context": u.context}
+                        for u in c.usages
+                    ],
+                }
                 for c in self.conflicts
             ],
             "free_ranges": [
@@ -94,23 +104,23 @@ class StorageReport:
 _STORAGE_PATTERNS = [
     # OOP: player:getStorageValue(12345)  /  player:setStorageValue(12345, val)
     re.compile(
-        r'\b\w+:(?:get|set)StorageValue\s*\(\s*(\d+)',
+        r"\b\w+:(?:get|set)StorageValue\s*\(\s*(\d+)",
     ),
     # Procedural: getPlayerStorageValue(cid, 12345)  /  doPlayerSetStorageValue(cid, 12345, val)
     re.compile(
-        r'\b(?:getPlayerStorageValue|doPlayerSetStorageValue|getCreatureStorage|'
-        r'setPlayerStorageValue|doCreatureSetStorage)\s*\([^,]+,\s*(\d+)',
+        r"\b(?:getPlayerStorageValue|doPlayerSetStorageValue|getCreatureStorage|"
+        r"setPlayerStorageValue|doCreatureSetStorage)\s*\([^,]+,\s*(\d+)",
     ),
     # Global: getGlobalStorageValue(12345)  /  setGlobalStorageValue(12345, val)
     re.compile(
-        r'\b(?:getGlobalStorageValue|setGlobalStorageValue|'
-        r'Game\.getStorageValue|Game\.setStorageValue)\s*\(\s*(\d+)',
+        r"\b(?:getGlobalStorageValue|setGlobalStorageValue|"
+        r"Game\.getStorageValue|Game\.setStorageValue)\s*\(\s*(\d+)",
     ),
 ]
 
 # Pattern for storage via constants  (STORAGE_QUEST = 50001)
 _STORAGE_CONST_RE = re.compile(
-    r'\b([A-Z_]+STORAGE[A-Z_]*|STOR_[A-Z_]+)\s*=\s*(\d+)',
+    r"\b([A-Z_]+STORAGE[A-Z_]*|STOR_[A-Z_]+)\s*=\s*(\d+)",
 )
 
 
@@ -138,19 +148,22 @@ def _extract_storage_ids(filepath: str, code: str) -> List[StorageUsage]:
                 else:
                     context = "get"
 
-                usages.append(StorageUsage(
-                    filepath=filepath,
-                    line=line_num,
-                    storage_id=storage_id,
-                    context=context,
-                    line_text=stripped,
-                ))
+                usages.append(
+                    StorageUsage(
+                        filepath=filepath,
+                        line=line_num,
+                        storage_id=storage_id,
+                        context=context,
+                        line_text=stripped,
+                    )
+                )
 
     return usages
 
 
-def _find_free_ranges(used_ids: Set[int], min_id: int = 10000,
-                       max_id: int = 99999, max_ranges: int = 10) -> List[StorageRange]:
+def _find_free_ranges(
+    used_ids: Set[int], min_id: int = 10000, max_id: int = 99999, max_ranges: int = 10
+) -> List[StorageRange]:
     """Find free (unused) ranges in the storage ID space."""
     if not used_ids:
         return [StorageRange(start=min_id, end=max_id)]
@@ -185,6 +198,7 @@ def _find_free_ranges(used_ids: Set[int], min_id: int = 10000,
 # Main scanner
 # ---------------------------------------------------------------------------
 
+
 def scan_storage(directory: str) -> StorageReport:
     """Scan all Lua files for storage ID usage."""
     report = StorageReport()
@@ -215,10 +229,12 @@ def scan_storage(directory: str) -> StorageReport:
     for storage_id, usages in sorted(id_to_files.items()):
         unique_files = set(u.filepath for u in usages)
         if len(unique_files) > 1:
-            report.conflicts.append(StorageConflict(
-                storage_id=storage_id,
-                usages=usages,
-            ))
+            report.conflicts.append(
+                StorageConflict(
+                    storage_id=storage_id,
+                    usages=usages,
+                )
+            )
 
     # Free ranges
     report.free_ranges = _find_free_ranges(all_ids)

@@ -9,7 +9,13 @@ unrecognized calls, step success/failure, and timing.
 from .models import BenchmarkResult, CorpusEntry, GoldenComparison
 from .engine import BenchmarkEngine
 from .report import format_benchmark_text, format_benchmark_json
-from .trend import load_history, append_result, format_trend_text, format_trend_json, generate_trend_html
+from .trend import (
+    load_history,
+    append_result,
+    format_trend_text,
+    format_trend_json,
+    generate_trend_html,
+)
 
 __all__ = [
     "BenchmarkResult",

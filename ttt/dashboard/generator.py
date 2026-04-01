@@ -61,16 +61,18 @@ class DashboardGenerator:
             dur = f"{s.duration_seconds:.1f}s"
             summary = esc(s.summary or s.error or "")
             step_rows += (
-                f'<tr><td>{esc(s.name)}</td><td>{badge}</td>'
-                f'<td>{dur}</td><td>{summary}</td></tr>\n'
+                f"<tr><td>{esc(s.name)}</td><td>{badge}</td>"
+                f"<td>{dur}</td><td>{summary}</td></tr>\n"
             )
 
         # Artifact links
         artifact_rows = ""
         for label, path in r.artifacts.items():
-            display = os.path.basename(path) if os.path.sep in path or "/" in path else path
+            display = (
+                os.path.basename(path) if os.path.sep in path or "/" in path else path
+            )
             artifact_rows += (
-                f'<tr><td>{esc(label)}</td>'
+                f"<tr><td>{esc(label)}</td>"
                 f'<td><a href="{esc(display)}" target="_blank">{esc(display)}</a></td></tr>\n'
             )
 
@@ -78,18 +80,22 @@ class DashboardGenerator:
         file_rows = ""
         for fe in r.file_entries:
             conf_badge = _confidence_badge(fe.confidence)
-            markers_cell = f'<span class="marker-count warn">{fe.ttt_markers}</span>' if fe.ttt_markers > 0 else '<span class="marker-count clean">0</span>'
+            markers_cell = (
+                f'<span class="marker-count warn">{fe.ttt_markers}</span>'
+                if fe.ttt_markers > 0
+                else '<span class="marker-count clean">0</span>'
+            )
             diff_link = ""
             if fe.has_diff:
                 diff_link = '<a href="conversion_diff.html" target="_blank">diff</a>'
             file_rows += (
                 f'<tr data-confidence="{esc(fe.confidence.lower())}" data-markers="{fe.ttt_markers}">'
-                f'<td>{esc(fe.path)}</td>'
-                f'<td>{esc(fe.file_type)}</td>'
-                f'<td>{fe.changes}</td>'
-                f'<td>{markers_cell}</td>'
-                f'<td>{conf_badge}</td>'
-                f'<td>{diff_link}</td></tr>\n'
+                f"<td>{esc(fe.path)}</td>"
+                f"<td>{esc(fe.file_type)}</td>"
+                f"<td>{fe.changes}</td>"
+                f"<td>{markers_cell}</td>"
+                f"<td>{conf_badge}</td>"
+                f"<td>{diff_link}</td></tr>\n"
             )
         has_file_table = len(r.file_entries) > 0
 

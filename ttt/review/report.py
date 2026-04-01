@@ -20,6 +20,7 @@ _THIN = "-" * 64
 # Terminal text
 # ---------------------------------------------------------------------------
 
+
 def format_review_text(report: ReviewReport) -> str:
     """Format a ReviewReport as readable terminal text."""
     lines: List[str] = []
@@ -70,6 +71,7 @@ def format_review_text(report: ReviewReport) -> str:
 # JSON
 # ---------------------------------------------------------------------------
 
+
 def format_review_json(report: ReviewReport) -> str:
     """Serialize a ReviewReport to a JSON string."""
     return json.dumps(report.to_dict(), indent=2)
@@ -78,6 +80,7 @@ def format_review_json(report: ReviewReport) -> str:
 # ---------------------------------------------------------------------------
 # HTML
 # ---------------------------------------------------------------------------
+
 
 def format_review_html(report: ReviewReport) -> str:
     """Generate a standalone HTML review report."""
@@ -103,17 +106,17 @@ def format_review_html(report: ReviewReport) -> str:
         snippet_html = esc(f.snippet).replace("\n", "<br>")
         finding_rows += (
             f'<tr class="cat-row cat-{f.category.value}">'
-            f'<td>{esc(f.file)}:{f.line_number}</td>'
+            f"<td>{esc(f.file)}:{f.line_number}</td>"
             f'<td class="cat-{f.category.value}">{esc(label)}</td>'
-            f'<td>{esc(f.short_text)}</td>'
-            f'<td><pre>{snippet_html}</pre></td>'
-            f'</tr>\n'
+            f"<td>{esc(f.short_text)}</td>"
+            f"<td><pre>{snippet_html}</pre></td>"
+            f"</tr>\n"
         )
 
     # Build top blockers
     blocker_rows = ""
     for b in blockers:
-        blocker_rows += f'<tr><td>{esc(b["file"])}</td><td>{b["count"]}</td></tr>\n'
+        blocker_rows += f"<tr><td>{esc(b['file'])}</td><td>{b['count']}</td></tr>\n"
 
     return _HTML_TEMPLATE.format(
         scanned_dir=esc(report.scanned_dir),

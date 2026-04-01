@@ -29,9 +29,11 @@ DOCTOR_MODULES = ["health_check", "xml_validator"]
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DoctorReport:
     """Complete doctor report combining health checks + XML validation."""
+
     directory: str = ""
     health: Optional[HealthReport] = None
     xml_validation: Optional[XmlValidationReport] = None
@@ -114,6 +116,7 @@ class DoctorReport:
 # Engine
 # ---------------------------------------------------------------------------
 
+
 class DoctorEngine:
     """Runs all doctor checks on a server directory."""
 
@@ -142,6 +145,7 @@ class DoctorEngine:
 # Text formatter
 # ---------------------------------------------------------------------------
 
+
 class _Colors:
     RESET = "\033[0m"
     BOLD = "\033[1m"
@@ -155,8 +159,12 @@ class _Colors:
     WHITE = "\033[37m"
 
 
-def format_doctor_text(report: DoctorReport, no_color: bool = False,
-                        verbose: bool = False, base_dir: str = "") -> str:
+def format_doctor_text(
+    report: DoctorReport,
+    no_color: bool = False,
+    verbose: bool = False,
+    base_dir: str = "",
+) -> str:
     """Format doctor report as colored text for terminal."""
     C = _Colors
     if no_color:
@@ -186,7 +194,9 @@ def format_doctor_text(report: DoctorReport, no_color: bool = False,
         color = C.RED
         icon = "[XX]"
 
-    lines.append(f"  {C.BOLD}Health Score: {color}{score}/100  {icon} {rating}{C.RESET}")
+    lines.append(
+        f"  {C.BOLD}Health Score: {color}{score}/100  {icon} {rating}{C.RESET}"
+    )
     lines.append("")
 
     # --- Errors ---
@@ -200,7 +210,10 @@ def format_doctor_text(report: DoctorReport, no_color: bool = False,
         lines.append(f"  {C.RED}{C.BOLD}ERRORS ({len(all_errors)}){C.RESET}")
         lines.append(f"  {'-' * 58}")
         for issue in all_errors:
-            fp = _rel(issue.filepath if isinstance(issue, HealthIssue) else issue.filepath, base_dir)
+            fp = _rel(
+                issue.filepath if isinstance(issue, HealthIssue) else issue.filepath,
+                base_dir,
+            )
             ln = ""
             if hasattr(issue, "line") and issue.line:
                 ln = f":L{issue.line}"
@@ -220,7 +233,10 @@ def format_doctor_text(report: DoctorReport, no_color: bool = False,
         lines.append(f"  {C.YELLOW}{C.BOLD}WARNINGS ({len(all_warnings)}){C.RESET}")
         lines.append(f"  {'-' * 58}")
         for issue in all_warnings:
-            fp = _rel(issue.filepath if isinstance(issue, HealthIssue) else issue.filepath, base_dir)
+            fp = _rel(
+                issue.filepath if isinstance(issue, HealthIssue) else issue.filepath,
+                base_dir,
+            )
             ln = ""
             if hasattr(issue, "line") and issue.line:
                 ln = f":L{issue.line}"
@@ -246,8 +262,10 @@ def format_doctor_text(report: DoctorReport, no_color: bool = False,
     lines.append(f"    Errors:   {C.RED}{report.total_errors}{C.RESET}")
     lines.append(f"    Warnings: {C.YELLOW}{report.total_warnings}{C.RESET}")
     if report.xml_validation:
-        lines.append(f"    XML files valid: {C.GREEN}{report.xml_validation.total_files_valid}"
-                     f"/{report.xml_validation.total_files_scanned}{C.RESET}")
+        lines.append(
+            f"    XML files valid: {C.GREEN}{report.xml_validation.total_files_valid}"
+            f"/{report.xml_validation.total_files_scanned}{C.RESET}"
+        )
     lines.append("")
 
     return "\n".join(lines)
@@ -267,6 +285,7 @@ def _rel(filepath: str, base_dir: str) -> str:
 # JSON formatter
 # ---------------------------------------------------------------------------
 
+
 def format_doctor_json(report: DoctorReport) -> str:
     """Format doctor report as JSON."""
     return json.dumps(report.as_dict(), indent=2, ensure_ascii=False)
@@ -275,6 +294,7 @@ def format_doctor_json(report: DoctorReport) -> str:
 # ---------------------------------------------------------------------------
 # HTML formatter
 # ---------------------------------------------------------------------------
+
 
 def format_doctor_html(report: DoctorReport) -> str:
     """Format doctor report as standalone HTML page."""
@@ -286,7 +306,7 @@ def format_doctor_html(report: DoctorReport) -> str:
         badge_icon = "&#10003;"  # checkmark
     elif rating == "WARNING":
         badge_color = "#ffc107"
-        badge_icon = "&#9888;"   # warning
+        badge_icon = "&#9888;"  # warning
     else:
         badge_color = "#dc3545"
         badge_icon = "&#10007;"  # X
@@ -295,22 +315,26 @@ def format_doctor_html(report: DoctorReport) -> str:
     all_issues = []
     if report.health:
         for issue in report.health.issues:
-            all_issues.append({
-                "severity": issue.severity,
-                "check": issue.check_name,
-                "file": issue.filepath,
-                "line": issue.line,
-                "message": issue.message,
-            })
+            all_issues.append(
+                {
+                    "severity": issue.severity,
+                    "check": issue.check_name,
+                    "file": issue.filepath,
+                    "line": issue.line,
+                    "message": issue.message,
+                }
+            )
     if report.xml_validation:
         for issue in report.xml_validation.issues:
-            all_issues.append({
-                "severity": issue.severity,
-                "check": issue.check_name,
-                "file": issue.filepath,
-                "line": issue.line,
-                "message": issue.message,
-            })
+            all_issues.append(
+                {
+                    "severity": issue.severity,
+                    "check": issue.check_name,
+                    "file": issue.filepath,
+                    "line": issue.line,
+                    "message": issue.message,
+                }
+            )
 
     # Build issue rows
     issue_rows = ""
@@ -322,9 +346,9 @@ def format_doctor_html(report: DoctorReport) -> str:
         issue_rows += f"""
         <tr class="{sev_class}">
           <td><span class="badge badge-{sev_class}">{sev_label}</span></td>
-          <td>{_html_escape(iss['check'])}</td>
+          <td>{_html_escape(iss["check"])}</td>
           <td>{_html_escape(basename)}{line_str}</td>
-          <td>{_html_escape(iss['message'])}</td>
+          <td>{_html_escape(iss["message"])}</td>
         </tr>"""
 
     if not issue_rows:
@@ -421,8 +445,9 @@ def format_doctor_html(report: DoctorReport) -> str:
 
 def _html_escape(text: str) -> str:
     """Escape HTML special characters."""
-    return (text
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;"))
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )

@@ -9,6 +9,7 @@ from typing import Any, Dict, List
 @dataclass
 class GoldenComparison:
     """Result of comparing one converted file against its golden expected output."""
+
     file: str
     match: bool
     diff_lines: int = 0
@@ -19,6 +20,7 @@ class GoldenComparison:
 @dataclass
 class CorpusEntry:
     """A single benchmark corpus entry (input dir + optional golden output dir)."""
+
     name: str
     input_dir: str
     golden_dir: str = ""

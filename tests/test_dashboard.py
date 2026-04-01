@@ -4,7 +4,12 @@ import os
 import tempfile
 
 
-from ttt.dashboard.generator import DashboardGenerator, generate_dashboard, _status_badge, _confidence_badge
+from ttt.dashboard.generator import (
+    DashboardGenerator,
+    generate_dashboard,
+    _status_badge,
+    _confidence_badge,
+)
 from ttt.migrator.models import MigrationRunReport, StepResult, StepStatus, FileEntry
 
 
@@ -34,7 +39,10 @@ def _make_successful_report() -> MigrationRunReport:
             status=StepStatus.SUCCESS,
             duration_seconds=1.5,
             summary="Converted 10 Lua files, 5 XML files, 0 errors",
-            outputs={"stats": {"lua_files_processed": 10, "xml_files_processed": 5}, "ttt_markers": 3},
+            outputs={
+                "stats": {"lua_files_processed": 10, "xml_files_processed": 5},
+                "ttt_markers": 3,
+            },
         ),
         StepResult(
             name="fix",
@@ -202,7 +210,11 @@ class TestDashboardGenerator:
             StepResult(
                 name="doctor",
                 status=StepStatus.SUCCESS,
-                outputs={"health_score": 60, "health_rating": "FAIR", "total_issues": 5},
+                outputs={
+                    "health_score": 60,
+                    "health_rating": "FAIR",
+                    "total_issues": 5,
+                },
             ),
         ]
         gen = DashboardGenerator(r)
@@ -312,9 +324,30 @@ class TestFileTable:
     def _make_report_with_files(self):
         r = _make_report()
         r.file_entries = [
-            FileEntry(path="scripts/actions/heal.lua", file_type="lua", changes=5, ttt_markers=2, confidence="MEDIUM", has_diff=True),
-            FileEntry(path="scripts/movements/tile.lua", file_type="lua", changes=3, ttt_markers=0, confidence="HIGH", has_diff=True),
-            FileEntry(path="scripts/globalevents/startup.lua", file_type="lua", changes=1, ttt_markers=1, confidence="LOW", has_diff=False),
+            FileEntry(
+                path="scripts/actions/heal.lua",
+                file_type="lua",
+                changes=5,
+                ttt_markers=2,
+                confidence="MEDIUM",
+                has_diff=True,
+            ),
+            FileEntry(
+                path="scripts/movements/tile.lua",
+                file_type="lua",
+                changes=3,
+                ttt_markers=0,
+                confidence="HIGH",
+                has_diff=True,
+            ),
+            FileEntry(
+                path="scripts/globalevents/startup.lua",
+                file_type="lua",
+                changes=1,
+                ttt_markers=1,
+                confidence="LOW",
+                has_diff=False,
+            ),
         ]
         return r
 
@@ -324,14 +357,14 @@ class TestFileTable:
         with tempfile.TemporaryDirectory() as td:
             html = gen.generate(os.path.join(td, "d.html"))
             assert "Converted Files" in html
-            assert 'display:block' in html
+            assert "display:block" in html
 
     def test_file_table_hidden_without_files(self):
         r = _make_report()
         gen = DashboardGenerator(r)
         with tempfile.TemporaryDirectory() as td:
             html = gen.generate(os.path.join(td, "d.html"))
-            assert 'display:none' in html
+            assert "display:none" in html
 
     def test_file_table_contains_file_paths(self):
         r = self._make_report_with_files()
@@ -375,7 +408,7 @@ class TestFileTable:
         gen = DashboardGenerator(r)
         with tempfile.TemporaryDirectory() as td:
             html = gen.generate(os.path.join(td, "d.html"))
-            assert 'conversion_diff.html' in html
+            assert "conversion_diff.html" in html
 
     def test_file_table_filter_controls(self):
         r = self._make_report_with_files()

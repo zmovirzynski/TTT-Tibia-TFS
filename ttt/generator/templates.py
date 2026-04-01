@@ -11,7 +11,6 @@ Supports:
   - NPC (basic, shop)
 """
 
-
 TEMPLATE_TYPES = [
     "action",
     "movement",

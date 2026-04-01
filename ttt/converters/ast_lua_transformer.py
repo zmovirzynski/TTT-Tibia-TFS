@@ -137,7 +137,9 @@ class ASTLuaTransformer:
             self.warnings.append(f"Syntax error: {e}. File left unchanged.")
             return code
         except Exception as e:
-            logger.error(f"AST transformation error in {filename}: {e} — file left unchanged")
+            logger.error(
+                f"AST transformation error in {filename}: {e} — file left unchanged"
+            )
             self.warnings.append(f"AST transformation error: {e}. File left unchanged.")
             return code
 

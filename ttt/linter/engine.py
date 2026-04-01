@@ -16,8 +16,11 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 
 from .rules import (
-    LintRule, LintIssue, LintSeverity,
-    get_all_rules, get_rules_by_ids,
+    LintRule,
+    LintIssue,
+    LintSeverity,
+    get_all_rules,
+    get_rules_by_ids,
 )
 from ..utils import read_file_safe, find_lua_files
 
@@ -28,9 +31,11 @@ logger = logging.getLogger("ttt")
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FileLintResult:
     """Lint results for a single file."""
+
     filepath: str
     issues: List[LintIssue] = field(default_factory=list)
     score: int = 100
@@ -60,6 +65,7 @@ class FileLintResult:
 @dataclass
 class LintReport:
     """Aggregated lint report for all files."""
+
     files: List[FileLintResult] = field(default_factory=list)
     rules_used: List[str] = field(default_factory=list)
     target_path: str = ""
@@ -113,10 +119,12 @@ class LintReport:
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LintConfig:
     """Configuration loaded from .tttlint.json."""
-    enabled_rules: Optional[List[str]] = None    # None = all rules
+
+    enabled_rules: Optional[List[str]] = None  # None = all rules
     disabled_rules: List[str] = field(default_factory=list)
     severity_overrides: Dict[str, str] = field(default_factory=dict)
     ignore_patterns: List[str] = field(default_factory=list)
@@ -159,6 +167,7 @@ class LintConfig:
 # Quality score calculator
 # ---------------------------------------------------------------------------
 
+
 def compute_score(issues: List[LintIssue], total_lines: int) -> int:
     """Compute a quality score from 0 to 100."""
     if total_lines == 0:
@@ -187,6 +196,7 @@ def compute_score(issues: List[LintIssue], total_lines: int) -> int:
 # Lint Engine
 # ---------------------------------------------------------------------------
 
+
 class LintEngine:
     """Main lint engine that orchestrates rule execution."""
 
@@ -214,10 +224,13 @@ class LintEngine:
                 try:
                     rule.severity = LintSeverity(sev_str)
                 except ValueError:
-                    logger.warning(f"Invalid severity '{sev_str}' for rule '{rule.rule_id}'")
+                    logger.warning(
+                        f"Invalid severity '{sev_str}' for rule '{rule.rule_id}'"
+                    )
 
-        logger.debug(f"Loaded {len(self._rules)} lint rules: "
-                     f"{[r.rule_id for r in self._rules]}")
+        logger.debug(
+            f"Loaded {len(self._rules)} lint rules: {[r.rule_id for r in self._rules]}"
+        )
 
     @property
     def rule_ids(self) -> List[str]:
@@ -234,12 +247,15 @@ class LintEngine:
                 result.issues.extend(issues)
             except Exception as e:
                 logger.warning(f"Rule '{rule.rule_id}' failed on {filename}: {e}")
-                result.issues.append(LintIssue(
-                    line=0, column=0,
-                    severity=LintSeverity.ERROR,
-                    rule_id=rule.rule_id,
-                    message=f"Rule execution error: {e}",
-                ))
+                result.issues.append(
+                    LintIssue(
+                        line=0,
+                        column=0,
+                        severity=LintSeverity.ERROR,
+                        rule_id=rule.rule_id,
+                        message=f"Rule execution error: {e}",
+                    )
+                )
 
         # Sort issues by line number
         result.issues.sort(key=lambda i: (i.line, i.column))
@@ -247,13 +263,16 @@ class LintEngine:
         # Limit issues per file
         if len(result.issues) > self.config.max_issues_per_file:
             truncated = len(result.issues) - self.config.max_issues_per_file
-            result.issues = result.issues[:self.config.max_issues_per_file]
-            result.issues.append(LintIssue(
-                line=0, column=0,
-                severity=LintSeverity.INFO,
-                rule_id="lint-engine",
-                message=f"... and {truncated} more issues (truncated)",
-            ))
+            result.issues = result.issues[: self.config.max_issues_per_file]
+            result.issues.append(
+                LintIssue(
+                    line=0,
+                    column=0,
+                    severity=LintSeverity.INFO,
+                    rule_id="lint-engine",
+                    message=f"... and {truncated} more issues (truncated)",
+                )
+            )
 
         # Compute quality score
         result.score = compute_score(result.issues, len(lines))
@@ -299,7 +318,9 @@ class LintEngine:
             report.files.append(result)
 
             if result.issues:
-                logger.debug(f"  {rel_path}: {len(result.issues)} issues (score: {result.score})")
+                logger.debug(
+                    f"  {rel_path}: {len(result.issues)} issues (score: {result.score})"
+                )
             else:
                 logger.debug(f"  {rel_path}: clean ✓")
 
@@ -308,6 +329,7 @@ class LintEngine:
     def _should_ignore(self, rel_path: str) -> bool:
         """Check if file matches any ignore pattern."""
         import fnmatch
+
         for pattern in self.config.ignore_patterns:
             if fnmatch.fnmatch(rel_path, pattern):
                 return True

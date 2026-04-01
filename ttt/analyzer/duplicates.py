@@ -22,9 +22,11 @@ from ..scanner import scan_directory
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DuplicateScript:
     """A group of scripts with identical or near-identical content."""
+
     file_hash: str
     filepaths: List[str]
     similarity: float = 1.0  # 1.0 = identical
@@ -37,14 +39,16 @@ class DuplicateScript:
 @dataclass
 class DuplicateRegistration:
     """A registration key that appears more than once (e.g. same item ID)."""
+
     reg_type: str  # "action-itemid", "talkaction-keyword", "movement-itemid"
-    key: str       # The duplicated key value
+    key: str  # The duplicated key value
     entries: List[Dict[str, str]]  # list of {xml_file, script, line, ...}
 
 
 @dataclass
 class DuplicateReport:
     """Aggregated duplicate analysis."""
+
     duplicate_scripts: List[DuplicateScript] = field(default_factory=list)
     duplicate_registrations: List[DuplicateRegistration] = field(default_factory=list)
     total_scripts_scanned: int = 0
@@ -61,8 +65,12 @@ class DuplicateReport:
     def as_dict(self) -> Dict:
         return {
             "duplicate_scripts": [
-                {"hash": d.file_hash, "files": d.filepaths,
-                 "count": d.count, "similarity": d.similarity}
+                {
+                    "hash": d.file_hash,
+                    "files": d.filepaths,
+                    "count": d.count,
+                    "similarity": d.similarity,
+                }
                 for d in self.duplicate_scripts
             ],
             "duplicate_registrations": [
@@ -79,6 +87,7 @@ class DuplicateReport:
 # ---------------------------------------------------------------------------
 # Content hashing / similarity
 # ---------------------------------------------------------------------------
+
 
 def _normalize_code(code: str) -> str:
     """Normalize code for comparison: strip comments, blank lines, whitespace."""
@@ -113,11 +122,11 @@ def _find_comment_pos(line: str) -> int:
     while i < len(line):
         ch = line[i]
         if in_str:
-            if ch == in_str and (i == 0 or line[i-1] != '\\'):
+            if ch == in_str and (i == 0 or line[i - 1] != "\\"):
                 in_str = None
         elif ch in ('"', "'"):
             in_str = ch
-        elif ch == '-' and i + 1 < len(line) and line[i+1] == '-':
+        elif ch == "-" and i + 1 < len(line) and line[i + 1] == "-":
             return i
         i += 1
     return -1
@@ -151,6 +160,7 @@ def _similarity_ratio(code1: str, code2: str) -> float:
 # XML registration extraction
 # ---------------------------------------------------------------------------
 
+
 def _extract_action_registrations(xml_path: str) -> List[Dict[str, str]]:
     """Extract action registrations from actions.xml."""
     entries = []
@@ -158,7 +168,7 @@ def _extract_action_registrations(xml_path: str) -> List[Dict[str, str]]:
     if not content:
         return entries
     for i, line in enumerate(content.split("\n"), start=1):
-        m = re.search(r'<action\s+', line, re.IGNORECASE)
+        m = re.search(r"<action\s+", line, re.IGNORECASE)
         if not m:
             continue
         script_m = re.search(r'script\s*=\s*"([^"]*)"', line, re.IGNORECASE)
@@ -169,25 +179,43 @@ def _extract_action_registrations(xml_path: str) -> List[Dict[str, str]]:
         if itemid_m:
             ids = [x.strip() for x in itemid_m.group(1).split(";") if x.strip()]
             for item_id in ids:
-                entries.append({"type": "action-itemid", "key": item_id,
-                                "script": script, "line": str(i),
-                                "xml_file": xml_path})
+                entries.append(
+                    {
+                        "type": "action-itemid",
+                        "key": item_id,
+                        "script": script,
+                        "line": str(i),
+                        "xml_file": xml_path,
+                    }
+                )
 
         actionid_m = re.search(r'actionid\s*=\s*"([^"]*)"', line, re.IGNORECASE)
         if actionid_m:
             ids = [x.strip() for x in actionid_m.group(1).split(";") if x.strip()]
             for aid in ids:
-                entries.append({"type": "action-actionid", "key": aid,
-                                "script": script, "line": str(i),
-                                "xml_file": xml_path})
+                entries.append(
+                    {
+                        "type": "action-actionid",
+                        "key": aid,
+                        "script": script,
+                        "line": str(i),
+                        "xml_file": xml_path,
+                    }
+                )
 
         uniqueid_m = re.search(r'uniqueid\s*=\s*"([^"]*)"', line, re.IGNORECASE)
         if uniqueid_m:
             ids = [x.strip() for x in uniqueid_m.group(1).split(";") if x.strip()]
             for uid in ids:
-                entries.append({"type": "action-uniqueid", "key": uid,
-                                "script": script, "line": str(i),
-                                "xml_file": xml_path})
+                entries.append(
+                    {
+                        "type": "action-uniqueid",
+                        "key": uid,
+                        "script": script,
+                        "line": str(i),
+                        "xml_file": xml_path,
+                    }
+                )
     return entries
 
 
@@ -198,7 +226,7 @@ def _extract_talkaction_registrations(xml_path: str) -> List[Dict[str, str]]:
     if not content:
         return entries
     for i, line in enumerate(content.split("\n"), start=1):
-        m = re.search(r'<talkaction\s+', line, re.IGNORECASE)
+        m = re.search(r"<talkaction\s+", line, re.IGNORECASE)
         if not m:
             continue
         script_m = re.search(r'script\s*=\s*"([^"]*)"', line, re.IGNORECASE)
@@ -207,9 +235,15 @@ def _extract_talkaction_registrations(xml_path: str) -> List[Dict[str, str]]:
         words_m = re.search(r'words\s*=\s*"([^"]*)"', line, re.IGNORECASE)
         if words_m:
             keyword = words_m.group(1).strip()
-            entries.append({"type": "talkaction-keyword", "key": keyword,
-                            "script": script, "line": str(i),
-                            "xml_file": xml_path})
+            entries.append(
+                {
+                    "type": "talkaction-keyword",
+                    "key": keyword,
+                    "script": script,
+                    "line": str(i),
+                    "xml_file": xml_path,
+                }
+            )
     return entries
 
 
@@ -220,7 +254,7 @@ def _extract_movement_registrations(xml_path: str) -> List[Dict[str, str]]:
     if not content:
         return entries
     for i, line in enumerate(content.split("\n"), start=1):
-        m = re.search(r'<movevent\s+', line, re.IGNORECASE)
+        m = re.search(r"<movevent\s+", line, re.IGNORECASE)
         if not m:
             continue
         script_m = re.search(r'script\s*=\s*"([^"]*)"', line, re.IGNORECASE)
@@ -234,18 +268,22 @@ def _extract_movement_registrations(xml_path: str) -> List[Dict[str, str]]:
             if attr_m:
                 ids = [x.strip() for x in attr_m.group(1).split(";") if x.strip()]
                 for mid in ids:
-                    entries.append({
-                        "type": f"movement-{attr}",
-                        "key": f"{mid} ({event_type})",
-                        "script": script, "line": str(i),
-                        "xml_file": xml_path,
-                    })
+                    entries.append(
+                        {
+                            "type": f"movement-{attr}",
+                            "key": f"{mid} ({event_type})",
+                            "script": script,
+                            "line": str(i),
+                            "xml_file": xml_path,
+                        }
+                    )
     return entries
 
 
 # ---------------------------------------------------------------------------
 # Main detector
 # ---------------------------------------------------------------------------
+
 
 def detect_duplicates(directory: str) -> DuplicateReport:
     """Run the full duplicate detection on a server directory."""
@@ -269,11 +307,13 @@ def detect_duplicates(directory: str) -> DuplicateReport:
 
     for code_hash, filepaths in hash_map.items():
         if len(filepaths) > 1:
-            report.duplicate_scripts.append(DuplicateScript(
-                file_hash=code_hash,
-                filepaths=sorted(filepaths),
-                similarity=1.0,
-            ))
+            report.duplicate_scripts.append(
+                DuplicateScript(
+                    file_hash=code_hash,
+                    filepaths=sorted(filepaths),
+                    similarity=1.0,
+                )
+            )
 
     # 2) Detect duplicate XML registrations
     all_registrations: List[Dict[str, str]] = []
@@ -281,7 +321,9 @@ def detect_duplicates(directory: str) -> DuplicateReport:
     if scan.actions_xml:
         all_registrations.extend(_extract_action_registrations(scan.actions_xml))
     if scan.talkactions_xml:
-        all_registrations.extend(_extract_talkaction_registrations(scan.talkactions_xml))
+        all_registrations.extend(
+            _extract_talkaction_registrations(scan.talkactions_xml)
+        )
     if scan.movements_xml:
         all_registrations.extend(_extract_movement_registrations(scan.movements_xml))
 
@@ -293,20 +335,24 @@ def detect_duplicates(directory: str) -> DuplicateReport:
 
     for (reg_type, key), entries in reg_groups.items():
         if len(entries) > 1:
-            report.duplicate_registrations.append(DuplicateRegistration(
-                reg_type=reg_type,
-                key=key,
-                entries=entries,
-            ))
+            report.duplicate_registrations.append(
+                DuplicateRegistration(
+                    reg_type=reg_type,
+                    key=key,
+                    entries=entries,
+                )
+            )
 
     return report
 
 
 # ── Semantic duplicate detection (AST-backed) ─────────────────────────────
 
+
 @dataclass
 class SemanticDuplicate:
     """Two files that are structurally identical despite different variable names."""
+
     file_a: str
     file_b: str
     similarity: float
@@ -340,9 +386,11 @@ def detect_semantic_duplicates(
         for j in range(i + 1, len(paths)):
             score = structural_similarity(codes[paths[i]], codes[paths[j]])
             if score >= threshold:
-                results.append(SemanticDuplicate(
-                    file_a=paths[i],
-                    file_b=paths[j],
-                    similarity=score,
-                ))
+                results.append(
+                    SemanticDuplicate(
+                        file_a=paths[i],
+                        file_b=paths[j],
+                        similarity=score,
+                    )
+                )
     return sorted(results, key=lambda x: -x.similarity)

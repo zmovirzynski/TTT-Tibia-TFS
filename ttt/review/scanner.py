@@ -16,20 +16,34 @@ _CATEGORY_RULES = [
     # STUB markers → custom/game-specific function
     (re.compile(r"STUB:", re.IGNORECASE), ReviewCategory.CUSTOM_FUNCTION),
     # Removed / no equivalent → unsupported legacy
-    (re.compile(r"removed|no direct equivalent|no equivalent|deprecated", re.IGNORECASE),
-     ReviewCategory.UNSUPPORTED_LEGACY),
+    (
+        re.compile(
+            r"removed|no direct equivalent|no equivalent|deprecated", re.IGNORECASE
+        ),
+        ReviewCategory.UNSUPPORTED_LEGACY,
+    ),
     # Object unwrapping hints
-    (re.compile(r"auto-chained|unwrap|:get\w+\(\)", re.IGNORECASE),
-     ReviewCategory.OBJECT_UNWRAPPING),
+    (
+        re.compile(r"auto-chained|unwrap|:get\w+\(\)", re.IGNORECASE),
+        ReviewCategory.OBJECT_UNWRAPPING,
+    ),
     # API replacement hints
-    (re.compile(r"\bUse\b|In 1\.x|replace|Combat object|condition system", re.IGNORECASE),
-     ReviewCategory.API_REPLACEMENT),
+    (
+        re.compile(
+            r"\bUse\b|In 1\.x|replace|Combat object|condition system", re.IGNORECASE
+        ),
+        ReviewCategory.API_REPLACEMENT,
+    ),
     # Confidence / review hints
-    (re.compile(r"Review|verify|check|manual|confidence|risk", re.IGNORECASE),
-     ReviewCategory.CONFIDENCE_RISK),
+    (
+        re.compile(r"Review|verify|check|manual|confidence|risk", re.IGNORECASE),
+        ReviewCategory.CONFIDENCE_RISK,
+    ),
     # Function body not found → custom function
-    (re.compile(r"Function body not found", re.IGNORECASE),
-     ReviewCategory.CUSTOM_FUNCTION),
+    (
+        re.compile(r"Function body not found", re.IGNORECASE),
+        ReviewCategory.CUSTOM_FUNCTION,
+    ),
 ]
 
 

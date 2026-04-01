@@ -21,7 +21,6 @@ from ttt.testing import (
 
 
 class TestMockApi(unittest.TestCase):
-
     def test_mock_player_and_inventory(self):
         player = mockPlayer(name="Tom", level=42, money=100)
         item = player.addItem(2160, 2)
@@ -50,7 +49,6 @@ class TestMockApi(unittest.TestCase):
 
 
 class TestCustomAssertions(unittest.TestCase):
-
     def test_assertions_pass(self):
         player = mockPlayer(level=20)
         creature = mockCreature(health=100)
@@ -76,18 +74,19 @@ class TestCustomAssertions(unittest.TestCase):
 
 
 class TestRunner(unittest.TestCase):
-
     def test_run_tests_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
             test_file = os.path.join(tmp, "test_sample.py")
             with open(test_file, "w", encoding="utf-8") as f:
-                f.write(textwrap.dedent("""\
+                f.write(
+                    textwrap.dedent("""\
                     import unittest
 
                     class TestSample(unittest.TestCase):
                         def test_ok(self):
                             self.assertTrue(True)
-                """))
+                """)
+                )
 
             report = run_tests(tmp)
             self.assertEqual(report.tests_run, 1)
@@ -102,13 +101,15 @@ class TestRunner(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             test_file = os.path.join(tmp, "test_fail.py")
             with open(test_file, "w", encoding="utf-8") as f:
-                f.write(textwrap.dedent("""\
+                f.write(
+                    textwrap.dedent("""\
                     import unittest
 
                     class TestFail(unittest.TestCase):
                         def test_nope(self):
                             self.assertEqual(1, 2)
-                """))
+                """)
+                )
 
             report = run_tests(test_file)
             self.assertEqual(report.tests_run, 1)

@@ -22,6 +22,7 @@ STEP_DESCRIPTIONS = {
 
 class StepStatus(enum.Enum):
     """Status of a single pipeline step."""
+
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"
@@ -32,6 +33,7 @@ class StepStatus(enum.Enum):
 @dataclass
 class StepResult:
     """Result of executing one pipeline step."""
+
     name: str
     status: StepStatus = StepStatus.PENDING
     duration_seconds: float = 0.0
@@ -47,6 +49,7 @@ class StepResult:
 @dataclass
 class FileEntry:
     """Per-file data for the dashboard file table."""
+
     path: str = ""
     file_type: str = ""
     changes: int = 0
@@ -58,6 +61,7 @@ class FileEntry:
 @dataclass
 class MigrationRunReport:
     """Full report for a migration run across all steps."""
+
     input_dir: str = ""
     output_dir: str = ""
     source_version: str = ""
@@ -101,7 +105,9 @@ class MigrationRunReport:
         s = self.get_step("convert")
         if s and s.ok:
             stats = s.outputs.get("stats", {})
-            return stats.get("lua_files_processed", 0) + stats.get("xml_files_processed", 0)
+            return stats.get("lua_files_processed", 0) + stats.get(
+                "xml_files_processed", 0
+            )
         return 0
 
     @property
@@ -183,9 +189,7 @@ class MigrationRunReport:
                     "duration_seconds": round(s.duration_seconds, 2),
                     "error": s.error,
                     "summary": s.summary,
-                    "outputs": {
-                        k: str(v) for k, v in s.outputs.items()
-                    },
+                    "outputs": {k: str(v) for k, v in s.outputs.items()},
                 }
                 for s in self.steps
             ],

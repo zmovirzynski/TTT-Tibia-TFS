@@ -9,17 +9,25 @@ from typing import List
 try:
     from luaparser import ast as _lua_ast
     from luaparser.astnodes import (
-        Node, Function, AnonymousFunction, Name,
+        Node,
+        Function,
+        AnonymousFunction,
+        Name,
     )
+
     _LUAPARSER_AVAILABLE = True
 except ImportError:
     _LUAPARSER_AVAILABLE = False
 
 _BRANCH_NODE_TYPES = {
-    "If", "ElseIf",
-    "While", "Repeat",
-    "Fornum", "Forin",
-    "And", "Or",
+    "If",
+    "ElseIf",
+    "While",
+    "Repeat",
+    "Fornum",
+    "Forin",
+    "And",
+    "Or",
 }
 
 _NESTING_OPENERS = {"If", "While", "Repeat", "Fornum", "Forin"}
@@ -84,12 +92,14 @@ def _collect_functions(node, code: str, results: List[FunctionMetrics]) -> None:
         name = _get_name(node)
         cyclomatic, max_nesting = _measure(node)
         lines = _count_lines(node)
-        results.append(FunctionMetrics(
-            name=name,
-            cyclomatic=cyclomatic,
-            nesting_depth=max_nesting,
-            lines=lines,
-        ))
+        results.append(
+            FunctionMetrics(
+                name=name,
+                cyclomatic=cyclomatic,
+                nesting_depth=max_nesting,
+                lines=lines,
+            )
+        )
         # Don't recurse further — nested functions get their own entry
         # by _measure skipping them, but we DO still need to visit nested functions
         # as top-level entries. So we recurse into children looking for more functions.
@@ -107,7 +117,9 @@ def _collect_functions(node, code: str, results: List[FunctionMetrics]) -> None:
             _collect_functions(item, code, results)
 
 
-def _recurse_for_nested_functions(func_node, code: str, results: List[FunctionMetrics]) -> None:
+def _recurse_for_nested_functions(
+    func_node, code: str, results: List[FunctionMetrics]
+) -> None:
     """Find any functions nested inside func_node and add them to results."""
     for attr in func_node.__dict__:
         if attr.startswith("_"):

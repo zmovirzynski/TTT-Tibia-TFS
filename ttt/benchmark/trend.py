@@ -29,8 +29,9 @@ def load_history(path: Optional[str] = None) -> List[Dict[str, Any]]:
     return data if isinstance(data, list) else []
 
 
-def append_result(result: BenchmarkResult, path: Optional[str] = None,
-                  label: str = "") -> str:
+def append_result(
+    result: BenchmarkResult, path: Optional[str] = None, label: str = ""
+) -> str:
     """Append a benchmark result to the history file. Returns the history path."""
     path = path or _default_history_path()
     history = load_history(path)
@@ -63,8 +64,10 @@ def format_trend_text(history: List[Dict[str, Any]]) -> str:
     lines.append("")
 
     # Header
-    lines.append(f"  {'Run':<5} {'Date':<20} {'Files':<7} {'Markers':<9} "
-                 f"{'Errors':<8} {'Duration':<10} {'Golden':<8} {'Status':<6}")
+    lines.append(
+        f"  {'Run':<5} {'Date':<20} {'Files':<7} {'Markers':<9} "
+        f"{'Errors':<8} {'Duration':<10} {'Golden':<8} {'Status':<6}"
+    )
     lines.append(f"  {thin}")
 
     for i, entry in enumerate(history):
@@ -75,8 +78,10 @@ def format_trend_text(history: List[Dict[str, Any]]) -> str:
         duration = f"{entry.get('duration_seconds', 0):.3f}s"
         golden = f"{entry.get('golden_match_rate', 1.0) * 100:.0f}%"
         status = "PASS" if entry.get("success", False) else "FAIL"
-        lines.append(f"  {i + 1:<5} {ts:<20} {files:<7} {markers:<9} "
-                     f"{errors:<8} {duration:<10} {golden:<8} {status:<6}")
+        lines.append(
+            f"  {i + 1:<5} {ts:<20} {files:<7} {markers:<9} "
+            f"{errors:<8} {duration:<10} {golden:<8} {status:<6}"
+        )
 
     # Deltas (latest vs previous)
     if len(history) >= 2:
@@ -99,10 +104,14 @@ def format_trend_text(history: List[Dict[str, Any]]) -> str:
             diff = new_val - old_val
             if key == "duration_seconds":
                 sign = "+" if diff >= 0 else ""
-                lines.append(f"    {label:<15} {old_val:.3f}s → {new_val:.3f}s ({sign}{diff:.3f}s)")
+                lines.append(
+                    f"    {label:<15} {old_val:.3f}s → {new_val:.3f}s ({sign}{diff:.3f}s)"
+                )
             elif key == "golden_match_rate":
                 sign = "+" if diff >= 0 else ""
-                lines.append(f"    {label:<15} {old_val * 100:.1f}% → {new_val * 100:.1f}% ({sign}{diff * 100:.1f}%)")
+                lines.append(
+                    f"    {label:<15} {old_val * 100:.1f}% → {new_val * 100:.1f}% ({sign}{diff * 100:.1f}%)"
+                )
             else:
                 sign = "+" if diff >= 0 else ""
                 lines.append(f"    {label:<15} {old_val} → {new_val} ({sign}{diff})")
@@ -114,10 +123,13 @@ def format_trend_text(history: List[Dict[str, Any]]) -> str:
 
 def format_trend_json(history: List[Dict[str, Any]]) -> str:
     """Serialize trend data to JSON."""
-    return json.dumps({
-        "total_runs": len(history),
-        "history": history,
-    }, indent=2)
+    return json.dumps(
+        {
+            "total_runs": len(history),
+            "history": history,
+        },
+        indent=2,
+    )
 
 
 def generate_trend_html(history: List[Dict[str, Any]]) -> str:
@@ -200,17 +212,19 @@ th {{ background: var(--card-bg); color: var(--accent); }}
 <h2>Run History</h2>
 <table>
 <tr><th>#</th><th>Date</th><th>Label</th><th>Files</th><th>Markers</th><th>Errors</th><th>Duration</th><th>Golden</th><th>Status</th></tr>
-{"".join(
-    f'<tr><td>{i+1}</td><td>{e.get("timestamp","")[:19]}</td>'
-    f'<td>{e.get("label","")}</td>'
-    f'<td>{e.get("files_converted",0)}</td>'
-    f'<td>{e.get("review_markers",0)}</td>'
-    f'<td>{e.get("conversion_errors",0)}</td>'
-    f'<td>{e.get("duration_seconds",0):.3f}s</td>'
-    f'<td>{e.get("golden_match_rate",1.0)*100:.0f}%</td>'
-    f'<td class="{"pass" if e.get("success") else "fail"}">{"PASS" if e.get("success") else "FAIL"}</td></tr>'
-    for i, e in enumerate(history)
-)}
+{
+        "".join(
+            f"<tr><td>{i + 1}</td><td>{e.get('timestamp', '')[:19]}</td>"
+            f"<td>{e.get('label', '')}</td>"
+            f"<td>{e.get('files_converted', 0)}</td>"
+            f"<td>{e.get('review_markers', 0)}</td>"
+            f"<td>{e.get('conversion_errors', 0)}</td>"
+            f"<td>{e.get('duration_seconds', 0):.3f}s</td>"
+            f"<td>{e.get('golden_match_rate', 1.0) * 100:.0f}%</td>"
+            f'<td class="{"pass" if e.get("success") else "fail"}">{"PASS" if e.get("success") else "FAIL"}</td></tr>'
+            for i, e in enumerate(history)
+        )
+    }
 </table>
 
 <script>
@@ -229,7 +243,9 @@ new Chart(document.getElementById('markersChart'), {{
   data: {{
     labels: labels,
     datasets: [
-      {{ label: 'Review Markers', data: {chart_markers}, borderColor: '#f9e2af', tension: 0.3 }},
+      {{ label: 'Review Markers', data: {
+        chart_markers
+    }, borderColor: '#f9e2af', tension: 0.3 }},
       {{ label: 'Errors', data: {chart_errors}, borderColor: '#f38ba8', tension: 0.3 }}
     ]
   }},
@@ -240,7 +256,9 @@ new Chart(document.getElementById('goldenChart'), {{
   type: 'line',
   data: {{
     labels: labels,
-    datasets: [{{ label: 'Golden Match %', data: {chart_golden}, borderColor: '#a6e3a1', tension: 0.3 }}]
+    datasets: [{{ label: 'Golden Match %', data: {
+        chart_golden
+    }, borderColor: '#a6e3a1', tension: 0.3 }}]
   }},
   options: cfg
 }});
@@ -249,7 +267,9 @@ new Chart(document.getElementById('durationChart'), {{
   type: 'bar',
   data: {{
     labels: labels,
-    datasets: [{{ label: 'Duration (s)', data: {chart_duration}, backgroundColor: '#89b4fa' }}]
+    datasets: [{{ label: 'Duration (s)', data: {
+        chart_duration
+    }, backgroundColor: '#89b4fa' }}]
   }},
   options: cfg
 }});

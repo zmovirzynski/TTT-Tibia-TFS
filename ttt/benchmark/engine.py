@@ -52,8 +52,9 @@ class BenchmarkEngine:
     # Internal
     # ------------------------------------------------------------------
 
-    def _run_conversion(self, entry: CorpusEntry, output_dir: str,
-                        result: BenchmarkResult) -> None:
+    def _run_conversion(
+        self, entry: CorpusEntry, output_dir: str, result: BenchmarkResult
+    ) -> None:
         """Run the ConversionEngine and collect metrics."""
         from ..engine import ConversionEngine
 
@@ -104,8 +105,9 @@ class BenchmarkEngine:
                         pass
         return total
 
-    def _compare_golden(self, actual_dir: str, golden_dir: str,
-                        result: BenchmarkResult) -> None:
+    def _compare_golden(
+        self, actual_dir: str, golden_dir: str, result: BenchmarkResult
+    ) -> None:
         """Compare converted output against golden expected files."""
         golden_files = self._collect_lua_files(golden_dir)
 
@@ -140,7 +142,9 @@ class BenchmarkEngine:
                 continue
 
             diff = list(difflib.unified_diff(golden_lines, actual_lines, n=0))
-            diff_count = sum(1 for line in diff if line.startswith("+") or line.startswith("-"))
+            diff_count = sum(
+                1 for line in diff if line.startswith("+") or line.startswith("-")
+            )
 
             is_match = len(diff) == 0
             result.golden_comparisons.append(

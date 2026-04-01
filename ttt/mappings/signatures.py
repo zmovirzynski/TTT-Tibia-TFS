@@ -110,7 +110,14 @@ ONLOGOUT_NEW = {
 }
 
 ONDEATH_OLD = {
-    "params": ["cid", "corpse", "killer", "mostDamage", "unjustified", "mostDamage_unjustified"],
+    "params": [
+        "cid",
+        "corpse",
+        "killer",
+        "mostDamage",
+        "unjustified",
+        "mostDamage_unjustified",
+    ],
     "alt_params": [
         ["cid", "corpse", "killer", "mostDamage"],
         ["cid", "corpse", "lastHitKiller", "mostDamageKiller"],
@@ -118,7 +125,14 @@ ONDEATH_OLD = {
 }
 
 ONDEATH_NEW = {
-    "params": ["creature", "corpse", "killer", "mostDamageKiller", "lastHitUnjustified", "mostDamageUnjustified"],
+    "params": [
+        "creature",
+        "corpse",
+        "killer",
+        "mostDamageKiller",
+        "lastHitUnjustified",
+        "mostDamageUnjustified",
+    ],
 }
 
 ONKILL_OLD = {
@@ -142,21 +156,53 @@ ONPREPAREDDEATH_NEW = {
 }
 
 ONHEALTHCHANGE_OLD = {
-    "params": ["creature", "attacker", "primaryDamage", "primaryType", "secondaryDamage", "secondaryType", "origin"],
+    "params": [
+        "creature",
+        "attacker",
+        "primaryDamage",
+        "primaryType",
+        "secondaryDamage",
+        "secondaryType",
+        "origin",
+    ],
     "alt_params": [],
 }
 
 ONHEALTHCHANGE_NEW = {
-    "params": ["creature", "attacker", "primaryDamage", "primaryType", "secondaryDamage", "secondaryType", "origin"],
+    "params": [
+        "creature",
+        "attacker",
+        "primaryDamage",
+        "primaryType",
+        "secondaryDamage",
+        "secondaryType",
+        "origin",
+    ],
 }
 
 ONMANACHANGE_OLD = {
-    "params": ["creature", "attacker", "primaryDamage", "primaryType", "secondaryDamage", "secondaryType", "origin"],
+    "params": [
+        "creature",
+        "attacker",
+        "primaryDamage",
+        "primaryType",
+        "secondaryDamage",
+        "secondaryType",
+        "origin",
+    ],
     "alt_params": [],
 }
 
 ONMANACHANGE_NEW = {
-    "params": ["creature", "attacker", "primaryDamage", "primaryType", "secondaryDamage", "secondaryType", "origin"],
+    "params": [
+        "creature",
+        "attacker",
+        "primaryDamage",
+        "primaryType",
+        "secondaryDamage",
+        "secondaryType",
+        "origin",
+    ],
 }
 
 ONTEXTEDIT_OLD = {
@@ -242,36 +288,36 @@ ONGLOBALEVENT_NEW = {
 # Master mapping: event_name → (old_signature, new_signature)
 
 SIGNATURE_MAP = {
-    "onUse":           (ONUSE_OLD, ONUSE_NEW),
-    "onStepIn":        (ONSTEPIN_OLD, ONSTEPIN_NEW),
-    "onStepOut":       (ONSTEPOUT_OLD, ONSTEPOUT_NEW),
-    "onEquip":         (ONEQUIP_OLD, ONEQUIP_NEW),
-    "onDeEquip":       (ONDEEQUIP_OLD, ONDEEQUIP_NEW),
-    "onAddItem":       (ONADDITEM_OLD, ONADDITEM_NEW),
-    "onSay":           (ONSAY_OLD, ONSAY_NEW),
-    "onLogin":         (ONLOGIN_OLD, ONLOGIN_NEW),
-    "onLogout":        (ONLOGOUT_OLD, ONLOGOUT_NEW),
-    "onDeath":         (ONDEATH_OLD, ONDEATH_NEW),
-    "onKill":          (ONKILL_OLD, ONKILL_NEW),
-    "onPrepareDeath":  (ONPREPAREDDEATH_OLD, ONPREPAREDDEATH_NEW),
-    "onHealthChange":  (ONHEALTHCHANGE_OLD, ONHEALTHCHANGE_NEW),
-    "onManaChange":    (ONMANACHANGE_OLD, ONMANACHANGE_NEW),
-    "onTextEdit":      (ONTEXTEDIT_OLD, ONTEXTEDIT_NEW),
-    "onThink":         (ONTHINK_OLD, ONTHINK_NEW),
-    "onModalWindow":   (ONMODALWINDOW_OLD, ONMODALWINDOW_NEW),
-    "onStartup":       (ONSTARTUP_OLD, ONSTARTUP_NEW),
-    "onShutdown":      (ONSHUTDOWN_OLD, ONSHUTDOWN_NEW),
-    "onRecord":        (ONRECORD_OLD, ONRECORD_NEW),
-    "onTime":          (ONTIMER_OLD, ONTIMER_NEW),
-    "onTimer":         (ONTIMER_OLD, ONTIMER_NEW),
-    "onGlobalEvent":   (ONGLOBALEVENT_OLD, ONGLOBALEVENT_NEW),
+    "onUse": (ONUSE_OLD, ONUSE_NEW),
+    "onStepIn": (ONSTEPIN_OLD, ONSTEPIN_NEW),
+    "onStepOut": (ONSTEPOUT_OLD, ONSTEPOUT_NEW),
+    "onEquip": (ONEQUIP_OLD, ONEQUIP_NEW),
+    "onDeEquip": (ONDEEQUIP_OLD, ONDEEQUIP_NEW),
+    "onAddItem": (ONADDITEM_OLD, ONADDITEM_NEW),
+    "onSay": (ONSAY_OLD, ONSAY_NEW),
+    "onLogin": (ONLOGIN_OLD, ONLOGIN_NEW),
+    "onLogout": (ONLOGOUT_OLD, ONLOGOUT_NEW),
+    "onDeath": (ONDEATH_OLD, ONDEATH_NEW),
+    "onKill": (ONKILL_OLD, ONKILL_NEW),
+    "onPrepareDeath": (ONPREPAREDDEATH_OLD, ONPREPAREDDEATH_NEW),
+    "onHealthChange": (ONHEALTHCHANGE_OLD, ONHEALTHCHANGE_NEW),
+    "onManaChange": (ONMANACHANGE_OLD, ONMANACHANGE_NEW),
+    "onTextEdit": (ONTEXTEDIT_OLD, ONTEXTEDIT_NEW),
+    "onThink": (ONTHINK_OLD, ONTHINK_NEW),
+    "onModalWindow": (ONMODALWINDOW_OLD, ONMODALWINDOW_NEW),
+    "onStartup": (ONSTARTUP_OLD, ONSTARTUP_NEW),
+    "onShutdown": (ONSHUTDOWN_OLD, ONSHUTDOWN_NEW),
+    "onRecord": (ONRECORD_OLD, ONRECORD_NEW),
+    "onTime": (ONTIMER_OLD, ONTIMER_NEW),
+    "onTimer": (ONTIMER_OLD, ONTIMER_NEW),
+    "onGlobalEvent": (ONGLOBALEVENT_OLD, ONGLOBALEVENT_NEW),
 }
 
 # Variable rename map: old param name → new param name
 # Used to rename variables throughout the function body
 
 PARAM_RENAME_MAP = {
-    "cid": "player",        # Most common: creature ID → Player object
+    "cid": "player",  # Most common: creature ID → Player object
     "frompos": "fromPosition",
     "topos": "toPosition",
     "fromPos": "fromPosition",

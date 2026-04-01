@@ -13,7 +13,6 @@ from ttt.formatter import (
 
 
 class TestLuaFormatterCode(unittest.TestCase):
-
     def test_formats_indentation_and_operators(self):
         code = """function onUse(player,item)\nif player:getLevel()>=10 then\nplayer:addItem(2160,1)\nreturn true\nend\nend\n"""
         formatter = LuaFormatter(LuaFormatConfig())
@@ -51,7 +50,6 @@ class TestLuaFormatterCode(unittest.TestCase):
 
 
 class TestLuaFormatterIO(unittest.TestCase):
-
     def test_check_mode_does_not_write(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "test.lua")
@@ -86,7 +84,6 @@ class TestLuaFormatterIO(unittest.TestCase):
 
 
 class TestFormatterConfig(unittest.TestCase):
-
     def test_load_and_find_config(self):
         with tempfile.TemporaryDirectory() as tmp:
             nested = os.path.join(tmp, "a", "b")

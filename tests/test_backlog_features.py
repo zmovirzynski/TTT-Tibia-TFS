@@ -20,7 +20,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ttt.converters.explain import ExplainEntry, ExplainReport
 from ttt.converters.rule_confidence import rule_confidence, aggregate_confidence
 from ttt.converters.ast_guidance import (
-    GuidanceEntry, GuidanceReport, analyze_converted_code,
+    GuidanceEntry,
+    GuidanceReport,
+    analyze_converted_code,
 )
 from ttt.analyzer.npc_analyzer import NPCConversationAnalyzer, NPCData
 
@@ -29,8 +31,8 @@ from ttt.analyzer.npc_analyzer import NPCConversationAnalyzer, NPCData
 # 1. ExplainReport Tests
 # ====================================================================
 
-class TestExplainEntry(unittest.TestCase):
 
+class TestExplainEntry(unittest.TestCase):
     def test_default_values(self):
         e = ExplainEntry()
         self.assertEqual(e.file, "")
@@ -40,10 +42,13 @@ class TestExplainEntry(unittest.TestCase):
 
     def test_custom_values(self):
         e = ExplainEntry(
-            file="test.lua", line=10, stage="function",
+            file="test.lua",
+            line=10,
+            stage="function",
             original="doPlayerAddItem(cid, 2160, 1)",
             transformed="player:addItem(2160, 1)",
-            rule="doPlayerAddItem", reasoning="Method rename",
+            rule="doPlayerAddItem",
+            reasoning="Method rename",
             confidence=0.95,
         )
         self.assertEqual(e.file, "test.lua")
@@ -53,7 +58,6 @@ class TestExplainEntry(unittest.TestCase):
 
 
 class TestExplainReport(unittest.TestCase):
-
     def _make_report(self):
         report = ExplainReport()
         report.add(ExplainEntry(file="a.lua", line=1, stage="function"))
@@ -115,8 +119,8 @@ class TestExplainReport(unittest.TestCase):
 # 2. Per-Rule Confidence Tests
 # ====================================================================
 
-class TestRuleConfidence(unittest.TestCase):
 
+class TestRuleConfidence(unittest.TestCase):
     def test_simple_method(self):
         mapping = {"method": "getHealth"}
         self.assertEqual(rule_confidence(mapping), 1.0)
@@ -154,7 +158,11 @@ class TestRuleConfidence(unittest.TestCase):
         self.assertEqual(rule_confidence(mapping), 0.7)
 
     def test_note_with_ttt_and_chain(self):
-        mapping = {"method": "doSomething", "chain": ":func()", "note": "-- TTT: verify"}
+        mapping = {
+            "method": "doSomething",
+            "chain": ":func()",
+            "note": "-- TTT: verify",
+        }
         self.assertEqual(rule_confidence(mapping), 0.65)
 
     def test_no_method(self):
@@ -163,7 +171,6 @@ class TestRuleConfidence(unittest.TestCase):
 
 
 class TestAggregateConfidence(unittest.TestCase):
-
     def test_empty_list(self):
         self.assertEqual(aggregate_confidence([]), 1.0)
 
@@ -194,8 +201,8 @@ class TestAggregateConfidence(unittest.TestCase):
 # 3. AST Guidance Tests
 # ====================================================================
 
-class TestGuidanceEntry(unittest.TestCase):
 
+class TestGuidanceEntry(unittest.TestCase):
     def test_default_values(self):
         e = GuidanceEntry()
         self.assertEqual(e.severity, "info")
@@ -203,15 +210,17 @@ class TestGuidanceEntry(unittest.TestCase):
 
     def test_custom_values(self):
         e = GuidanceEntry(
-            file="test.lua", line=5, severity="warning",
-            category="type_safety", title="Nil access",
+            file="test.lua",
+            line=5,
+            severity="warning",
+            category="type_safety",
+            title="Nil access",
         )
         self.assertEqual(e.severity, "warning")
         self.assertEqual(e.category, "type_safety")
 
 
 class TestGuidanceReport(unittest.TestCase):
-
     def _make_report(self):
         r = GuidanceReport()
         r.add(GuidanceEntry(severity="warning", category="type_safety"))
@@ -252,15 +261,17 @@ class TestGuidanceReport(unittest.TestCase):
 
 
 class TestGuidanceAnalysis(unittest.TestCase):
-
     def test_nil_safety_detection(self):
         code = """
 local hp = Player(cid):getHealth()
 """
         report = GuidanceReport()
         analyze_converted_code(code, "", "test.lua", report)
-        nil_entries = [e for e in report.entries if e.category == "type_safety"
-                       and "nil" in e.title.lower()]
+        nil_entries = [
+            e
+            for e in report.entries
+            if e.category == "type_safety" and "nil" in e.title.lower()
+        ]
         self.assertTrue(len(nil_entries) >= 1)
 
     def test_nil_safety_skips_checked(self):
@@ -271,8 +282,11 @@ local hp = Player(cid):getHealth()
 """
         report = GuidanceReport()
         analyze_converted_code(code, "", "test.lua", report)
-        nil_entries = [e for e in report.entries if e.category == "type_safety"
-                       and "nil" in e.title.lower()]
+        nil_entries = [
+            e
+            for e in report.entries
+            if e.category == "type_safety" and "nil" in e.title.lower()
+        ]
         # Should not flag since there's a nil check
         self.assertEqual(len(nil_entries), 0)
 
@@ -287,12 +301,15 @@ doPlayerSendTextMessage(cid, 22, "hello")
 
     def test_storage_usage_warning(self):
         # Many hard-coded storage keys (uses TFS 1.x OOP syntax)
-        lines = [f'player:setStorageValue({1000 + i}, 1)' for i in range(15)]
+        lines = [f"player:setStorageValue({1000 + i}, 1)" for i in range(15)]
         code = "\n".join(lines)
         report = GuidanceReport()
         analyze_converted_code(code, "", "test.lua", report)
-        storage_entries = [e for e in report.entries if e.category == "pattern"
-                           and "storage" in e.title.lower()]
+        storage_entries = [
+            e
+            for e in report.entries
+            if e.category == "pattern" and "storage" in e.title.lower()
+        ]
         self.assertTrue(len(storage_entries) >= 1)
 
     def test_type_coercion_detection(self):
@@ -302,8 +319,11 @@ local voc = player:getVocation():getId() == "knight"
 """
         report = GuidanceReport()
         analyze_converted_code(code, "", "test.lua", report)
-        type_entries = [e for e in report.entries if e.category == "type_safety"
-                        and "vocation" in e.title.lower()]
+        type_entries = [
+            e
+            for e in report.entries
+            if e.category == "type_safety" and "vocation" in e.title.lower()
+        ]
         self.assertTrue(len(type_entries) >= 1)
 
     def test_event_registration_detection(self):
@@ -315,8 +335,11 @@ end
 """
         report = GuidanceReport()
         analyze_converted_code(code, "", "test.lua", report)
-        reg_entries = [e for e in report.entries if e.category == "pattern"
-                       and "registration" in e.title.lower()]
+        reg_entries = [
+            e
+            for e in report.entries
+            if e.category == "pattern" and "registration" in e.title.lower()
+        ]
         self.assertTrue(len(reg_entries) >= 1)
 
     def test_clean_code_no_warnings(self):
@@ -337,8 +360,8 @@ return true
 # 4. Benchmark Trend Tests
 # ====================================================================
 
-class TestBenchmarkTrend(unittest.TestCase):
 
+class TestBenchmarkTrend(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
         self.history_path = os.path.join(self.tmpdir, "history.json")
@@ -349,38 +372,44 @@ class TestBenchmarkTrend(unittest.TestCase):
     def _make_history(self, n=3):
         history = []
         for i in range(n):
-            history.append({
-                "timestamp": f"2025-01-0{i + 1}T10:00:00",
-                "label": f"run-{i + 1}",
-                "files_converted": 10 + i,
-                "review_markers": max(0, 5 - i),
-                "conversion_errors": 0,
-                "duration_seconds": 1.5 + i * 0.1,
-                "golden_match_rate": 0.9 + i * 0.02,
-                "success": True,
-            })
+            history.append(
+                {
+                    "timestamp": f"2025-01-0{i + 1}T10:00:00",
+                    "label": f"run-{i + 1}",
+                    "files_converted": 10 + i,
+                    "review_markers": max(0, 5 - i),
+                    "conversion_errors": 0,
+                    "duration_seconds": 1.5 + i * 0.1,
+                    "golden_match_rate": 0.9 + i * 0.02,
+                    "success": True,
+                }
+            )
         with open(self.history_path, "w") as f:
             json.dump(history, f)
         return history
 
     def test_load_empty_history(self):
         from ttt.benchmark.trend import load_history
+
         history = load_history(os.path.join(self.tmpdir, "nonexistent.json"))
         self.assertEqual(history, [])
 
     def test_load_history(self):
         from ttt.benchmark.trend import load_history
+
         self._make_history()
         history = load_history(self.history_path)
         self.assertEqual(len(history), 3)
 
     def test_format_trend_text_empty(self):
         from ttt.benchmark.trend import format_trend_text
+
         text = format_trend_text([])
         self.assertIn("No benchmark history", text)
 
     def test_format_trend_text_content(self):
         from ttt.benchmark.trend import format_trend_text
+
         history = self._make_history()
         text = format_trend_text(history)
         self.assertIn("Trend Report", text)
@@ -391,6 +420,7 @@ class TestBenchmarkTrend(unittest.TestCase):
 
     def test_format_trend_json(self):
         from ttt.benchmark.trend import format_trend_json
+
         history = self._make_history()
         raw = format_trend_json(history)
         data = json.loads(raw)
@@ -399,11 +429,13 @@ class TestBenchmarkTrend(unittest.TestCase):
 
     def test_generate_trend_html_empty(self):
         from ttt.benchmark.trend import generate_trend_html
+
         html = generate_trend_html([])
         self.assertIn("No benchmark history", html)
 
     def test_generate_trend_html_content(self):
         from ttt.benchmark.trend import generate_trend_html
+
         history = self._make_history()
         html = generate_trend_html(history)
         self.assertIn("Trend Report", html)
@@ -412,6 +444,7 @@ class TestBenchmarkTrend(unittest.TestCase):
 
     def test_format_trend_text_single_run(self):
         from ttt.benchmark.trend import format_trend_text
+
         history = self._make_history(1)
         text = format_trend_text(history)
         self.assertIn("Total runs: 1", text)
@@ -423,8 +456,8 @@ class TestBenchmarkTrend(unittest.TestCase):
 # 5. NPC Conversation Analyzer Tests
 # ====================================================================
 
-class TestNPCData(unittest.TestCase):
 
+class TestNPCData(unittest.TestCase):
     def test_default_values(self):
         npc = NPCData()
         self.assertEqual(npc.name, "")
@@ -448,7 +481,9 @@ class TestNPCAnalyzerWithExamples(unittest.TestCase):
     def setUp(self):
         self.npc_dir = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "tfs03_input", "npc",
+            "examples",
+            "tfs03_input",
+            "npc",
         )
         self.analyzer = NPCConversationAnalyzer(self.npc_dir)
         if os.path.isdir(self.npc_dir):
@@ -560,11 +595,14 @@ class TestNPCAnalyzerSynthetic(unittest.TestCase):
                 f.write(lua_content)
 
     def test_xml_parsing_greet_message(self):
-        self._write_npc("test.xml", """<?xml version="1.0"?>
+        self._write_npc(
+            "test.xml",
+            """<?xml version="1.0"?>
 <npc name="TestNPC" script="test.lua">
   <parameter key="message_greet" value="Hello {trade}!"/>
 </npc>
-""")
+""",
+        )
         a = NPCConversationAnalyzer(self.tmpdir)
         a.load_npcs()
         self.assertEqual(len(a.npcs), 1)
@@ -574,12 +612,15 @@ class TestNPCAnalyzerSynthetic(unittest.TestCase):
         self.assertIn("trade", npc.keywords)
 
     def test_xml_shop_items(self):
-        self._write_npc("shop.xml", """<?xml version="1.0"?>
+        self._write_npc(
+            "shop.xml",
+            """<?xml version="1.0"?>
 <npc name="ShopNPC" script="shop.lua">
   <parameter key="shop_buyable" value="100,item_a,50;200,item_b,100"/>
   <parameter key="shop_sellable" value="100,item_a,25"/>
 </npc>
-""")
+""",
+        )
         a = NPCConversationAnalyzer(self.tmpdir)
         a.load_npcs()
         npc = a.npcs[0]
@@ -588,11 +629,15 @@ class TestNPCAnalyzerSynthetic(unittest.TestCase):
         self.assertEqual(npc.shop_buyable[0]["name"], "item_a")
 
     def test_lua_keyword_parsing(self):
-        self._write_npc("test.xml", """<?xml version="1.0"?>
+        self._write_npc(
+            "test.xml",
+            """<?xml version="1.0"?>
 <npc name="TalkNPC" script="talk.lua">
   <parameter key="message_greet" value="Hello!"/>
 </npc>
-""", "talk.lua", """
+""",
+            "talk.lua",
+            """
 local keywordHandler = KeywordHandler:new()
 local npcHandler = NpcHandler:new(keywordHandler)
 
@@ -603,7 +648,8 @@ function creatureSayCallback(cid, type, msg)
         selfSay("Go kill 10 rats.", cid)
     end
 end
-""")
+""",
+        )
         a = NPCConversationAnalyzer(self.tmpdir)
         a.load_npcs()
         npc = a.npcs[0]
@@ -614,12 +660,17 @@ end
         self.assertEqual(npc.responses["quest"], "Go kill 10 rats.")
 
     def test_module_detection(self):
-        self._write_npc("mod.xml", """<?xml version="1.0"?>
+        self._write_npc(
+            "mod.xml",
+            """<?xml version="1.0"?>
 <npc name="ModNPC" script="mod.lua"/>
-""", "mod.lua", """
+""",
+            "mod.lua",
+            """
 local shopModule = ShopModule:new()
 local focusModule = FocusModule:new()
-""")
+""",
+        )
         a = NPCConversationAnalyzer(self.tmpdir)
         a.load_npcs()
         npc = a.npcs[0]
@@ -629,9 +680,13 @@ local focusModule = FocusModule:new()
         self.assertIn("FocusModule", npc.modules)
 
     def test_duplicate_keyword_detection(self):
-        self._write_npc("dup.xml", """<?xml version="1.0"?>
+        self._write_npc(
+            "dup.xml",
+            """<?xml version="1.0"?>
 <npc name="DupNPC" script="dup.lua"/>
-""", "dup.lua", """
+""",
+            "dup.lua",
+            """
 function creatureSayCallback(cid, type, msg)
     if msgcontains(msg, "hello") then
         selfSay("Hello!", cid)
@@ -640,7 +695,8 @@ function creatureSayCallback(cid, type, msg)
         selfSay("Hello again!", cid)
     end
 end
-""")
+""",
+        )
         a = NPCConversationAnalyzer(self.tmpdir)
         a.load_npcs()
         dups = a.detect_duplicate_keywords()
@@ -681,13 +737,18 @@ end
         # Create items.xml
         items_xml_path = os.path.join(self.tmpdir, "items.xml")
         with open(items_xml_path, "w") as f:
-            f.write('<?xml version="1.0"?><items><item id="100"/><item id="200"/></items>')
+            f.write(
+                '<?xml version="1.0"?><items><item id="100"/><item id="200"/></items>'
+            )
 
-        self._write_npc("shop.xml", """<?xml version="1.0"?>
+        self._write_npc(
+            "shop.xml",
+            """<?xml version="1.0"?>
 <npc name="ShopNPC" script="shop.lua">
   <parameter key="shop_buyable" value="100,sword,50;999,unknown_item,100"/>
 </npc>
-""")
+""",
+        )
         a = NPCConversationAnalyzer(self.tmpdir, items_xml=items_xml_path)
         a.load_npcs()
         validation = a.validate_shop_items()
@@ -738,12 +799,15 @@ end
         self.assertNotIn("linked", result["unreach.xml"]["unreachable"])
 
     def test_farewell_detection(self):
-        self._write_npc("fw.xml", """<?xml version="1.0"?>
+        self._write_npc(
+            "fw.xml",
+            """<?xml version="1.0"?>
 <npc name="FarewellNPC" script="fw.lua">
   <parameter key="message_greet" value="Hello!"/>
   <parameter key="message_farewell" value="Goodbye!"/>
 </npc>
-""")
+""",
+        )
         a = NPCConversationAnalyzer(self.tmpdir)
         a.load_npcs()
         gf = a.check_greet_farewell()
@@ -752,17 +816,22 @@ end
         self.assertTrue(gf[npc.file]["farewell"])
 
     def test_format_report_renders(self):
-        self._write_npc("rpt.xml", """<?xml version="1.0"?>
+        self._write_npc(
+            "rpt.xml",
+            """<?xml version="1.0"?>
 <npc name="ReportNPC" script="rpt.lua">
   <parameter key="message_greet" value="Hello!"/>
 </npc>
-""", "rpt.lua", """
+""",
+            "rpt.lua",
+            """
 function creatureSayCallback(cid, type, msg)
     if msgcontains(msg, "help") then
         selfSay("How can I help?", cid)
     end
 end
-""")
+""",
+        )
         a = NPCConversationAnalyzer(self.tmpdir)
         a.load_npcs()
         text = a.format_report()
@@ -775,16 +844,17 @@ end
 # Integration: LuaTransformer + Explain
 # ====================================================================
 
-class TestLuaTransformerExplain(unittest.TestCase):
 
+class TestLuaTransformerExplain(unittest.TestCase):
     def test_explain_entries_generated(self):
         from ttt.converters.lua_transformer import LuaTransformer
         from ttt.mappings.tfs03_functions import TFS03_TO_1X
+
         t = LuaTransformer(TFS03_TO_1X, "tfs03")
         explain = ExplainReport()
         t.explain = explain
 
-        code = 'doPlayerAddItem(cid, 2160, 1)'
+        code = "doPlayerAddItem(cid, 2160, 1)"
         t.transform(code, "test.lua")
         # Should have at least one explain entry
         self.assertGreater(len(explain.entries), 0)
@@ -792,23 +862,24 @@ class TestLuaTransformerExplain(unittest.TestCase):
     def test_explain_captures_stage(self):
         from ttt.converters.lua_transformer import LuaTransformer
         from ttt.mappings.tfs03_functions import TFS03_TO_1X
+
         t = LuaTransformer(TFS03_TO_1X, "tfs03")
         explain = ExplainReport()
         t.explain = explain
 
-        code = 'doPlayerAddItem(cid, 2160, 1)'
+        code = "doPlayerAddItem(cid, 2160, 1)"
         t.transform(code, "test.lua")
         stages = {e.stage for e in explain.entries}
         self.assertIn("function", stages)
 
 
 class TestLuaTransformerRuleConfidence(unittest.TestCase):
-
     def test_rule_confidences_populated(self):
         from ttt.converters.lua_transformer import LuaTransformer
         from ttt.mappings.tfs03_functions import TFS03_TO_1X
+
         t = LuaTransformer(TFS03_TO_1X, "tfs03")
-        code = 'doPlayerAddItem(cid, 2160, 1)'
+        code = "doPlayerAddItem(cid, 2160, 1)"
         t.transform(code, "test.lua")
         self.assertGreater(len(t.rule_confidences), 0)
         for conf in t.rule_confidences:

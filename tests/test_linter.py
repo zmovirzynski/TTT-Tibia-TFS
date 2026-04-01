@@ -10,7 +10,8 @@ import shutil
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ttt.linter.rules import (
-    LintSeverity, LintIssue,
+    LintSeverity,
+    LintIssue,
     DeprecatedApiRule,
     UnusedParameterRule,
     MissingReturnRule,
@@ -33,13 +34,13 @@ from ttt.linter.reporter import format_text, format_json, format_html
 # Tests for individual rules
 # ═══════════════════════════════════════════════════════════
 
-class TestDeprecatedApiRule(unittest.TestCase):
 
+class TestDeprecatedApiRule(unittest.TestCase):
     def setUp(self):
         self.rule = DeprecatedApiRule()
 
     def test_detects_doPlayerAddItem(self):
-        code = 'doPlayerAddItem(cid, 2160, 1)'
+        code = "doPlayerAddItem(cid, 2160, 1)"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         self.assertEqual(len(issues), 1)
@@ -49,7 +50,7 @@ class TestDeprecatedApiRule(unittest.TestCase):
         self.assertTrue(issues[0].fixable)
 
     def test_detects_getPlayerLevel(self):
-        code = 'local level = getPlayerLevel(cid)'
+        code = "local level = getPlayerLevel(cid)"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         self.assertEqual(len(issues), 1)
@@ -67,19 +68,19 @@ end"""
         self.assertGreaterEqual(len(issues), 3)
 
     def test_ignores_comments(self):
-        code = '-- doPlayerAddItem(cid, 2160, 1)'
+        code = "-- doPlayerAddItem(cid, 2160, 1)"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         self.assertEqual(len(issues), 0)
 
     def test_ignores_modern_api(self):
-        code = 'player:addItem(2160, 1)'
+        code = "player:addItem(2160, 1)"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         self.assertEqual(len(issues), 0)
 
     def test_no_false_positives_on_similar_names(self):
-        code = 'local getPlayerLevelCustom = function() end'
+        code = "local getPlayerLevelCustom = function() end"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         # Should not match partial names unless followed by (
@@ -87,7 +88,6 @@ end"""
 
 
 class TestUnusedParameterRule(unittest.TestCase):
-
     def setUp(self):
         self.rule = UnusedParameterRule()
 
@@ -134,7 +134,6 @@ end"""
 
 
 class TestMissingReturnRule(unittest.TestCase):
-
     def setUp(self):
         self.rule = MissingReturnRule()
 
@@ -176,7 +175,6 @@ end"""
 
 
 class TestInvalidCallbackSignatureRule(unittest.TestCase):
-
     def setUp(self):
         self.rule = InvalidCallbackSignatureRule()
 
@@ -215,7 +213,6 @@ class TestInvalidCallbackSignatureRule(unittest.TestCase):
 
 
 class TestGlobalVariableLeakRule(unittest.TestCase):
-
     def setUp(self):
         self.rule = GlobalVariableLeakRule()
 
@@ -255,32 +252,31 @@ CONST_ME_POFF = 3"""
 
 
 class TestHardcodedIdRule(unittest.TestCase):
-
     def setUp(self):
         self.rule = HardcodedIdRule()
 
     def test_detects_hardcoded_item_id(self):
-        code = 'doPlayerAddItem(cid, 2160, 1)'
+        code = "doPlayerAddItem(cid, 2160, 1)"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         self.assertEqual(len(issues), 1)
         self.assertIn("2160", issues[0].message)
 
     def test_ignores_comments(self):
-        code = '-- doPlayerAddItem(cid, 2160, 1)'
+        code = "-- doPlayerAddItem(cid, 2160, 1)"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         self.assertEqual(len(issues), 0)
 
     def test_ignores_storage_ids(self):
-        code = 'setStorageValue(cid, 50001, 1)'
+        code = "setStorageValue(cid, 50001, 1)"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         # 50001 >= 10000, so should be ignored
         self.assertEqual(len(issues), 0)
 
     def test_ignores_small_numbers(self):
-        code = 'addItem(player, 10, 1)'
+        code = "addItem(player, 10, 1)"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         # 10 is only 2 digits, below threshold
@@ -288,7 +284,6 @@ class TestHardcodedIdRule(unittest.TestCase):
 
 
 class TestDeprecatedConstantRule(unittest.TestCase):
-
     def setUp(self):
         self.rule = DeprecatedConstantRule()
 
@@ -301,27 +296,26 @@ class TestDeprecatedConstantRule(unittest.TestCase):
         self.assertTrue(found, f"Expected MSG_STATUS_DEFAULT issue, got: {issues}")
 
     def test_detects_old_talktype(self):
-        code = 'doCreatureSay(cid, text, TALKTYPE_ORANGE_1)'
+        code = "doCreatureSay(cid, text, TALKTYPE_ORANGE_1)"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         found = any("TALKTYPE_ORANGE_1" in i.message for i in issues)
         self.assertTrue(found)
 
     def test_ignores_comments(self):
-        code = '-- TALKTYPE_ORANGE_1'
+        code = "-- TALKTYPE_ORANGE_1"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         self.assertEqual(len(issues), 0)
 
     def test_no_issue_for_modern_constants(self):
-        code = 'MESSAGE_STATUS_DEFAULT'
+        code = "MESSAGE_STATUS_DEFAULT"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         self.assertEqual(len(issues), 0)
 
 
 class TestEmptyCallbackRule(unittest.TestCase):
-
     def setUp(self):
         self.rule = EmptyCallbackRule()
 
@@ -359,7 +353,6 @@ end"""
 
 
 class TestMixedApiStyleRule(unittest.TestCase):
-
     def setUp(self):
         self.rule = MixedApiStyleRule()
 
@@ -396,7 +389,6 @@ end"""
 
 
 class TestUnsafeStorageRule(unittest.TestCase):
-
     def setUp(self):
         self.rule = UnsafeStorageRule()
 
@@ -421,7 +413,7 @@ end"""
         self.assertEqual(len(issues), 0)
 
     def test_ignores_comments(self):
-        code = '-- doPlayerSetStorageValue(cid, 50001, 1)'
+        code = "-- doPlayerSetStorageValue(cid, 50001, 1)"
         lines = code.split("\n")
         issues = self.rule.check(code, lines)
         self.assertEqual(len(issues), 0)
@@ -431,8 +423,8 @@ end"""
 # Tests for the rule registry
 # ═══════════════════════════════════════════════════════════
 
-class TestRuleRegistry(unittest.TestCase):
 
+class TestRuleRegistry(unittest.TestCase):
     def test_all_rules_registered(self):
         self.assertEqual(len(ALL_RULES), 10)
 
@@ -466,8 +458,8 @@ class TestRuleRegistry(unittest.TestCase):
 # Tests for the lint engine
 # ═══════════════════════════════════════════════════════════
 
-class TestLintEngine(unittest.TestCase):
 
+class TestLintEngine(unittest.TestCase):
     def setUp(self):
         self.engine = LintEngine()
 
@@ -503,7 +495,7 @@ end"""
     def test_lint_code_with_disabled_rules(self):
         config = LintConfig(disabled_rules=["deprecated-api", "deprecated-constant"])
         engine = LintEngine(config=config)
-        code = 'doPlayerAddItem(cid, 2160, 1)'
+        code = "doPlayerAddItem(cid, 2160, 1)"
         result = engine.lint_code(code, "test.lua")
         deprecated = [i for i in result.issues if i.rule_id == "deprecated-api"]
         self.assertEqual(len(deprecated), 0)
@@ -521,8 +513,9 @@ end"""
 
     def test_lint_file(self):
         # Create a temp file
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".lua",
-                                          delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".lua", delete=False, encoding="utf-8"
+        ) as f:
             f.write("""function onLogin(cid)
     local name = getCreatureName(cid)
     doPlayerSendTextMessage(cid, MESSAGE_STATUS_DEFAULT, "Welcome, " .. name)
@@ -538,7 +531,9 @@ end""")
             os.unlink(filepath)
 
     def test_lint_file_not_found(self):
-        result = self.engine.lint_file(os.path.join(tempfile.gettempdir(), "nonexistent_ttt_test_file.lua"))
+        result = self.engine.lint_file(
+            os.path.join(tempfile.gettempdir(), "nonexistent_ttt_test_file.lua")
+        )
         self.assertNotEqual(result.error, "")
         self.assertEqual(result.score, 0)
 
@@ -546,7 +541,8 @@ end""")
         # Use the examples directory
         examples_dir = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "tfs03_input"
+            "examples",
+            "tfs03_input",
         )
         if os.path.isdir(examples_dir):
             report = self.engine.lint_directory(examples_dir)
@@ -555,7 +551,6 @@ end""")
 
 
 class TestComputeScore(unittest.TestCase):
-
     def test_no_issues_perfect_score(self):
         score = compute_score([], 50)
         self.assertEqual(score, 100)
@@ -585,8 +580,8 @@ class TestComputeScore(unittest.TestCase):
 # Tests for the lint config
 # ═══════════════════════════════════════════════════════════
 
-class TestLintConfig(unittest.TestCase):
 
+class TestLintConfig(unittest.TestCase):
     def test_default_config(self):
         config = LintConfig()
         self.assertIsNone(config.enabled_rules)
@@ -594,8 +589,9 @@ class TestLintConfig(unittest.TestCase):
         self.assertEqual(config.max_issues_per_file, 50)
 
     def test_load_config(self):
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json",
-                                          delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        ) as f:
             f.write('{"disable": ["hardcoded-id"], "maxIssuesPerFile": 20}')
             config_path = f.name
 
@@ -637,22 +633,38 @@ class TestLintConfig(unittest.TestCase):
 # Tests for reporters
 # ═══════════════════════════════════════════════════════════
 
-class TestReporters(unittest.TestCase):
 
+class TestReporters(unittest.TestCase):
     def _make_report(self) -> LintReport:
         """Create a sample report for testing."""
         from ttt.linter.engine import FileLintResult
+
         result = FileLintResult(
             filepath="/test/scripts/healing_potion.lua",
             issues=[
-                LintIssue(3, 5, LintSeverity.WARNING, "deprecated-api",
-                         "doPlayerAddItem → player:addItem()",
-                         fixable=True),
-                LintIssue(5, 10, LintSeverity.INFO, "unused-parameter",
-                         "'frompos' is declared but never used"),
-                LintIssue(8, 1, LintSeverity.WARNING, "missing-return",
-                         "Callback 'onUse' should return true/false",
-                         fixable=True),
+                LintIssue(
+                    3,
+                    5,
+                    LintSeverity.WARNING,
+                    "deprecated-api",
+                    "doPlayerAddItem → player:addItem()",
+                    fixable=True,
+                ),
+                LintIssue(
+                    5,
+                    10,
+                    LintSeverity.INFO,
+                    "unused-parameter",
+                    "'frompos' is declared but never used",
+                ),
+                LintIssue(
+                    8,
+                    1,
+                    LintSeverity.WARNING,
+                    "missing-return",
+                    "Callback 'onUse' should return true/false",
+                    fixable=True,
+                ),
             ],
             score=45,
         )
@@ -674,6 +686,7 @@ class TestReporters(unittest.TestCase):
 
     def test_format_json(self):
         import json
+
         report = self._make_report()
         output = format_json(report, "/test/scripts")
         data = json.loads(output)
@@ -703,24 +716,30 @@ class TestReporters(unittest.TestCase):
 # Integration test: lint the example TFS 0.3 scripts
 # ═══════════════════════════════════════════════════════════
 
-class TestLintExampleScripts(unittest.TestCase):
 
+class TestLintExampleScripts(unittest.TestCase):
     def setUp(self):
         self.examples_dir = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "tfs03_input"
+            "examples",
+            "tfs03_input",
         )
         self.engine = LintEngine()
 
     @unittest.skipUnless(
-        os.path.isdir(os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "tfs03_input"
-        )),
-        "Example scripts not found"
+        os.path.isdir(
+            os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "examples",
+                "tfs03_input",
+            )
+        ),
+        "Example scripts not found",
     )
     def test_lint_healing_potion(self):
-        filepath = os.path.join(self.examples_dir, "actions", "scripts", "healing_potion.lua")
+        filepath = os.path.join(
+            self.examples_dir, "actions", "scripts", "healing_potion.lua"
+        )
         if not os.path.isfile(filepath):
             self.skipTest(f"File not found: {filepath}")
 
@@ -729,7 +748,9 @@ class TestLintExampleScripts(unittest.TestCase):
 
         # Should detect deprecated API calls
         deprecated = [i for i in result.issues if i.rule_id == "deprecated-api"]
-        self.assertGreater(len(deprecated), 0, "Should detect deprecated API in healing_potion.lua")
+        self.assertGreater(
+            len(deprecated), 0, "Should detect deprecated API in healing_potion.lua"
+        )
 
         # Should detect deprecated constants (TRUE → true)
         [i for i in result.issues if i.rule_id == "deprecated-constant"]
@@ -738,14 +759,19 @@ class TestLintExampleScripts(unittest.TestCase):
         self.assertLess(result.score, 90)
 
     @unittest.skipUnless(
-        os.path.isdir(os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "tfs03_input"
-        )),
-        "Example scripts not found"
+        os.path.isdir(
+            os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "examples",
+                "tfs03_input",
+            )
+        ),
+        "Example scripts not found",
     )
     def test_lint_login_script(self):
-        filepath = os.path.join(self.examples_dir, "creaturescripts", "scripts", "login.lua")
+        filepath = os.path.join(
+            self.examples_dir, "creaturescripts", "scripts", "login.lua"
+        )
         if not os.path.isfile(filepath):
             self.skipTest(f"File not found: {filepath}")
 
@@ -753,11 +779,14 @@ class TestLintExampleScripts(unittest.TestCase):
         self.assertGreater(len(result.issues), 0)
 
     @unittest.skipUnless(
-        os.path.isdir(os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "examples", "tfs03_input"
-        )),
-        "Example scripts not found"
+        os.path.isdir(
+            os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "examples",
+                "tfs03_input",
+            )
+        ),
+        "Example scripts not found",
     )
     def test_lint_full_directory(self):
         report = self.engine.lint_directory(self.examples_dir)
@@ -770,6 +799,7 @@ class TestLintExampleScripts(unittest.TestCase):
 
         json_out = format_json(report, self.examples_dir)
         import json
+
         data = json.loads(json_out)
         self.assertIn("summary", data)
 

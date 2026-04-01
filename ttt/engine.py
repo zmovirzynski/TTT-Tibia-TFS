@@ -94,7 +94,9 @@ class ConversionEngine:
         self.dry_run = dry_run
         self.html_diff = html_diff
         self.explain = explain
-        self.explain_report: Optional[ExplainReport] = ExplainReport() if explain else None
+        self.explain_report: Optional[ExplainReport] = (
+            ExplainReport() if explain else None
+        )
         self.guidance_report = GuidanceReport()
 
         # Select function mapping
@@ -224,7 +226,9 @@ class ConversionEngine:
             report_path = os.path.join(self.output_dir, "conversion_report.txt")
             report_text = self.report.generate(report_path)
             logger.info(f"\n  Report saved to: {report_path}")
-            self._guidelines_content = self._generate_oop_guidelines(html_diff_dir) if self.html_diff else ""
+            self._guidelines_content = (
+                self._generate_oop_guidelines(html_diff_dir) if self.html_diff else ""
+            )
 
         if self.html_diff:
             self._generate_html_diff()
@@ -346,7 +350,9 @@ class ConversionEngine:
         diff_gen.generate(html_path)
         logger.info(f"\n  HTML diff saved to: {html_path}")
 
-    def _component_out_dir(self, scripts_dir: Optional[str], name: str, revscript_dir: str) -> str:
+    def _component_out_dir(
+        self, scripts_dir: Optional[str], name: str, revscript_dir: str
+    ) -> str:
         """Return the output dir for a component's converted scripts.
 
         When the input_dir IS the component folder (e.g. converting
@@ -393,19 +399,25 @@ class ConversionEngine:
                 scan.talkactions_xml,
                 scan.talkactions_dir,
                 "talkactions",
-                self._component_out_dir(scan.talkactions_dir, "talkactions", revscript_dir),
+                self._component_out_dir(
+                    scan.talkactions_dir, "talkactions", revscript_dir
+                ),
             ),
             (
                 scan.creaturescripts_xml,
                 scan.creaturescripts_dir,
                 "creaturescripts",
-                self._component_out_dir(scan.creaturescripts_dir, "creaturescripts", revscript_dir),
+                self._component_out_dir(
+                    scan.creaturescripts_dir, "creaturescripts", revscript_dir
+                ),
             ),
             (
                 scan.globalevents_xml,
                 scan.globalevents_dir,
                 "globalevents",
-                self._component_out_dir(scan.globalevents_dir, "globalevents", revscript_dir),
+                self._component_out_dir(
+                    scan.globalevents_dir, "globalevents", revscript_dir
+                ),
             ),
         ]
 
@@ -545,13 +557,16 @@ class ConversionEngine:
             # Collect per-rule confidence scores
             if hasattr(ast_transformer, "rule_confidences"):
                 fr.rule_confidences = list(ast_transformer.rule_confidences)
-            elif hasattr(ast_transformer, "_fallback_transformer") and ast_transformer._fallback_transformer:
-                fr.rule_confidences = list(ast_transformer._fallback_transformer.rule_confidences)
+            elif (
+                hasattr(ast_transformer, "_fallback_transformer")
+                and ast_transformer._fallback_transformer
+            ):
+                fr.rule_confidences = list(
+                    ast_transformer._fallback_transformer.rule_confidences
+                )
 
             # AST-assisted guidance analysis
-            analyze_converted_code(
-                new_content, content, rel, self.guidance_report
-            )
+            analyze_converted_code(new_content, content, rel, self.guidance_report)
 
             if not self.dry_run:
                 out_path = os.path.join(self.output_dir, rel)
